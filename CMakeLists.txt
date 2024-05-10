@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
-project("onnxruntime-sd")
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/renderer_cmake_colors.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/renderer_cmake_utils.cmake)
+
+PROJECT("onnxruntime-sd")
+SET(ENGINE_NAME "ORT-TensorRT")
+SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+SET(ONNX_INFERENCE_TARGET osx-arm64)
+SET(ONNX_INFERENCE_VERSION "1.17.3" CACHE STRING "ONNXRuntime version" FORCE)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -19,24 +27,16 @@ else()
 endif()
 
 
-#
+message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
-#
 option(ORT_BUILD_EXAMPLES            "ort-sd: build examples" ${SD_STANDALONE})
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
 option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ON)
-#option(SD_BUILD_SERVER               "sd: build server example"                           ON)
+option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
 
-
-#
 # 2. Add inference engine to project
-#
-set(ONNX_PATH onnx)
-set(ONNX_INFERENCE_TARGET osx-arm64)
-set(ONNX_INFERENCE_VERSION "1.17.3" CACHE STRING "ONNXRuntime version" FORCE)
-
 if (ORT_ONLINE_COMPILED)
-    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
+    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
     # download from github if ONNXRuntime library is not exists
     if (NOT EXISTS ${ONNX_INFERENCE_PATH})
@@ -54,43 +54,65 @@ if (ORT_ONLINE_COMPILED)
 
     include_directories(${ONNX_INFERENCE_PATH}/include)
     link_directories(${ONNX_INFERENCE_PATH}/lib)
-else ()
+endif ()
+
+if (ORT_LOCALS_BUILDING)
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime)
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
     add_subdirectory(${ONNX_INFERENCE_PATH})
     # prepare ort local compiling setting
     add_definitions(-DEXECUTION_PROVIDER_TENSORRT)
+    message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
 endif ()
 
+message("[onnx.runtime.sd][I] onnxruntime target ${Blue}version_${ColourReset}: ${ONNX_INFERENCE_VERSION}")
+message("[onnx.runtime.sd][I] onnxruntime target ${Blue}platform${ColourReset}: ${ONNX_INFERENCE_TARGET}")
+message("[onnx.runtime.sd][I] onnxruntime infers ${Blue}provider${ColourReset}: ${ENGINE_NAME}")
+message("${Cyan}<############################# ${ENGINE_NAME}-Done #############################>${ColourReset}")
 
-#
-# 3. Assemble project resource
-#
-set(ORT_SD_LIB ort-sd)
 
-file(GLOB ORT_LIB_SOURCES
-        "*.h"
-        "*.cpp"
-        "*.hpp"
-        )
+message("${Cyan}<############################# ${PROJECT_NAME}-Make #############################>${ColourReset}")
+
+set(library_name ort-sd)
+
+set(library_data_IMPORT
+        ../../third_party/glm
+)
+set(library_data_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/source/ort_sd_context.cc
+)
+
+auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} source)
+#auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} engine)
+auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} include)
+auto_print_list(library_data_SOURCES)
 
 # we can get only one share lib
 if(ORT_BUILD_SHARED_LIBS)
-    message("Build shared library")
-    message(${ORT_LIB_SOURCES})
-    set(BUILD_SHARED_LIBS OFF)
-    add_library(${ORT_SD_LIB} SHARED ${ORT_LIB_SOURCES})
-    target_compile_definitions(${ORT_SD_LIB} PRIVATE -DSD_BUILD_DLL)
+    message("[onnx.runtime.sd][I] Build library[SHARED]: ${library_name}")
+    add_library(${library_name} SHARED)
+    target_compile_definitions(${library_name} PRIVATE -DSD_BUILD_DLL)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
-    message("Build static library")
-    set(BUILD_SHARED_LIBS OFF)
-    add_library(${ORT_SD_LIB} STATIC ${ORT_LIB_SOURCES})
+    message("[onnx.runtime.sd][I] Build library[STATIC]: ${library_name}")
+    add_library(${library_name} STATIC)
+    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 endif()
 
-# deps
-target_link_libraries(${ORT_SD_LIB} PUBLIC onnxruntime)
-target_compile_features(${ORT_SD_LIB} PUBLIC cxx_std_11)
+target_sources(${library_name} PRIVATE ${library_data_SOURCES})
+auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} source PRIVATE)
+#auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} engine PRIVATE)
+auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include INTERFACE)
+
+#link references
+target_include_directories(${library_name} PRIVATE ${library_data_IMPORT})
+auto_link_reference_library(${library_name})
+
+target_compile_features(${library_name} PUBLIC cxx_std_11)
+target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
+
+message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")
+
 
 # check example available
 if (SD_BUILD_EXAMPLES)
