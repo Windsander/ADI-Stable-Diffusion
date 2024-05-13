@@ -52,7 +52,7 @@ public:
     }
 };
 
-#define log(level) logIt(level)
+#define sd_log(level) logIt(level)
 
 } // namespace amon
 } // namespace sd

@@ -12,10 +12,49 @@ namespace sd {
 namespace scheduler {
 
 class LCMKarrasScheduler: public SchedulerBase {
+private:
+    std::normal_distribution<float> random_style;
 
+protected:
+    float generate_random_at(float timestep) override;
+    float generate_sigma_at(float timestep) override;
 
+    std::vector<float> execute_method(
+        const vector<float>& dnoised_data_,
+        long step_index_
+    ) override;
 
+public:
+    explicit LCMKarrasScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
+        random_style =std::normal_distribution<float>(0.0, 1.0);
+    }
+
+    ~LCMKarrasScheduler() override{
+        random_style.reset();
+    }
 };
+
+float LCMKarrasScheduler::generate_random_at(float timestep_) {
+    SD_UNUSED(timestep_);
+    return random_style(random_generator);
+}
+
+float LCMKarrasScheduler::generate_sigma_at(float timestep_) {
+    // TODO
+
+    return 1.0f;
+}
+
+std::vector<float> LCMKarrasScheduler::execute_method(
+    const vector<float>& dnoised_data_,
+    long step_index_
+) {
+    std::vector<float> scaled_sample(dnoised_data_.size());
+
+    // TODO
+
+    return scaled_sample;
+}
 
 } // namespace scheduler
 } // namespace sd
