@@ -2,8 +2,8 @@
  * Copyright (c) 2018-2050 SD_Scheduler - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
-#ifndef SCHEDULER_EULAR_A_DISCRETE
-#define SCHEDULER_EULAR_A_DISCRETE
+#ifndef SCHEDULER_DISCRETE_EULAR_A
+#define SCHEDULER_DISCRETE_EULAR_A
 
 #include "scheduler_base.cc"
 
@@ -12,46 +12,32 @@ namespace sd {
 namespace scheduler {
 
 class EularAncestralDiscreteScheduler: public SchedulerBase {
-private:
-    std::normal_distribution<float> random_style;
-
 protected:
-    float generate_random_at(float timestep) override;
-    float generate_sigma_at(float timestep) override;
-
     std::vector<float> execute_method(
-        const vector<float>& dnoised_data_,
-        long step_index_
+        const float* samples_data_,
+        const float* predict_data_,
+        int elements_in_batch,
+        long step_index_,
+        long order_
     ) override;
 
 public:
     explicit EularAncestralDiscreteScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
-        random_style =std::normal_distribution<float>(0.0, 1.0);
     }
 
-    ~EularAncestralDiscreteScheduler() override{
-        random_style.reset();
-    }
+    ~EularAncestralDiscreteScheduler() override = default;
 };
 
-float EularAncestralDiscreteScheduler::generate_random_at(float timestep_) {
-    SD_UNUSED(timestep_);
-    return random_style(random_generator);
-}
-
-float EularAncestralDiscreteScheduler::generate_sigma_at(float timestep_) {
-    int low_idx  = static_cast<int>(std::floor(timestep_));
-    int high_idx = static_cast<int>(std::ceil(timestep_));
-    float w      = timestep_ - static_cast<float>(low_idx);      // divide always 1
-    float sigma  = (1.0f - w) * alphas_cumprod[low_idx] + w * alphas_cumprod[high_idx];
-    return sigma;
-}
-
 std::vector<float> EularAncestralDiscreteScheduler::execute_method(
-    const vector<float>& dnoised_data_,
-    long step_index_
+    const float* samples_data_,
+    const float* predict_data_,
+    int elements_in_batch,
+    long step_index_,
+    long order_
 ) {
-    std::vector<float> scaled_sample(dnoised_data_.size());
+    SD_UNUSED(order_);
+
+    std::vector<float> scaled_sample(elements_in_batch);
 
     // Euler method:: sigma get
     float sigma_curs = scheduler_sigmas[step_index_];
@@ -70,9 +56,9 @@ std::vector<float> EularAncestralDiscreteScheduler::execute_method(
     }
 
     // Euler method:: current noise decrees
-    for (int i = 0; i < dnoised_data_.size(); i++) {
-        scaled_sample[i] = (dnoised_data_[i] - scaled_sample[i]) / sigma_curs;        // derivative_out = (sample - predict_sample) / sigma
-        scaled_sample[i] = (dnoised_data_[i] + scaled_sample[i] * sigma_dt);          // previous_down = sample + derivative_out * dt
+    for (int i = 0; i < elements_in_batch; i++) {
+        scaled_sample[i] = (samples_data_[i] - predict_data_[i]) / sigma_curs;        // derivative_out = (sample - predict_sample) / sigma
+        scaled_sample[i] = (predict_data_[i] + scaled_sample[i] * sigma_dt);          // previous_down = sample + derivative_out * dt
         if (sigma_next > 0) {
             scaled_sample[i] = scaled_sample[i] + generate_random_at(0.f) * sigma_up;    // producted_out = previous_down + random_noise * sigma_up
         }
@@ -85,4 +71,4 @@ std::vector<float> EularAncestralDiscreteScheduler::execute_method(
 } // namespace sd
 } // namespace onnx
 
-#endif //SCHEDULER_EULAR_A_DISCRETE
+#endif //SCHEDULER_DISCRETE_EULAR_A

@@ -6,7 +6,9 @@
 #define SCHEDULER_BASE_H
 
 #include "onnxsd_defs.h"
+#include "onnxsd_basic_core_config.cc"
 #include "onnxsd_basic_register.cc"
+#include "onnxsd_basic_tools.cc"
 
 namespace onnx {
 namespace sd {
@@ -17,6 +19,17 @@ using namespace amon;
 using namespace Ort;
 using namespace detail;
 
+typedef enum BetaScheduleType {
+    BETA_TYPE_LINEAR            = 1,
+    BETA_TYPE_SCALED_LINEAR     = 2,
+    BETA_TYPE_SQUAREDCOS_CAP_V2 = 3,
+} BetaType;
+
+typedef enum AlphaTransformType {
+    ALPHA_TYPE_COSINE           = 1,
+    ALPHA_TYPE_EXP              = 2,
+} AlphaType;
+
 typedef enum PredictionType {
     PREDICT_TYPE_EPSILON        = 1,
     PREDICT_TYPE_V_PREDICTION   = 2,
@@ -24,16 +37,17 @@ typedef enum PredictionType {
 } PredictionType;
 
 typedef struct SchedulerConfig {
-    int scheduler_training_steps = 1000;
-    float scheduler_beta_start   = 0.00085f;
-    float scheduler_beta_end     = 0.012f;
-    uint64_t scheduler_seed      = 42;
-    bool scheduler_beta_scale    = false;
+    int scheduler_training_steps    = 1000;
+    float scheduler_beta_start      = 0.00085f;
+    float scheduler_beta_end        = 0.012f;
+    uint64_t scheduler_seed         = 42;
+    BetaType scheduler_beta_type    = BETA_TYPE_LINEAR;
+    AlphaType scheduler_alpha_type  = ALPHA_TYPE_COSINE;
 } SchedulerConfig;
 
 class SchedulerBase {
-protected:
-    std::default_random_engine random_generator;
+private:
+    RandomGenerator random_generator;
 
 protected:
     SchedulerConfig scheduler_config{};
@@ -44,19 +58,20 @@ protected:
     vector<float>   alphas_cumprod;
 
 protected:
-    float sigma_to_timestep(float sigma);
+    float generate_sigma_at(float timestep_);
+    float generate_random_at(float timestep_);
 
-    virtual float generate_random_at(float timestep) = 0;
-    virtual float generate_sigma_at(float timestep) = 0;
-    virtual std::vector<float> execute_method(const vector<float>& dnoised_data_, long step_index_) = 0;
+    virtual std::vector<float> execute_method(
+        const float* samples_data_, const float* predict_data_,
+        int elements_in_batch, long step_index_, long order_) = 0;
 
 public:
     explicit SchedulerBase(SchedulerConfig scheduler_config_ = {});
     virtual ~SchedulerBase();
 
-    void create(int training_steps, float linear_start_, float linear_end_, bool enable_scale_ = false);
+    void create();
     void init(uint32_t inference_steps_) ;
-    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int timestep);
+    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int timestep_, int order_ = 4);
     void release();
 };
 
@@ -65,12 +80,6 @@ SchedulerBase::SchedulerBase(SchedulerConfig scheduler_config_){
     this->scheduler_config = scheduler_config_;
     this->scheduler_prediction_type = PredictionType::PREDICT_TYPE_EPSILON;
     this->random_generator.seed(scheduler_config_.scheduler_seed);
-    create(
-        scheduler_config_.scheduler_training_steps,
-        scheduler_config_.scheduler_beta_start,
-        scheduler_config_.scheduler_beta_end,
-        scheduler_config_.scheduler_beta_scale
-    );
 }
 
 SchedulerBase::~SchedulerBase(){
@@ -78,49 +87,88 @@ SchedulerBase::~SchedulerBase(){
     alphas_cumprod.clear();
     scheduler_sigmas.clear();
     scheduler_timesteps.clear();
+    random_generator.~RandomGenerator();
 }
 
-void SchedulerBase::create(
-    int training_steps, float linear_start_, float linear_end_, bool enable_scale_
-) {
-    float beta_start_at = enable_scale_? std::sqrtf(linear_start_):linear_start_;
-    float beta_end_when = enable_scale_? std::sqrtf(linear_end_):linear_end_;
-    float beta_range = beta_end_when - beta_start_at;
-    float product = 1.0f;
-
-    for (uint32_t i = 0; i < training_steps; ++i) {
-        float beta_dire = beta_start_at + beta_range * ((float) i / float(training_steps - 1));
-        float beta_norm = enable_scale_ ? powf(beta_dire, 2.0f) : beta_dire;
-        product *= 1.0f - beta_norm;
-        float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-        alphas_cumprod[i] = comprod_sigma;
-    }
+float SchedulerBase::generate_random_at(float timestep_) {
+    return random_generator.random_at(timestep_);
 }
 
-float SchedulerBase::sigma_to_timestep(float sigma){
-    float log_sigma = std::log(sigma);
-    std::vector<float> dists;
-    dists.reserve(scheduler_config.scheduler_training_steps);
-    for (float log_sigma_val : scheduler_sigmas) {
-        dists.push_back(log_sigma - log_sigma_val);
-    }
+float SchedulerBase::generate_sigma_at(float timestep_) {
+    int low_idx  = static_cast<int>(std::floor(timestep_));
+    int high_idx = static_cast<int>(std::ceil(timestep_));
+    float w      = timestep_ - static_cast<float>(low_idx);      // divide always 1
+    float sigma  = (1.0f - w) * alphas_cumprod[low_idx] + w * alphas_cumprod[high_idx];
+    return sigma;
+}
 
-    int training_steps = scheduler_config.scheduler_training_steps;
-    int low_idx = 0;
-    for (size_t i = 0; i < training_steps; i++) {
-        if (dists[i] >= 0) {
-            low_idx++;
+void SchedulerBase::create() {
+    int training_steps_  = scheduler_config.scheduler_training_steps;
+    float linear_start_  = scheduler_config.scheduler_beta_start;
+    float linear_end_    = scheduler_config.scheduler_beta_end;
+    BetaType beta_type_  = scheduler_config.scheduler_beta_type;
+    AlphaType alpha_type = scheduler_config.scheduler_alpha_type;
+
+    switch (beta_type_) {
+        case BETA_TYPE_LINEAR: {
+            float beta_start_at = linear_start_;
+            float beta_end_when = linear_end_;
+            float beta_range = beta_end_when - beta_start_at;
+            float product = 1.0f;
+
+            for (uint32_t i = 0; i < training_steps_; ++i) {
+                float beta_norm = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
+                product *= 1.0f - beta_norm;
+                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
+                alphas_cumprod[i] = comprod_sigma;
+            }
+            break;
+        }
+        case BETA_TYPE_SCALED_LINEAR: {
+            float beta_start_at = std::sqrtf(linear_start_);
+            float beta_end_when = std::sqrtf(linear_end_);
+            float beta_range = beta_end_when - beta_start_at;
+            float product = 1.0f;
+
+            for (uint32_t i = 0; i < training_steps_; ++i) {
+                float beta_dire = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
+                float beta_norm = powf(beta_dire, 2.0f);
+                product *= 1.0f - beta_norm;
+                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
+                alphas_cumprod[i] = comprod_sigma;
+            }
+            break;
+        }
+        case BETA_TYPE_SQUAREDCOS_CAP_V2: {
+            float beta_max = 0.999f;
+            float product = 1.0f;
+
+            auto alpha_bar_fn = [&](float f_step_) -> float {
+                switch (alpha_type) {
+                    case ALPHA_TYPE_COSINE:
+                        return float(std::pow(std::cos((f_step_ + 0.008) / 1.008 * M_PI / 2), 2));
+                    case ALPHA_TYPE_EXP:
+                        return float(std::exp(f_step_ * -12.0f));
+                    default:
+                        return 1.0f;
+                }
+            };
+
+            for (uint32_t i = 0; i < training_steps_; ++i) {
+                float t1 = float(i) / float(training_steps_);
+                float t2 = float(i + 1) / float(training_steps_);
+                float beta_norm = std::min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), beta_max);
+                product *= 1.0f - beta_norm;
+                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
+                alphas_cumprod[i] = comprod_sigma;
+            }
+            break;
+        }
+        default: {
+            render_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
+            break;
         }
     }
-    low_idx      = std::min(std::max(low_idx - 1, 0), training_steps - 2);
-    int high_idx = low_idx + 1;
-
-    float low  = scheduler_sigmas[low_idx];
-    float high = scheduler_sigmas[high_idx];
-    float w    = std::max(0.f, std::min(1.f, (low - log_sigma) / (low - high)));
-    int t    = int((1.0f - w) * low_idx + w * high_idx);
-
-    return t;
 }
 
 void SchedulerBase::init(uint32_t inference_steps_) {
@@ -150,7 +198,8 @@ void SchedulerBase::init(uint32_t inference_steps_) {
 Tensor SchedulerBase::step(
     const Tensor& sample_,
     const Tensor& dnoise_,
-    int timestep_
+    int timestep_,
+    int order_
 ) {
     // Get step index of timestep from TimeSteps
     long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), timestep_) - scheduler_timesteps.begin();
@@ -158,12 +207,12 @@ Tensor SchedulerBase::step(
         throw std::runtime_error("Timestep not found in TimeSteps.");
     }
 
-    auto* sample_data = sample_.GetTensorData<float>();
-    auto* dnoise_data = dnoise_.GetTensorData<float>();
+    auto* sample_data_ = sample_.GetTensorData<float>();
+    auto* dnoise_data_ = dnoise_.GetTensorData<float>();
     std::vector<int64_t> output_shape = sample_.GetTensorTypeAndShapeInfo().GetShape();
     size_t count = sample_.GetTensorTypeAndShapeInfo().GetElementCount();
     int elements_in_batch = (int)(output_shape[0] * output_shape[1] * output_shape[2] * output_shape[3]);
-    std::vector<float> dnoised_data_(elements_in_batch);
+    float predict_data_[elements_in_batch];
 
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
@@ -171,12 +220,12 @@ Tensor SchedulerBase::step(
         switch (scheduler_prediction_type) {
             case PREDICT_TYPE_EPSILON: {
                 // predict_sample = sample - dnoise * sigma
-                dnoised_data_[i] = (sample_data[i] - dnoise_data[i] * sigma);
+                predict_data_[i] = sample_data_[i] - dnoise_data_[i] * sigma;
                 break;
             }
             case PREDICT_TYPE_V_PREDICTION: {
                 // c_out + input * c_skip
-                dnoised_data_[i] =  dnoise_data[i] * (-sigma / std::sqrt(std::pow(sigma,2) + 1)) + (sample_data[i] / (std::pow(sigma,2) + 1));
+                predict_data_[i] = dnoise_data_[i] * (-sigma / std::sqrt(std::powf(sigma,2) + 1)) + (sample_data_[i] / (std::powf(sigma,2) + 1));
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {
@@ -186,7 +235,9 @@ Tensor SchedulerBase::step(
         }
     }
 
-    std::vector<float> latent_data_ = execute_method(dnoised_data_, step_index_);
+    std::vector<float> latent_data_ = execute_method(
+        sample_data_, predict_data_, elements_in_batch, step_index_, order_
+    );
 
     Tensor result_latent = Value::CreateTensor(
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault).GetConst(),
