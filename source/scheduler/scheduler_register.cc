@@ -5,6 +5,7 @@
 #ifndef SCHEDULER_REGISTER_ONCE
 #define SCHEDULER_REGISTER_ONCE
 
+#include "onnxsd_foundation.cc"
 #include "scheduler_base.cc"
 #include "scheduler_discrete_eular_a.cc"
 #include "scheduler_discrete_lms.cc"
@@ -15,13 +16,13 @@ namespace scheduler {
 
 using namespace base;
 
-typedef SchedulerBase SchedulerBase;
-typedef SchedulerBase* SchedulerBase_ptr;
+typedef SchedulerBase SchedulerEntity;
+typedef SchedulerBase* SchedulerEntity_ptr;
 
 class SchedulerRegister {
 public:
-    static SchedulerBase_ptr request_scheduler(SchedulerType scheduler_type, SchedulerConfig scheduler_config_) {
-        SchedulerBase_ptr result_ptr_ = nullptr;
+    static SchedulerEntity_ptr request_scheduler(SchedulerType scheduler_type, SchedulerConfig scheduler_config_) {
+        SchedulerEntity_ptr result_ptr_ = nullptr;
         switch (scheduler_type) {
             case SCHEDULER_EULAR_A: {
                 result_ptr_ = new EularAncestralDiscreteScheduler(scheduler_config_);
@@ -32,7 +33,7 @@ public:
                 break;
             }
             default:{
-                render_report(class_exception(EXC_LOG_ERR, "ERROR:: selected Scheduler unimplemented"));
+                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: selected Scheduler unimplemented"));
                 break;
             }
         }
@@ -42,11 +43,12 @@ public:
         return result_ptr_;
     }
 
-    static void recycle_scheduler(SchedulerBase_ptr target_ptr_){
+    static SchedulerEntity_ptr recycle_scheduler(SchedulerEntity_ptr target_ptr_){
         if (target_ptr_){
             target_ptr_->release();
             delete target_ptr_;
         }
+        return nullptr;
     }
 };
 

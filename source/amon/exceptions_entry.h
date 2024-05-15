@@ -7,19 +7,18 @@
 #include "cens_target_fps.h"
 
 #include "exception_base.h"
-#include "exception_class.h"
-#include "exception_register.h"
+#include "exception_type.h"
 
-#ifndef render_exception
-#define render_exception(e) \
+#ifndef amon_exception
+#define amon_exception(e)   \
   {                         \
     e.report();             \
     throw e;                \
   }
 #endif
 
-#ifndef render_report
-#define render_report(e)    \
+#ifndef amon_report
+#define amon_report(e)      \
   {                         \
     e.report();             \
   }

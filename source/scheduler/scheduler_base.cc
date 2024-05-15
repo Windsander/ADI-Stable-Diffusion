@@ -5,10 +5,7 @@
 #ifndef SCHEDULER_BASE_H
 #define SCHEDULER_BASE_H
 
-#include "onnxsd_defs.h"
-#include "onnxsd_basic_core_config.cc"
-#include "onnxsd_basic_register.cc"
-#include "onnxsd_basic_tools.cc"
+#include "onnxsd_foundation.cc"
 
 namespace onnx {
 namespace sd {
@@ -18,32 +15,6 @@ using namespace base;
 using namespace amon;
 using namespace Ort;
 using namespace detail;
-
-typedef enum BetaScheduleType {
-    BETA_TYPE_LINEAR            = 1,
-    BETA_TYPE_SCALED_LINEAR     = 2,
-    BETA_TYPE_SQUAREDCOS_CAP_V2 = 3,
-} BetaType;
-
-typedef enum AlphaTransformType {
-    ALPHA_TYPE_COSINE           = 1,
-    ALPHA_TYPE_EXP              = 2,
-} AlphaType;
-
-typedef enum PredictionType {
-    PREDICT_TYPE_EPSILON        = 1,
-    PREDICT_TYPE_V_PREDICTION   = 2,
-    PREDICT_TYPE_SAMPLE         = 3,
-} PredictionType;
-
-typedef struct SchedulerConfig {
-    int scheduler_training_steps    = 1000;
-    float scheduler_beta_start      = 0.00085f;
-    float scheduler_beta_end        = 0.012f;
-    uint64_t scheduler_seed         = 42;
-    BetaType scheduler_beta_type    = BETA_TYPE_LINEAR;
-    AlphaType scheduler_alpha_type  = ALPHA_TYPE_COSINE;
-} SchedulerConfig;
 
 class SchedulerBase {
 private:
@@ -71,7 +42,9 @@ public:
 
     void create();
     void init(uint32_t inference_steps_) ;
-    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int timestep_, int order_ = 4);
+    Tensor scale(const Tensor& sample_, int time_);
+    Tensor time(int time_);
+    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int time_, int order_ = 4);
     void release();
 };
 
@@ -165,7 +138,7 @@ void SchedulerBase::create() {
             break;
         }
         default: {
-            render_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
+            amon_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
             break;
         }
     }
@@ -174,7 +147,7 @@ void SchedulerBase::create() {
 void SchedulerBase::init(uint32_t inference_steps_) {
     std::vector<float> result;
     if (inference_steps_ == 0) {
-        render_report(class_exception(EXC_LOG_ERR, "ERROR:: inference_steps_ setting with 0!"));
+        amon_report(class_exception(EXC_LOG_ERR, "ERROR:: inference_steps_ setting with 0!"));
         return;
     }
 
@@ -195,23 +168,45 @@ void SchedulerBase::init(uint32_t inference_steps_) {
     scheduler_sigmas.push_back(0);
 }
 
+Tensor SchedulerBase::scale(const Tensor& sample_, int time_){
+    // Get step index of timestep from TimeSteps
+    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
+    if (step_index_ == scheduler_timesteps.size()) {
+        throw std::runtime_error("Timestep not found in TimeSteps.");
+    }
+    float sigma = scheduler_sigmas[step_index_];
+    sigma = std::sqrtf(sigma * sigma + 1);
+    return TensorHelper::divide_elements(sample_, sigma);
+}
+
+Tensor SchedulerBase::time(int time_){
+    // Get step index of timestep from TimeSteps
+    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
+    if (step_index_ == scheduler_timesteps.size()) {
+        throw std::runtime_error("Timestep not found in TimeSteps.");
+    }
+        Tensor::CreateTensor<float>();
+
+    return scheduler_timesteps[step_index_];
+}
+
 Tensor SchedulerBase::step(
     const Tensor& sample_,
     const Tensor& dnoise_,
-    int timestep_,
+    int time_,
     int order_
 ) {
     // Get step index of timestep from TimeSteps
-    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), timestep_) - scheduler_timesteps.begin();
+    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
     if (step_index_ == scheduler_timesteps.size()) {
         throw std::runtime_error("Timestep not found in TimeSteps.");
     }
 
     auto* sample_data_ = sample_.GetTensorData<float>();
     auto* dnoise_data_ = dnoise_.GetTensorData<float>();
-    std::vector<int64_t> output_shape = sample_.GetTensorTypeAndShapeInfo().GetShape();
+    TensorShape output_shape = sample_.GetTensorTypeAndShapeInfo().GetShape();
     size_t count = sample_.GetTensorTypeAndShapeInfo().GetElementCount();
-    int elements_in_batch = (int)(output_shape[0] * output_shape[1] * output_shape[2] * output_shape[3]);
+    int elements_in_batch = (int)(output_shape[0] * output_shape[1] * output_shape[2] * output_shape[3] * count);
     float predict_data_[elements_in_batch];
 
     // do common prediction de-noise
@@ -229,7 +224,7 @@ Tensor SchedulerBase::step(
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {
-                render_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
+                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
                 break;
             }
         }
@@ -241,8 +236,8 @@ Tensor SchedulerBase::step(
 
     Tensor result_latent = Value::CreateTensor(
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault).GetConst(),
-        &latent_data_[0], latent_data_.size(),
-        &output_shape[0], count
+        latent_data_.data(), latent_data_.size(),
+        output_shape.data(), count
     );
 
     return result_latent;

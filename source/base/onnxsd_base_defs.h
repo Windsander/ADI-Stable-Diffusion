@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include <string>
 #include <algorithm>
@@ -20,6 +21,9 @@
 #include <mutex>
 #include <vector>
 #include <random>
+#include <atomic>
+#include <sstream>
+#include <memory>
 #include <unordered_map>
 
 #include "exceptions_entry.h"
@@ -40,6 +44,8 @@
 #include "onnxruntime_cxx_api.h"
 
 typedef Ort::Value Tensor;
+typedef uint8_t *IMAGE_BYTE;
+typedef std::vector<int64_t> TensorShape;
 
 #define SD_UNUSED(x) (void)x
 
