@@ -33,16 +33,18 @@ private:
     OrtMdlPath model_path;
     OrtMdlMeta model_meta{};
 
+protected:
+    void execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_);
+
 public:
     explicit ModelBase(std::string model_path_) : model_path(std::move(model_path_)) {};
     virtual ~ModelBase() = default;
 
-    void init(ONNXRuntimeExecutor ort_executor_);
-    void execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_);
-    void release(ONNXRuntimeExecutor ort_executor_);
+    void init(ONNXRuntimeExecutor &ort_executor_);
+    void release(ONNXRuntimeExecutor &ort_executor_);
 };
 
-void ModelBase::init(ONNXRuntimeExecutor ort_executor_) {
+void ModelBase::init(ONNXRuntimeExecutor &ort_executor_) {
     if (model_path.empty()) amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model path is NaN"));
     model_session = ort_executor_.request_model(model_path);
     if (!model_session) amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model create failed"));
@@ -72,7 +74,7 @@ void ModelBase::execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>
     );
 }
 
-void ModelBase::release(ONNXRuntimeExecutor ort_executor_) {
+void ModelBase::release(ONNXRuntimeExecutor &ort_executor_) {
     ort_executor_.release_model(model_session);
     model_session = nullptr;
     model_path.clear();
