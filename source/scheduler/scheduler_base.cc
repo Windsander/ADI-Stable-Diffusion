@@ -30,25 +30,26 @@ protected:
 
 protected:
     float generate_sigma_at(float timestep_);
-    float generate_random_at(float timestep_);
 
     virtual std::vector<float> execute_method(
         const float* samples_data_, const float* predict_data_,
-        int elements_in_batch, long step_index_, long order_) = 0;
+        long data_size_, long step_index_, long order_) = 0;
 
 public:
-    explicit SchedulerBase(SchedulerConfig scheduler_config_ = {});
+    explicit SchedulerBase(const SchedulerConfig& scheduler_config_ = DEFAULT_SCHEDULER_CONDIG);
     virtual ~SchedulerBase();
 
     void create();
     void init(uint32_t inference_steps_) ;
+    Tensor mask(const TensorShape& mask_shape_);
     Tensor scale(const Tensor& sample_, int time_);
     Tensor time(int time_);
     Tensor step(const Tensor& sample_, const Tensor& dnoise_, int time_, int order_ = 4);
+    void uninit();
     void release();
 };
 
-SchedulerBase::SchedulerBase(SchedulerConfig scheduler_config_){
+SchedulerBase::SchedulerBase(const SchedulerConfig& scheduler_config_){
     this->scheduler_max_sigma = 0;
     this->scheduler_config = scheduler_config_;
     this->scheduler_prediction_type = PredictionType::PREDICT_TYPE_EPSILON;
@@ -61,10 +62,6 @@ SchedulerBase::~SchedulerBase(){
     scheduler_sigmas.clear();
     scheduler_timesteps.clear();
     random_generator.~RandomGenerator();
-}
-
-float SchedulerBase::generate_random_at(float timestep_) {
-    return random_generator.random_at(timestep_);
 }
 
 float SchedulerBase::generate_sigma_at(float timestep_) {
@@ -168,6 +165,10 @@ void SchedulerBase::init(uint32_t inference_steps_) {
     scheduler_sigmas.push_back(0);
 }
 
+Tensor SchedulerBase::mask(const TensorShape& mask_shape_){
+    return TensorHelper::random(mask_shape_, random_generator, scheduler_max_sigma);
+}
+
 Tensor SchedulerBase::scale(const Tensor& sample_, int time_){
     // Get step index of timestep from TimeSteps
     long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
@@ -176,7 +177,7 @@ Tensor SchedulerBase::scale(const Tensor& sample_, int time_){
     }
     float sigma = scheduler_sigmas[step_index_];
     sigma = std::sqrtf(sigma * sigma + 1);
-    return TensorHelper::divide_elements(sample_, sigma);
+    return TensorHelper::divide(sample_, sigma);
 }
 
 Tensor SchedulerBase::time(int time_){
@@ -185,9 +186,9 @@ Tensor SchedulerBase::time(int time_){
     if (step_index_ == scheduler_timesteps.size()) {
         throw std::runtime_error("Timestep not found in TimeSteps.");
     }
-        Tensor::CreateTensor<float>();
-
-    return scheduler_timesteps[step_index_];
+    vector<float> timestep_value_{scheduler_timesteps[step_index_]};
+    TensorShape timestep_shape_{1};
+    return TensorHelper::create(timestep_shape_, timestep_value_);
 }
 
 Tensor SchedulerBase::step(
@@ -202,16 +203,15 @@ Tensor SchedulerBase::step(
         throw std::runtime_error("Timestep not found in TimeSteps.");
     }
 
+    TensorShape output_shape_ = sample_.GetTensorTypeAndShapeInfo().GetShape();
+    long data_size_ = TensorHelper::get_data_size(sample_);
     auto* sample_data_ = sample_.GetTensorData<float>();
     auto* dnoise_data_ = dnoise_.GetTensorData<float>();
-    TensorShape output_shape = sample_.GetTensorTypeAndShapeInfo().GetShape();
-    size_t count = sample_.GetTensorTypeAndShapeInfo().GetElementCount();
-    int elements_in_batch = (int)(output_shape[0] * output_shape[1] * output_shape[2] * output_shape[3] * count);
-    float predict_data_[elements_in_batch];
+    float predict_data_[data_size_];
 
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
-    for (int i = 0; i < elements_in_batch; i++) {
+    for (int i = 0; i < data_size_; i++) {
         switch (scheduler_prediction_type) {
             case PREDICT_TYPE_EPSILON: {
                 // predict_sample = sample - dnoise * sigma
@@ -230,17 +230,17 @@ Tensor SchedulerBase::step(
         }
     }
 
-    std::vector<float> latent_data_ = execute_method(
-        sample_data_, predict_data_, elements_in_batch, step_index_, order_
+    std::vector<float> latent_value_ = execute_method(
+        sample_data_, predict_data_, data_size_, step_index_, order_
     );
-
-    Tensor result_latent = Value::CreateTensor(
-        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault).GetConst(),
-        latent_data_.data(), latent_data_.size(),
-        output_shape.data(), count
-    );
+    Tensor result_latent = TensorHelper::create(output_shape_, latent_value_);
 
     return result_latent;
+}
+
+void SchedulerBase::uninit() {
+    scheduler_timesteps.clear();
+    scheduler_sigmas.clear();
 }
 
 void SchedulerBase::release() {

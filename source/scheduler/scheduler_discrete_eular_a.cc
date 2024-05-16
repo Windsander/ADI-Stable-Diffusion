@@ -12,11 +12,14 @@ namespace sd {
 namespace scheduler {
 
 class EularAncestralDiscreteScheduler: public SchedulerBase {
+private:
+    RandomGenerator eular_a_random;
+
 protected:
     std::vector<float> execute_method(
         const float* samples_data_,
         const float* predict_data_,
-        int elements_in_batch,
+        long data_size_,
         long step_index_,
         long order_
     ) override;
@@ -31,13 +34,13 @@ public:
 std::vector<float> EularAncestralDiscreteScheduler::execute_method(
     const float* samples_data_,
     const float* predict_data_,
-    int elements_in_batch,
+    long data_size_,
     long step_index_,
     long order_
 ) {
     SD_UNUSED(order_);
 
-    std::vector<float> scaled_sample(elements_in_batch);
+    std::vector<float> scaled_sample(data_size_);
 
     // Euler method:: sigma get
     float sigma_curs = scheduler_sigmas[step_index_];
@@ -56,11 +59,11 @@ std::vector<float> EularAncestralDiscreteScheduler::execute_method(
     }
 
     // Euler method:: current noise decrees
-    for (int i = 0; i < elements_in_batch; i++) {
+    for (int i = 0; i < data_size_; i++) {
         scaled_sample[i] = (samples_data_[i] - predict_data_[i]) / sigma_curs;        // derivative_out = (sample - predict_sample) / sigma
         scaled_sample[i] = (predict_data_[i] + scaled_sample[i] * sigma_dt);          // previous_down = sample + derivative_out * dt
         if (sigma_next > 0) {
-            scaled_sample[i] = scaled_sample[i] + generate_random_at(0.f) * sigma_up;    // producted_out = previous_down + random_noise * sigma_up
+            scaled_sample[i] = scaled_sample[i] + eular_a_random.next() * sigma_up;    // producted_out = previous_down + random_noise * sigma_up
         }
     }
 

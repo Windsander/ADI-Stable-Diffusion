@@ -17,22 +17,22 @@ using namespace detail;
 
 class ONNXRuntimeExecutor {
 private:
-    ORTBasicsConfig ort_commons_config;
+    ORTBasicsConfig ort_commons_config = DEFAULT_EXECUTOR_CONFIG;
     OrtOptionConfig ort_session_config;
     int device_id = 0;
     Ort::Env ort_env;
 
 public:
-    explicit ONNXRuntimeExecutor(ORTBasicsConfig ort_config_ = {});
+    explicit ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_ = DEFAULT_EXECUTOR_CONFIG);
     virtual ~ONNXRuntimeExecutor();
 
     Ort::Session* request_model(const std::string& model_path_);
     Ort::Session* release_model(Ort::Session* model_ptr_);
 };
 
-ONNXRuntimeExecutor::ONNXRuntimeExecutor(ORTBasicsConfig ort_config_) {
+ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
     ort_commons_config = ort_config_;
-    ort_env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "Default"};
+    ort_env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "OrtSD-Engine"};
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(ort_session_config, device_id));
     ort_session_config.SetGraphOptimizationLevel(ort_config_.onnx_graph_optimize);

@@ -43,9 +43,15 @@
 
 #include "onnxruntime_cxx_api.h"
 
-typedef Ort::Value Tensor;
-typedef uint8_t *IMAGE_BYTE;
-typedef std::vector<int64_t> TensorShape;
+
+/* Basement Data Type =====================================================*/
+
+typedef uint8_t IMAGE_BYTE;
+typedef uint64_t IMAGE_SIZE;
+typedef struct IMAGE_DATA {
+    uint8_t *data_;
+    uint64_t size_;
+} IMAGE_DATA;
 
 #define SD_UNUSED(x) (void)x
 

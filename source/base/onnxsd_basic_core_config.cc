@@ -15,11 +15,21 @@ namespace base {
 
 /* ONNXRuntime engine Settings ============================================*/
 
+typedef Ort::Value Tensor;
+typedef std::vector<int64_t> TensorShape;
+
 typedef Ort::Session* OrtSession;
 typedef Ort::SessionOptions  OrtOptionConfig;
+
+#define DEFAULT_EXECUTOR_CONFIG                                         \
+    {                                                                   \
+        /*onnx_execution_mode*/ ExecutionMode::ORT_PARALLEL,            \
+        /*onnx_graph_optimize*/ GraphOptimizationLevel::ORT_ENABLE_ALL  \
+    }
+
 typedef struct ORTBasicsConfig {
-    ExecutionMode          onnx_execution_mode = ExecutionMode::ORT_PARALLEL;
-    GraphOptimizationLevel onnx_graph_optimize = GraphOptimizationLevel::ORT_ENABLE_ALL;
+    ExecutionMode          onnx_execution_mode;
+    GraphOptimizationLevel onnx_graph_optimize;
 } ORTBasicsConfig;
 
 
@@ -47,13 +57,23 @@ typedef enum PredictionType {
     PREDICT_TYPE_SAMPLE         = 3,
 } PredictionType;
 
+#define DEFAULT_SCHEDULER_CONDIG                            \
+    {                                                       \
+        /*scheduler_training_steps*/    1000,               \
+        /*scheduler_beta_start*/        0.00085f,           \
+        /*scheduler_beta_end*/          0.012f,             \
+        /*scheduler_seed*/              42,                 \
+        /*scheduler_beta_type*/         BETA_TYPE_LINEAR,   \
+        /*scheduler_alpha_type*/        ALPHA_TYPE_COSINE   \
+    }
+
 typedef struct SchedulerConfig {
-    int scheduler_training_steps    = 1000;
-    float scheduler_beta_start      = 0.00085f;
-    float scheduler_beta_end        = 0.012f;
-    uint64_t scheduler_seed         = 42;
-    BetaType scheduler_beta_type    = BETA_TYPE_LINEAR;
-    AlphaType scheduler_alpha_type  = ALPHA_TYPE_COSINE;
+    int scheduler_training_steps;
+    float scheduler_beta_start;
+    float scheduler_beta_end;
+    uint64_t scheduler_seed;
+    BetaType scheduler_beta_type;
+    AlphaType scheduler_alpha_type;
 } SchedulerConfig;
 
 /* Key State & Assistant Const ===========================================*/

@@ -22,7 +22,7 @@ protected:
     std::vector<float> execute_method(
         const float* samples_data_,
         const float* predict_data_,
-        int elements_in_batch,
+        long data_size_,
         long step_index_,
         long order_
     ) override;
@@ -62,19 +62,19 @@ float LMSDiscreteScheduler::get_lms_coefficient(long order, long t, int current_
 std::vector<float> LMSDiscreteScheduler::execute_method(
     const float* samples_data_,
     const float* predict_data_,
-    int elements_in_batch,
+    long data_size_,
     long step_index_,
     long order_
 ) {
-    std::vector<float> scaled_sample_(elements_in_batch);
+    std::vector<float> scaled_sample_(data_size_);
 
     // LMS method:: sigma get
     float sigma_curs = scheduler_sigmas[step_index_];
 
     // LMS method:: current noise decrees
     // 1. Convert to an ODE derivative
-    std::vector<float> cur_derivative_(elements_in_batch);
-    for (int i = 0; i < elements_in_batch; i++) {
+    std::vector<float> cur_derivative_(data_size_);
+    for (int i = 0; i < data_size_; i++) {
         // derivative_out = (sample - predict_sample) / sigma
         cur_derivative_[i] = (samples_data_[i] - predict_data_[i]) / sigma_curs;
     }
