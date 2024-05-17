@@ -148,23 +148,49 @@ public:
         return result_tensor_;
     }
 
-    static Tensor split(const Tensor &input_) {
+    static std::vector<Tensor> split(const Tensor &input_) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_count_);
         long input_size_ = GET_TENSOR_DATA_SIZE(input_shape_, input_count_);
-        float result_data_[input_size_];
+        float split_data_l_[input_size_ / 2];
+        float split_data_r_[input_size_ / 2];
+        long split_size_ = input_size_ / 2;
 
-        for (int i = 0; i < input_size_; i++) {
-            result_data_[i] = input_data_[i];
+        size_t max_w_ = input_shape_[3];
+        size_t max_h_ = input_shape_[2];
+        size_t max_c_ = input_shape_[1];
+        size_t max_s_ = input_shape_[0];
+        int split_ = int(max_s_ / 2);
+
+        for (int w = 0; w < max_w_; w++) {
+            for (int h = 0; h < max_h_; h++) {
+                for (int c = 0; c < max_c_; c++) {
+                    int index_ = int(
+                        h * max_w_ +
+                        w * max_c_ +
+                        c
+                    );
+                    for (int i = 0; i < split_; i++) {
+                        split_data_l_[index_] = input_data_[index_ + i];
+                    }
+                    for (int i = split_; i < max_s_; i++) {
+                        split_data_r_[index_] = input_data_[index_ + i];
+                    }
+                }
+            }
         }
 
-        TensorShape shape_ = input_shape_;
-        shape_[0] = 1;
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
-            input_.GetTensorMemoryInfo(), result_data_, input_size_,
+        TensorShape shape_{1, int(max_c_), int(max_h_), int(max_w_)};
+        std::vector<Tensor> result_;
+        result_.push_back(Tensor::CreateTensor<float>(
+            input_.GetTensorMemoryInfo(), split_data_l_, split_size_,
             shape_.data(), shape_.size()
-        );
+        ));
+        result_.push_back(Tensor::CreateTensor<float>(
+            input_.GetTensorMemoryInfo(), split_data_r_, split_size_,
+            shape_.data(), shape_.size()
+        ));
 
-        return result_tensor_;
+        return result_;
     }
 
     static Tensor guidance(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {

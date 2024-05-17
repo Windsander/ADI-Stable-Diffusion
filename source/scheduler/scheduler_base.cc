@@ -21,7 +21,7 @@ private:
     RandomGenerator random_generator;
 
 protected:
-    SchedulerConfig scheduler_config{};
+    SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONDIG;
     PredictionType  scheduler_prediction_type;
     float           scheduler_max_sigma;
     vector<float>   scheduler_timesteps;

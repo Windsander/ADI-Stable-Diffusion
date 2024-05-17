@@ -36,15 +36,17 @@ typedef struct OrtSD_Config {
     float sd_decode_scale_strength = 0.18215f;
 } OrtSD_Config;
 
-typedef struct OrtSD_Remain {
-    Tensor* prompts_embeddings_txt = nullptr;
-    Tensor* prompts_embeddings_img = nullptr;
-} OrtSD_Remain;
-
 class OrtSD_Context {
 private:
-    ONNXRuntimeExecutor ort_executor;
+    typedef struct OrtSD_Remain {
+        Tensor embeded_positive;
+        Tensor embeded_negative;
+    } OrtSD_Remain;
+
+private:
+    ONNXRuntimeExecutor* ort_executor = nullptr;
     OrtSD_Config ort_config;
+    OrtSD_Remain ort_remain;
 
     Tokenizer ort_sd_clip;
     UNet ort_sd_unet;
@@ -52,21 +54,34 @@ private:
     VAE ort_sd_vae_decoder;
 
 private:
-    Tensor convert_images(const IMAGE_DATA & image_data_);
-    IMAGE_DATA convert_result(const Tensor &infer_output_);
+    Tensor convert_images(const IMAGE_DATA & image_data_) const;
+    IMAGE_DATA convert_result(const Tensor &infer_output_) const;
 
 public:
-    explicit OrtSD_Context();
+    explicit OrtSD_Context(const OrtSD_Config& ort_config_);
     ~OrtSD_Context() ;
 
     void init();
-    void prepare(std::string prompt);
+    void prepare(std::string positive_prompts_, std::string negative_prompts_);
     IMAGE_DATA inference(IMAGE_DATA image_data_);
     void release();
 };
 
+OrtSD_Context::OrtSD_Context(const OrtSD_Config& ort_config_){
+    this->ort_config = ort_config_;
+    ort_executor = new ONNXRuntimeExecutor(ort_config_.sd_ort_basic_config);
+}
 
-Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) {
+OrtSD_Context::~OrtSD_Context(){
+    if (ort_executor) {
+        ort_executor->~ONNXRuntimeExecutor();
+        delete ort_executor;
+    }
+    this->ort_config = {};
+}
+
+
+Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
     auto* input_data_ = image_data_.data_;
     vector<float> convert_value_;
 
@@ -90,7 +105,7 @@ Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) {
     return TensorHelper::create(convert_shape_, convert_value_);
 }
 
-IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) {
+IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) const {
     long data_size_ = TensorHelper::get_data_size(infer_output_);
     auto* infer_data_ = infer_output_.GetTensorData<float>();
 
@@ -147,7 +162,7 @@ void OrtSD_Context::init() {
     ort_sd_vae_encoder = VAE(
         ort_config.sd_modelpath_config.onnx_vae_path,
         {
-            ort_config.sd_decode_scale_strength
+            ort_config.sd_decode_scale_strength   // it's unused for encoding
         }
     );
 
@@ -164,20 +179,26 @@ void OrtSD_Context::init() {
     ort_sd_vae_decoder.init(ort_executor);
 }
 
-void OrtSD_Context::prepare(std::string prompt){
+void OrtSD_Context::prepare(std::string positive_prompts_, std::string negative_prompts_){
+    // embeded_positive_ [p_count_, 4, 64, 64] TODO move to prepare
+    ort_remain.embeded_positive = ort_sd_clip.tokenize(positive_prompts_);
+
+    // embeded_negative_ [n_count_, 4, 64, 64] TODO move to prepare
+    ort_remain.embeded_negative = ort_sd_clip.tokenize(negative_prompts_);
 }
 
 IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
 
-    // input_image [1, 3, h_, w_]
+    // input_image [1, 3, 512, 512]
     Tensor sample_image_ = convert_images(image_data_);
 
-    Tensor encoded_prompt_img_ = ort_sd_vae_encoder.encode(convert_images(image_data_));
+    // encoded_image [1, 4, 64, 64]
+    Tensor encoded_sample_ = ort_sd_vae_encoder.encode(convert_images(image_data_));
 
-    Tensor embeded_prompt_txt_ = ort_sd_clip.inference();
+    // infered_latent_ [1, 4, 64, 64]
+    Tensor infered_latent_ = ort_sd_unet.inference(ort_remain.embeded_positive, ort_remain.embeded_negative, encoded_sample_);
 
-    Tensor infered_latent_ = ort_sd_unet.inference(embeded_inputs_, sample_image_);
-
+    // infered_latent_ [1, 3, 512, 512]
     Tensor decoded_tensor_ = ort_sd_vae_decoder.decode(infered_latent_);
 
     return convert_result(decoded_tensor_);
