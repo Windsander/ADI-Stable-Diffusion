@@ -5,7 +5,7 @@
 #ifndef ORT_SD_CONTEXT_ONCE
 #define ORT_SD_CONTEXT_ONCE
 
-#include "model_register.cc"
+#include "model_wrapper.cc"
 
 namespace onnx {
 namespace sd {
@@ -48,7 +48,7 @@ private:
     OrtSD_Config ort_config;
     OrtSD_Remain ort_remain;
 
-    Tokenizer ort_sd_clip;
+    Clip ort_sd_clip;
     UNet ort_sd_unet;
     VAE ort_sd_vae_encoder;
     VAE ort_sd_vae_decoder;
@@ -62,7 +62,7 @@ public:
     ~OrtSD_Context() ;
 
     void init();
-    void prepare(std::string positive_prompts_, std::string negative_prompts_);
+    void prepare(const std::string &positive_prompts_, const std::string &negative_prompts_);
     IMAGE_DATA inference(IMAGE_DATA image_data_);
     void release();
 };
@@ -79,7 +79,6 @@ OrtSD_Context::~OrtSD_Context(){
     }
     this->ort_config = {};
 }
-
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
     auto* input_data_ = image_data_.data_;
@@ -139,7 +138,7 @@ IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) const {
 }
 
 void OrtSD_Context::init() {
-    ort_sd_clip = Tokenizer(
+    ort_sd_clip = Clip(
         ort_config.sd_modelpath_config.onnx_tokenizer_path,
         {
 
@@ -173,13 +172,13 @@ void OrtSD_Context::init() {
         }
     );
 
-    ort_sd_clip.init(ort_executor);
-    ort_sd_unet.init(ort_executor);
-    ort_sd_vae_encoder.init(ort_executor);
-    ort_sd_vae_decoder.init(ort_executor);
+    ort_sd_clip.init(*ort_executor);
+    ort_sd_unet.init(*ort_executor);
+    ort_sd_vae_encoder.init(*ort_executor);
+    ort_sd_vae_decoder.init(*ort_executor);
 }
 
-void OrtSD_Context::prepare(std::string positive_prompts_, std::string negative_prompts_){
+void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::string &negative_prompts_){
     // embeded_positive_ [p_count_, 4, 64, 64] TODO move to prepare
     ort_remain.embeded_positive = ort_sd_clip.tokenize(positive_prompts_);
 
@@ -205,10 +204,10 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
 }
 
 void OrtSD_Context::release(){
-    ort_sd_vae_decoder.release(ort_executor);
-    ort_sd_vae_encoder.release(ort_executor);
-    ort_sd_unet.release(ort_executor);
-    ort_sd_clip.release(ort_executor);
+    ort_sd_vae_decoder.release(*ort_executor);
+    ort_sd_vae_encoder.release(*ort_executor);
+    ort_sd_unet.release(*ort_executor);
+    ort_sd_clip.release(*ort_executor);
 }
 
 } // namespace context

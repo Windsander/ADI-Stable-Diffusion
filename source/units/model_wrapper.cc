@@ -8,7 +8,7 @@
 #include "model_base.cc"
 #include "model_unet.cc"
 #include "model_vae.cc"
-#include "model_tokenizer.cc"
+#include "model_clip.cc"
 
 namespace onnx {
 namespace sd {

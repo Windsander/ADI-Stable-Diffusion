@@ -31,7 +31,7 @@ typedef struct ModelVAEsConfig {
 
 class VAE : public ModelBase {
 private:
-    ModelVAEsConfig sd_vae_config;
+    ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONDIG;
 
 public:
     explicit VAE(std::string model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONDIG);

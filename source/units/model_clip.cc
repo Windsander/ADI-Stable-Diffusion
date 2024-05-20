@@ -5,8 +5,6 @@
 #ifndef MODEL_CLIP_H
 #define MODEL_CLIP_H
 
-#include <utility>
-
 #include "model_base.cc"
 
 namespace onnx {
@@ -21,35 +19,62 @@ using namespace detail;
 
 typedef struct TokenizerConfig {
     float sd_scale_decode_strength = 0.18215f;
+    float txt_attn_increase_factor = 1.1f;
+    float txt_attn_decrease_factor = 1 / 1.1f;
     int32_t blank_token_size = 49408;           // blank token generated for unconditional input
     int32_t model_max_length = 77;              // max token length
     int32_t model_hidden_dim = 768;             // out token length
-
 } TokenizerConfig;
 
-class Tokenizer : public ModelBase {
+class Clip : public ModelBase {
+private:
+    typedef std::vector<std::pair<std::string, float>> PromptWeight_map;
+
 private:
     TokenizerConfig sd_tokenizer_config;
 
 public:
-    explicit Tokenizer(std::string model_path_, TokenizerConfig vae_config_ = {});
-    ~Tokenizer() override;
+    explicit Clip(std::string model_path_, TokenizerConfig vae_config_ = {});
+    ~Clip() override;
 
-    Tensor generate(std::string positive_prompts_, std::string negative_prompts_);
-
-private:
-    Tensor tokenize(std::string prompts_);
+    Tensor tokenize(const std::string& prompts_);
 };
 
-Tokenizer::Tokenizer(std::string model_path_, TokenizerConfig vae_config_) : ModelBase(std::move(model_path_)){
+Clip::Clip(std::string model_path_, TokenizerConfig vae_config_) : ModelBase(std::move(model_path_)){
     sd_tokenizer_config = vae_config_;
 }
 
-Tokenizer::~Tokenizer(){
+Clip::~Clip(){
     sd_tokenizer_config.~TokenizerConfig();
 }
 
-Tensor Tokenizer::tokenize(std::string prompts_) {
+Tensor Clip::tokenize(const std::string& prompts_) {
+
+    PromptWeight_map parsed_attention = parse_prompt_attention(prompts_);
+
+    std::vector<int> tokens;
+    std::vector<float> weights;
+    for (const auto& prompt_weight_pair_ : parsed_attention) {
+        const std::string& curr_text = prompt_weight_pair_.first;
+        float curr_weight            = prompt_weight_pair_.second;
+        std::vector<int> curr_tokens = tokenizer->encode(curr_text, on_new_token_cb);
+        tokens.insert(tokens.end(), curr_tokens.begin(), curr_tokens.end());
+        weights.insert(weights.end(), curr_tokens.size(), curr_weight);
+    }
+
+    pad_tokens(tokens, weights, max_length, padding);
+
+    // for (int i = 0; i < tokens.size(); i++) {
+    //     std::cout << tokens[i] << ":" << weights[i] << ", ";
+    // }
+    // std::cout << std::endl;
+
+    return {tokens, weights};
+}
+
+
+
+Tensor Clip::tokenize(std::string prompts_) {
 
     // tokenizer: text tokenized & encoding
     vector<int32_t> timestep_value_{prompts_};

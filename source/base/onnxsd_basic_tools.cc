@@ -281,6 +281,24 @@ public:
 #undef GET_TENSOR_DATA_SIZE
 };
 
+class PromptsHelper {
+public:
+    static std::string whitespace(std::string& text)
+    {
+        return std::regex_replace(text, std::regex("\\s+"), " ");
+    }
+
+    static std::vector<std::string> split(const std::string &str, const std::regex &regex) {
+        std::vector<std::string> result;
+        std::copy(
+            std::sregex_token_iterator(str.begin(), str.end(), regex, -1),
+            std::sregex_token_iterator(),
+            std::back_inserter(result)
+        );
+        return result;
+    }
+};
+
 } // namespace base
 } // namespace sd
 } // namespace onnx

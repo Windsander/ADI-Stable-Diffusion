@@ -5,13 +5,12 @@
 #ifndef ONNX_SD_DEFS_H_
 #define ONNX_SD_DEFS_H_
 
-#include <inttypes.h>
-#include <limits.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdint.h>
+#include <cinttypes>
+#include <climits>
+#include <cstdarg>
+#include <cstddef>
+#include <cstdio>
+#include <cstdint>
 
 #include <string>
 #include <algorithm>
@@ -23,7 +22,10 @@
 #include <random>
 #include <atomic>
 #include <sstream>
+#include <fstream>
+#include <iostream>
 #include <memory>
+#include <regex>
 #include <unordered_map>
 
 #include "exceptions_entry.h"
