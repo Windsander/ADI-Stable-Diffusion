@@ -219,6 +219,52 @@ public:
         return result_tensor_;
     }
 
+    static Tensor weight(const Tensor &input_l_, const Tensor &input_r_, int offset_, bool re_normalize_ = false) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_count_l_);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_count_r_);
+        long input_size_l_ = GET_TENSOR_DATA_SIZE(input_shape_l_, input_count_l_);
+        long input_size_r_ = GET_TENSOR_DATA_SIZE(input_shape_r_, input_count_r_);
+
+        size_t weight_at_dim_ = input_shape_r_.size() - offset_;
+        size_t element_count_ = 1;
+        for (int dim_index_ = 0; dim_index_ < weight_at_dim_; dim_index_++) {
+            element_count_ *= input_shape_l_[dim_index_];
+        }
+
+        long single_size_ = input_size_l_ / element_count_;
+        long result_size_ = input_size_l_;
+        float result_data_[result_size_];
+
+        float original_mean_ = 0.0f;
+        float weighted_mean_ = 0.0f;
+
+        for (int e = 0; e < result_size_; e = int(e + single_size_)) {
+            int weight_index_ = e / single_size_;
+            for (int i = 0; i < single_size_; ++i) {
+                result_data_[e + i] = input_data_l_[e + i] * input_data_r_[weight_index_];
+                original_mean_ += input_data_l_[e + i] / float(single_size_) ;
+                weighted_mean_ += result_data_[e + i] / float(single_size_) ;
+            }
+        }
+
+        TensorShape shape_ = input_shape_l_;
+        for (int i = 0; i < offset_; ++i) {
+            shape_.insert(shape_.begin(), input_shape_r_[i]);
+        }
+
+        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+
+        if (re_normalize_){
+            float normalize_factor_ = original_mean_ / weighted_mean_;
+            result_tensor_ = multiple(result_tensor_, normalize_factor_);
+        }
+
+        return result_tensor_;
+    }
+
     static Tensor add(const Tensor &input_l_, const Tensor &input_r_, const TensorShape& shape_) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_count_l_);
         GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_count_r_);
@@ -277,25 +323,49 @@ public:
         return result_;
     }
 
+    static Tensor merge(const std::vector<Tensor> &input_tensors_) {
+        TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
+        size_t input_count_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
+        long input_size_ = GET_TENSOR_DATA_SIZE(input_shape_, input_count_);
+        long tensor_num_ = input_tensors_.size();
+
+        long result_size_ = input_size_ * tensor_num_;
+        float result_data_[result_size_];
+
+        for (int input_index_ = 0; input_index_ < tensor_num_; ++input_index_) {
+            auto *input_data_ = input_tensors_[input_index_].GetTensorData<float>();
+            int offset_ = input_index_ * input_size_;
+            for (int i = 1; i < input_size_; ++i) {
+                result_data_[offset_ + i] = input_data_[i];
+            }
+        }
+
+        TensorShape shape_ = input_shape_;
+        shape_[0] = tensor_num_;
+
+        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+            input_tensors_[0].GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
 #undef GET_TENSOR_DATA_INFO
 #undef GET_TENSOR_DATA_SIZE
 };
 
 class PromptsHelper {
 public:
-    static std::string whitespace(std::string& text)
-    {
+    static std::string whitespace(std::string &text) {
         return std::regex_replace(text, std::regex("\\s+"), " ");
     }
 
-    static std::vector<std::string> split(const std::string &str, const std::regex &regex) {
-        std::vector<std::string> result;
-        std::copy(
-            std::sregex_token_iterator(str.begin(), str.end(), regex, -1),
-            std::sregex_token_iterator(),
-            std::back_inserter(result)
-        );
-        return result;
+    static std::vector<std::string> split(const std::string &str, const std::regex &regex){
+        std::vector<string> result;
+        std::sregex_token_iterator first(str.begin(), str.end(), regex, -1);
+        std::sregex_token_iterator last;
+        return {first, last};
     }
 };
 

@@ -32,7 +32,6 @@ typedef struct ORTBasicsConfig {
     GraphOptimizationLevel onnx_graph_optimize;
 } ORTBasicsConfig;
 
-
 /* Diffusion Scheduler Settings ===========================================*/
 /* Scheduler Type Provide */
 enum SchedulerType {
@@ -75,6 +74,34 @@ typedef struct SchedulerConfig {
     BetaType scheduler_beta_type;
     AlphaType scheduler_alpha_type;
 } SchedulerConfig;
+
+/* Diffusion Tokenizer Settings ===========================================*/
+/* Tokenizer Type Provide */
+enum TokenizerType {
+    TOKENIZER_BPE               = 1,
+    TOKENIZER_WORD_PIECE        = 2,
+};
+
+#define DEFAULT_TOKENIZER_CONDIG                            \
+    {                                                       \
+         /*tokenizer_dictionary_at*/     "",                \
+         /*avail_token_count*/           49408,             \
+         /*avail_token_size*/            77,                \
+         /*major_hidden_dim*/            768,               \
+         /*major_boundary_factor*/       1.0f,              \
+         /*txt_attn_increase_factor*/    1.1f,              \
+         /*txt_attn_decrease_factor*/    1 / 1.1f,          \
+    }
+
+typedef struct TokenizerConfig {
+    std::string tokenizer_dictionary_at;        // vocabulary lib <one vocab per line, row treate as index>
+    int32_t avail_token_count;                  // all available token in vocabulary totally
+    int32_t avail_token_size;                   // max token length (include <start> & <end>, so 75 avail)
+    int32_t major_hidden_dim;                   // out token length
+    float major_boundary_factor;
+    float txt_attn_increase_factor;
+    float txt_attn_decrease_factor;
+} TokenizerConfig;
 
 /* Key State & Assistant Const ===========================================*/
 /* Model Type */

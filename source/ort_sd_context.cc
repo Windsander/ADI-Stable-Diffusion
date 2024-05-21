@@ -179,11 +179,11 @@ void OrtSD_Context::init() {
 }
 
 void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::string &negative_prompts_){
-    // embeded_positive_ [p_count_, 4, 64, 64] TODO move to prepare
-    ort_remain.embeded_positive = ort_sd_clip.tokenize(positive_prompts_);
+    // embeded_positive_ [N, 77, 768]
+    ort_remain.embeded_positive = ort_sd_clip.embedding(positive_prompts_);
 
-    // embeded_negative_ [n_count_, 4, 64, 64] TODO move to prepare
-    ort_remain.embeded_negative = ort_sd_clip.tokenize(negative_prompts_);
+    // embeded_negative_ [N, 77, 768]
+    ort_remain.embeded_negative = ort_sd_clip.embedding(negative_prompts_);
 }
 
 IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {

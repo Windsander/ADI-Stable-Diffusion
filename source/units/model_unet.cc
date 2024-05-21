@@ -6,6 +6,7 @@
 #define MODEL_UNET_H
 
 #include "model_base.cc"
+#include "scheduler_register.cc"
 
 namespace onnx {
 namespace sd {
@@ -46,13 +47,13 @@ private:
     SchedulerEntity_ptr sd_scheduler_p;
 
 public:
-    explicit UNet(std::string model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONDIG);
+    explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONDIG);
     ~UNet() override;
 
     Tensor inference(const Tensor &emb_positive_,const Tensor &emb_negative_, const Tensor &encoded_img_);
 };
 
-UNet::UNet(std::string model_path_, const ModelUNetConfig& unet_config_) : ModelBase(std::move(model_path_)){
+UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
     sd_unet_config = unet_config_;
     sd_scheduler_p = SchedulerRegister::request_scheduler(
         unet_config_.sd_scheduler_type,
@@ -64,6 +65,7 @@ UNet::UNet(std::string model_path_, const ModelUNetConfig& unet_config_) : Model
 UNet::~UNet(){
     sd_scheduler_p->uninit();
     sd_scheduler_p = SchedulerRegister::recycle_scheduler(sd_scheduler_p);
+    sd_unet_config.~ModelUNetConfig();
 }
 
 Tensor UNet::inference(
@@ -100,7 +102,7 @@ Tensor UNet::inference(
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
 
-            // Split output_tensors from [2, 4, 64, 64] to [1, 4, 64, 64]
+            // Split output_tensors from [N_pos_embed_num, 4, 64, 64] to [1, 4, 64, 64]
             std::vector<Tensor> model_result_positive_;
             model_result_positive_ = TensorHelper::split(output_tensors[0].GetValue(0, ort_alloc));
             guided_pred_positive_ = TensorHelper::guidance(
@@ -119,7 +121,7 @@ Tensor UNet::inference(
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
 
-            // Split output_tensors from [2, 4, 64, 64] to [1, 4, 64, 64]
+            // Split output_tensors from [N_neg_embed_num, 4, 64, 64] to [1, 4, 64, 64]
             std::vector<Tensor> model_result_negative_;
             model_result_negative_ = TensorHelper::split(output_tensors[0].GetValue(0, ort_alloc));
             guided_pred_negative_ = TensorHelper::guidance(

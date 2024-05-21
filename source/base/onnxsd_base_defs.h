@@ -26,6 +26,7 @@
 #include <iostream>
 #include <memory>
 #include <regex>
+#include <tuple>
 #include <unordered_map>
 
 #include "exceptions_entry.h"

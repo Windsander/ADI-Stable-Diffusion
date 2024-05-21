@@ -34,14 +34,14 @@ private:
     ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONDIG;
 
 public:
-    explicit VAE(std::string model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONDIG);
+    explicit VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONDIG);
     ~VAE() override;
 
     Tensor encode(const Tensor &inimage_);
     Tensor decode(const Tensor &latents_);
 };
 
-VAE::VAE(std::string model_path_, const ModelVAEsConfig &vae_config_) : ModelBase(std::move(model_path_)){
+VAE::VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_) : ModelBase(model_path_){
     sd_vae_config = vae_config_;
 }
 

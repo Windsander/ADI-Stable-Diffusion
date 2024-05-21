@@ -6,7 +6,6 @@
 #define MODEL_BASE_H
 
 #include "onnxsd_foundation.cc"
-#include "scheduler_register.cc"
 
 namespace onnx {
 namespace sd {
@@ -37,7 +36,7 @@ protected:
     void execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_);
 
 public:
-    explicit ModelBase(std::string model_path_) : model_path(std::move(model_path_)) {};
+    explicit ModelBase(const std::string &model_path_) : model_path(model_path_) {};
     virtual ~ModelBase() = default;
 
     void init(ONNXRuntimeExecutor &ort_executor_);

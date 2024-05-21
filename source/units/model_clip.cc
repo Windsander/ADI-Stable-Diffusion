@@ -6,6 +6,7 @@
 #define MODEL_CLIP_H
 
 #include "model_base.cc"
+#include "tokenizer_register.cc"
 
 namespace onnx {
 namespace sd {
@@ -13,86 +14,72 @@ namespace units {
 
 using namespace base;
 using namespace amon;
-using namespace scheduler;
+using namespace tokenizer;
 using namespace Ort;
 using namespace detail;
 
-typedef struct TokenizerConfig {
+typedef struct ModelUNetConfig {
+    TokenizerConfig sd_tokenizer_config;
+    TokenizerType sd_tokenizer_type;
     float sd_scale_decode_strength = 0.18215f;
-    float txt_attn_increase_factor = 1.1f;
-    float txt_attn_decrease_factor = 1 / 1.1f;
     int32_t blank_token_size = 49408;           // blank token generated for unconditional input
     int32_t model_max_length = 77;              // max token length
     int32_t model_hidden_dim = 768;             // out token length
-} TokenizerConfig;
+} ModelUNetConfig ;
 
 class Clip : public ModelBase {
 private:
     typedef std::vector<std::pair<std::string, float>> PromptWeight_map;
 
 private:
-    TokenizerConfig sd_tokenizer_config;
+    ModelUNetConfig sd_clip_config;
+    TokenizerEntity_ptr sd_tokenizer_p;
 
 public:
-    explicit Clip(std::string model_path_, TokenizerConfig vae_config_ = {});
+    explicit Clip(const std::string &model_path_,  const ModelUNetConfig &clip_config_ = {});
     ~Clip() override;
 
-    Tensor tokenize(const std::string& prompts_);
+    Tensor embedding(const std::string& prompts_);
 };
 
-Clip::Clip(std::string model_path_, TokenizerConfig vae_config_) : ModelBase(std::move(model_path_)){
-    sd_tokenizer_config = vae_config_;
+Clip::Clip(const std::string &model_path_, const ModelUNetConfig &clip_config_) : ModelBase(model_path_){
+    sd_clip_config = clip_config_;
+    sd_tokenizer_p = TokenizerRegister::request_tokenizer(
+        clip_config_.sd_tokenizer_type,
+        clip_config_.sd_tokenizer_config
+    );
+    sd_tokenizer_p->init();
 }
 
 Clip::~Clip(){
-    sd_tokenizer_config.~TokenizerConfig();
+    sd_tokenizer_p->uninit();
+    sd_tokenizer_p = TokenizerRegister::recycle_tokenizer(sd_tokenizer_p);
+    sd_clip_config.~ModelUNetConfig();
 }
 
-Tensor Clip::tokenize(const std::string& prompts_) {
+Tensor Clip::embedding(const std::string& prompts_) {
 
-    PromptWeight_map parsed_attention = parse_prompt_attention(prompts_);
+    PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
-    std::vector<int> tokens;
-    std::vector<float> weights;
-    for (const auto& prompt_weight_pair_ : parsed_attention) {
-        const std::string& curr_text = prompt_weight_pair_.first;
-        float curr_weight            = prompt_weight_pair_.second;
-        std::vector<int> curr_tokens = tokenizer->encode(curr_text, on_new_token_cb);
-        tokens.insert(tokens.end(), curr_tokens.begin(), curr_tokens.end());
-        weights.insert(weights.end(), curr_tokens.size(), curr_weight);
+    std::vector<Tensor> merged_hidden_;
+    for (auto &tw_pair_: tokenizer_output_) {
+        const Tensor &tokens_ = tw_pair_.first;        // [1, 77]
+        const Tensor &weight_ = tw_pair_.second;       // [1, 77]
+
+        std::vector<Tensor> input_tensors;
+        Ort::AllocatorWithDefaultOptions ort_alloc;
+        input_tensors.push_back(tokens_.GetValue(0, ort_alloc));
+        std::vector<Tensor> output_tensors;           // [77, 768]
+        execute(input_tensors, output_tensors);
+
+        merged_hidden_.push_back(
+            TensorHelper::weight(output_tensors[0], weight_, 1, true)  // [1, 77, 768]
+        );
     }
+    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_);  // [N, 77, 768]
 
-    pad_tokens(tokens, weights, max_length, padding);
-
-    // for (int i = 0; i < tokens.size(); i++) {
-    //     std::cout << tokens[i] << ":" << weights[i] << ", ";
-    // }
-    // std::cout << std::endl;
-
-    return {tokens, weights};
+    return hidden_state_;
 }
-
-
-
-Tensor Clip::tokenize(std::string prompts_) {
-
-    // tokenizer: text tokenized & encoding
-    vector<int32_t> timestep_value_{prompts_};
-    TensorShape timestep_shape_{1};
-    return TensorHelper::create(timestep_shape_, timestep_value_);
-
-
-    std::vector<Tensor> input_tensors;
-    input_tensors.push_back(TensorHelper::multiple(latents_, (1.0f / sd_vae_config.sd_scale_decode_strength)));
-    std::vector<Tensor> output_tensors;
-    execute(input_tensors, output_tensors);
-    std::vector<Tensor> model_result_ ;
-
-    Ort::AllocatorWithDefaultOptions ort_alloc;
-    Tensor result_ = output_tensors.front().GetValue(0, ort_alloc);
-    return result_;
-}
-
 
 } // namespace units
 } // namespace sd

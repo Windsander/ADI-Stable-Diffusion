@@ -21,7 +21,7 @@ typedef SchedulerBase* SchedulerEntity_ptr;
 
 class SchedulerRegister {
 public:
-    static SchedulerEntity_ptr request_scheduler(SchedulerType scheduler_type, SchedulerConfig scheduler_config_) {
+    static SchedulerEntity_ptr request_scheduler(SchedulerType scheduler_type, const SchedulerConfig &scheduler_config_) {
         SchedulerEntity_ptr result_ptr_ = nullptr;
         switch (scheduler_type) {
             case SCHEDULER_EULAR_A: {

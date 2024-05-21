@@ -36,7 +36,7 @@ protected:
         long data_size_, long step_index_, long order_) = 0;
 
 public:
-    explicit SchedulerBase(const SchedulerConfig& scheduler_config_ = DEFAULT_SCHEDULER_CONDIG);
+    explicit SchedulerBase(const SchedulerConfig &scheduler_config_ = DEFAULT_SCHEDULER_CONDIG);
     virtual ~SchedulerBase();
 
     void create();
