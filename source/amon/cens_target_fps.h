@@ -4,8 +4,6 @@
 
 #include "cens_statistics_base.h"
 
-#include <Windows.h>
-
 namespace onnx {
 namespace sd {
 namespace amon {
@@ -18,6 +16,8 @@ using namespace std;
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
+#include <Windows.h>
+
 static int64_t timer_freq, timer_start;
 
 void timing_init(void) {
@@ -44,16 +44,16 @@ int64_t timing_us(void) {
     return ((t.QuadPart - timer_start) * 1000000) / timer_freq;
 }
 #else
-void timing_init(void) {}
+void timing_init() {}
 
-int64_t timing_ms(void) {
-    struct timespec ts;
+int64_t timing_ms() {
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t) ts.tv_sec * 1000 + (int64_t) ts.tv_nsec / 1000000;
 }
 
-int64_t timing_us(void) {
-    struct timespec ts;
+int64_t timing_us() {
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t) ts.tv_sec * 1000000 + (int64_t) ts.tv_nsec / 1000;
 }
@@ -76,15 +76,15 @@ private:
     LOCAL_ATOMIC_ALIGNMENT uint64_t timing_end_when = 0;
     LOCAL_ATOMIC_ALIGNMENT uint64_t timing_maintain = 0;
     LOCAL_ATOMIC_ALIGNMENT uint64_t timing_duration = 0;
-    LOCAL_ATOMIC_ALIGNMENT float notify_duration = 0;
+    LOCAL_ATOMIC_ALIGNMENT uint64_t notify_duration = 0;
 
 private:
     void do_statistics(StatisticsLevel level_, const char *msg_) override {
         if (notify_duration > NOTIFIER_DURATION_THRESHOLD_MSEC) {
             notify_duration = 0;
-            float msg_average_fps = float(timing_cost_meta.timing_average_fps);
+            auto msg_average_fps = float(timing_cost_meta.timing_average_fps);
             long msg_average_dur = long(timing_cost_meta.timing_average_dur);
-            sd_log(((loglevel_e) level_)) << "VideoRenderer Statistics: "
+            sd_log(((loglevel_e) level_)) << "ORT Statistics: "
                                           << "target " << timing_cost_meta.from_source.c_str()
                                           << "avg_fps " << msg_average_fps
                                           << "avg_dur " << msg_average_dur << " us"
@@ -103,7 +103,7 @@ public:
 
         timing_cost_meta.timing_average_fps =
             (timing_maintain > 0)
-            ? float(0.5 * timing_cost_meta.timing_average_fps + 0.5 * (1 * 1000000) / (timing_maintain * 1.0f))
+            ? float(0.5 * timing_cost_meta.timing_average_fps + 0.5 * (1 * 1000000) / float(timing_maintain))
             : timing_cost_meta.timing_average_fps;
     }
 
@@ -118,7 +118,7 @@ public:
         timing_cost_meta.timing_last_cost = timing_duration;
         timing_cost_meta.timing_average_dur =
             (timing_duration > 0) ?
-            uint64_t(0.9 * timing_cost_meta.timing_average_dur + 0.1 * timing_duration) :
+            uint64_t(0.9f * float(timing_cost_meta.timing_average_dur) + 0.1f * float(timing_duration)) :
             timing_cost_meta.timing_average_dur;
     }
 

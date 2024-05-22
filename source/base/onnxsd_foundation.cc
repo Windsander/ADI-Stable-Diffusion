@@ -5,8 +5,7 @@
 #ifndef BASEMENT_REGISTER_ONCE
 #define BASEMENT_REGISTER_ONCE
 
-#include "onnxsd_base_defs.h"
-#include "onnxsd_basic_core_config.cc"
+#include "onnxsd_basic_refs.h"
 #include "onnxsd_basic_tools.cc"
 #include "scheduler_register.cc"
 #include "onnxsd_executor.cc"

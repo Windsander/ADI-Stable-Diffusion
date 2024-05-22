@@ -6,8 +6,7 @@
 #ifndef ONNX_SD_CORE_TOOLS_ONCE
 #define ONNX_SD_CORE_TOOLS_ONCE
 
-#include "onnxsd_base_defs.h"
-#include "onnxsd_basic_core_config.cc"
+#include "onnxsd_basic_refs.h"
 
 namespace onnx {
 namespace sd {

@@ -29,8 +29,6 @@
 #include <tuple>
 #include <unordered_map>
 
-#include "exceptions_entry.h"
-
 #ifdef USE_CUDA
 #include "cuda_provider_factory.h"
 #endif
@@ -45,17 +43,5 @@
 #endif
 
 #include "onnxruntime_cxx_api.h"
-
-
-/* Basement Data Type =====================================================*/
-
-typedef uint8_t IMAGE_BYTE;
-typedef uint64_t IMAGE_SIZE;
-typedef struct IMAGE_DATA {
-    uint8_t *data_;
-    uint64_t size_;
-} IMAGE_DATA;
-
-#define SD_UNUSED(x) (void)x
 
 #endif

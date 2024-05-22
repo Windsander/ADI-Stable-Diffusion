@@ -22,7 +22,6 @@ private:
 
 protected:
     SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONDIG;
-    PredictionType  scheduler_prediction_type;
     float           scheduler_max_sigma;
     vector<float>   scheduler_timesteps;
     vector<float>   scheduler_sigmas;
@@ -52,7 +51,6 @@ public:
 SchedulerBase::SchedulerBase(const SchedulerConfig& scheduler_config_){
     this->scheduler_max_sigma = 0;
     this->scheduler_config = scheduler_config_;
-    this->scheduler_prediction_type = PredictionType::PREDICT_TYPE_EPSILON;
     this->random_generator.seed(scheduler_config_.scheduler_seed);
 }
 
@@ -212,7 +210,7 @@ Tensor SchedulerBase::step(
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
     for (int i = 0; i < data_size_; i++) {
-        switch (scheduler_prediction_type) {
+        switch (scheduler_config.scheduler_predict_type) {
             case PREDICT_TYPE_EPSILON: {
                 // predict_sample = sample - dnoise * sigma
                 predict_data_[i] = sample_data_[i] - dnoise_data_[i] * sigma;

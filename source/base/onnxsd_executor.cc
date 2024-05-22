@@ -5,8 +5,7 @@
 #ifndef ONNX_SD_CORE_EXECUTOR_ONCE
 #define ONNX_SD_CORE_EXECUTOR_ONCE
 
-#include "onnxsd_base_defs.h"
-#include "onnxsd_basic_core_config.cc"
+#include "onnxsd_basic_refs.h"
 
 namespace onnx {
 namespace sd {
@@ -32,7 +31,7 @@ public:
 
 ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
     ort_commons_config = ort_config_;
-    ort_env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, "OrtSD-Engine"};
+    ort_env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, DEFAULT_ORT_ENGINE_NAME};
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(ort_session_config, device_id));
     ort_session_config.SetGraphOptimizationLevel(ort_config_.onnx_graph_optimize);

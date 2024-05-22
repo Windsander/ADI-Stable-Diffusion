@@ -13,6 +13,17 @@ namespace onnx {
 namespace sd {
 namespace base {
 
+#define DEFAULT_ORT_ENGINE_NAME "OrtSD-Engine"
+
+/* Basement Data Type =====================================================*/
+/* IO data*/
+typedef uint8_t IMAGE_BYTE;
+typedef uint64_t IMAGE_SIZE;
+typedef struct IMAGE_DATA {
+    uint8_t *data_;
+    uint64_t size_;
+} IMAGE_DATA;
+
 /* ONNXRuntime engine Settings ============================================*/
 
 typedef Ort::Value Tensor;
@@ -56,23 +67,25 @@ typedef enum PredictionType {
     PREDICT_TYPE_SAMPLE         = 3,
 } PredictionType;
 
-#define DEFAULT_SCHEDULER_CONDIG                            \
-    {                                                       \
-        /*scheduler_training_steps*/    1000,               \
-        /*scheduler_beta_start*/        0.00085f,           \
-        /*scheduler_beta_end*/          0.012f,             \
-        /*scheduler_seed*/              42,                 \
-        /*scheduler_beta_type*/         BETA_TYPE_LINEAR,   \
-        /*scheduler_alpha_type*/        ALPHA_TYPE_COSINE   \
+#define DEFAULT_SCHEDULER_CONDIG                             \
+    {                                                        \
+        /*scheduler_training_steps*/    1000,                \
+        /*scheduler_beta_start*/        0.00085f,            \
+        /*scheduler_beta_end*/          0.012f,              \
+        /*scheduler_seed*/              42,                  \
+        /*scheduler_beta_type*/         BETA_TYPE_LINEAR,    \
+        /*scheduler_alpha_type*/        ALPHA_TYPE_COSINE,   \
+        /*scheduler_predict_type*/      PREDICT_TYPE_EPSILON \
     }
 
 typedef struct SchedulerConfig {
-    int scheduler_training_steps;
+    uint64_t scheduler_training_steps;
     float scheduler_beta_start;
     float scheduler_beta_end;
     uint64_t scheduler_seed;
     BetaType scheduler_beta_type;
     AlphaType scheduler_alpha_type;
+    PredictionType scheduler_predict_type;
 } SchedulerConfig;
 
 /* Diffusion Tokenizer Settings ===========================================*/

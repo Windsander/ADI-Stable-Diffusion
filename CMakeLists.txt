@@ -29,7 +29,7 @@ endif()
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
-option(ORT_BUILD_EXAMPLES            "ort-sd: build examples" ${SD_STANDALONE})
+option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
 option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ON)
 option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
@@ -65,7 +65,7 @@ if (ORT_LOCALS_BUILDING)
     message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
 endif ()
 
-message("[onnx.runtime.sd][I] onnxruntime target ${Blue}version_${ColourReset}: ${ONNX_INFERENCE_VERSION}")
+message("[onnx.runtime.sd][I] onnxruntime target ${Blue}version${ColourReset}: ${ONNX_INFERENCE_VERSION}")
 message("[onnx.runtime.sd][I] onnxruntime target ${Blue}platform${ColourReset}: ${ONNX_INFERENCE_TARGET}")
 message("[onnx.runtime.sd][I] onnxruntime infers ${Blue}provider${ColourReset}: ${ENGINE_NAME}")
 message("${Cyan}<############################# ${ENGINE_NAME}-Done #############################>${ColourReset}")
@@ -75,15 +75,12 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Make ############
 
 set(library_name ort-sd)
 
-set(library_data_IMPORT
-        ../../third_party/glm
-)
 set(library_data_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/source/ort_sd_context.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/outlet/ort_sd.cc
 )
 
 auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} source)
-#auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} engine)
+auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} outlet)
 auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} include)
 auto_print_list(library_data_SOURCES)
 
@@ -94,18 +91,17 @@ if(ORT_BUILD_SHARED_LIBS)
     target_compile_definitions(${library_name} PRIVATE -DSD_BUILD_DLL)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
-    message("[onnx.runtime.sd][I] Build library[STATIC]: ${library_name}")
+    message("[onnx.runtime.sd][I] ${Blue}Build library[STATIC]${ColourReset}: ${library_name}")
     add_library(${library_name} STATIC)
     set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 endif()
 
 target_sources(${library_name} PRIVATE ${library_data_SOURCES})
 auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} source PRIVATE)
-#auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} engine PRIVATE)
-auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include INTERFACE)
+auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} outlet PRIVATE)
+auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 
 #link references
-target_include_directories(${library_name} PRIVATE ${library_data_IMPORT})
 auto_link_reference_library(${library_name})
 
 target_compile_features(${library_name} PUBLIC cxx_std_11)
@@ -114,8 +110,8 @@ target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")
 
 
-# check example available
-if (SD_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+# check command line available
+if (ORT_BUILD_COMMAND_LINE)
+    add_subdirectory(clitools)
 endif()
 

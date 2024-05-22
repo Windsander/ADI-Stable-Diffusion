@@ -18,24 +18,25 @@ using namespace units;
 typedef struct ModelPathConfig {
     std::string onnx_clip_path;     // text_encoder
     std::string onnx_unet_path;
-    std::string onnx_vae_path;
+    std::string onnx_vae_encoder_path;
+    std::string onnx_vae_decoder_path;
     std::string onnx_control_net_path;
     std::string onnx_safty_path;
 } ModelPathConfig;
 
 typedef struct OrtSD_Config {
-    ORTBasicsConfig sd_ort_basic_config = {};
-    ModelPathConfig sd_modelpath_config = {};
-    SchedulerConfig sd_scheduler_config = {};
-    TokenizerConfig sd_tokenizer_config = {};
-    SchedulerType sd_scheduler_type = SchedulerType::SCHEDULER_EULAR_A;
-    TokenizerType sd_tokenizer_type = TokenizerType::TOKENIZER_BPE;
-    uint64_t sd_inference_steps = 3;
-    uint64_t sd_input_width = 512;
-    uint64_t sd_input_height = 512;
-    uint64_t sd_input_channel = 4;
-    float sd_scale_guidance = 0.9f;
-    float sd_decode_scale_strength = 0.18215f;
+    ORTBasicsConfig sd_ort_basic_config; //= {};
+    ModelPathConfig sd_modelpath_config; //= {};
+    SchedulerConfig sd_scheduler_config; //= {};
+    TokenizerConfig sd_tokenizer_config; //= {};
+    SchedulerType sd_scheduler_type    ; //= SchedulerType::SCHEDULER_EULAR_A;
+    TokenizerType sd_tokenizer_type    ; //= TokenizerType::TOKENIZER_BPE;
+    uint64_t sd_inference_steps        ; //= 3;
+    uint64_t sd_input_width            ; //= 512;
+    uint64_t sd_input_height           ; //= 512;
+    uint64_t sd_input_channel          ; //= 4;
+    float sd_scale_guidance            ; //= 0.9f;
+    float sd_decode_scale_strength     ; //= 0.18215f;
 } OrtSD_Config;
 
 class OrtSD_Context {
@@ -50,17 +51,17 @@ private:
     OrtSD_Config ort_config;
     OrtSD_Remain ort_remain;
 
-    Clip *ort_sd_clip;
-    UNet *ort_sd_unet;
-    VAE *ort_sd_vae_encoder;
-    VAE *ort_sd_vae_decoder;
+    Clip *ort_sd_clip = nullptr;
+    UNet *ort_sd_unet = nullptr;
+    VAE *ort_sd_vae_encoder = nullptr;
+    VAE *ort_sd_vae_decoder = nullptr;
 
 private:
     Tensor convert_images(const IMAGE_DATA &image_data_) const;
     IMAGE_DATA convert_result(const Tensor &infer_output_) const;
 
 public:
-    explicit OrtSD_Context(const OrtSD_Config& ort_config_ = {});
+    explicit OrtSD_Context(const OrtSD_Config& ort_config_);
     ~OrtSD_Context() ;
 
     void init();
@@ -163,14 +164,14 @@ void OrtSD_Context::init() {
     );
 
     ort_sd_vae_encoder = new VAE(
-        ort_config.sd_modelpath_config.onnx_vae_path,
+        ort_config.sd_modelpath_config.onnx_vae_encoder_path,
         {
             ort_config.sd_decode_scale_strength   // it's unused for encoding
         }
     );
 
     ort_sd_vae_decoder = new VAE(
-        ort_config.sd_modelpath_config.onnx_vae_path,
+        ort_config.sd_modelpath_config.onnx_vae_decoder_path,
         {
             ort_config.sd_decode_scale_strength
         }
