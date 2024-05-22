@@ -28,7 +28,7 @@ protected:
         const float token_end_multi_ = get_boundary_factor();
         const int token_end_index_ = get_end_token_index();
         const int token_safe_gaps_ = 20;
-        const int avail_ = get_avail_token_size();      // limit of current token_size
+        const int avail_ = get_avail_token_size();      // limit of current token_size 75
 
         Tokens remade_tokens;
         Multis remade_multis;

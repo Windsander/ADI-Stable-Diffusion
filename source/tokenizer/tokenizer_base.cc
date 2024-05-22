@@ -44,15 +44,12 @@ protected:
         R"(\s*\bBREAK\b\s*)"
     );
 
-private:
-    PromptWeight_map cur_parsed_attention;
-
 protected:
     /**
      * @details Method for checking parse_prompt_attention result
      * @param prompt_weight_ split prompt(key_word)-weights map
      */
-    void print_prompt_attention(const PromptWeight_map& prompt_weight_) {
+    void print_prompt_attention(const PromptWeight_map &prompt_weight_) const {
         std::stringstream ss;
         ss << "print with format = [[<prompt-key>, <prompt-weight>], ...] below:\n";
         ss << "[";
@@ -67,7 +64,7 @@ protected:
      * @details get available customizable token max size, set by config[avail_token_size]
      * @return always equal to <avail_token_size - 2>
      */
-    int32_t get_avail_token_size() const{
+    int32_t get_avail_token_size() const {
         return sd_tokenizer_config.avail_token_size - 2;
     }
 
@@ -75,7 +72,7 @@ protected:
      * @details get <|startoftext|> index in dictionary, set by config[tokenizer_dictionary_at]
      * @return <|startoftext|> index in dictionary
      */
-    int32_t get_start_token_index() const{
+    int32_t get_start_token_index() const {
         return sd_tokenizer_config.avail_token_count - 2;
     }
 
@@ -83,7 +80,7 @@ protected:
      * @details get <|endoftext|> index in dictionary, set by config[tokenizer_dictionary_at]
      * @return <|endoftext|> index in dictionary
      */
-    int32_t get_end_token_index() const{
+    int32_t get_end_token_index() const {
         return sd_tokenizer_config.avail_token_count - 1;
     }
 
@@ -92,7 +89,7 @@ protected:
      * set by config[major_boundary_factor]
      * @return <|startoftext|> index in dictionary
      */
-    float get_boundary_factor() const{
+    float get_boundary_factor() const {
         return sd_tokenizer_config.major_boundary_factor;
     }
 
@@ -233,7 +230,7 @@ void TokenizerBase::init(){
 
 TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prompts_) {
 
-    cur_parsed_attention = parse_prompt_attention(prompts_);
+    PromptWeight_map cur_parsed_attention = parse_prompt_attention(prompts_);
 
     std::tuple<Tokens, Multis, size_t> encoded_input = encode(cur_parsed_attention);     // {tokens, weights}
 
@@ -274,6 +271,8 @@ std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) 
     // TODO PromptWeight_map parsed_attention = decode(embeds_);
 
     // TODO print_prompt_attention(parsed_attention);
+
+    // in current situations seems unnecessary
 
     return "";
 }

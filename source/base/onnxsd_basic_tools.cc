@@ -193,6 +193,34 @@ public:
         return result_;
     }
 
+    static Tensor merge(const std::vector<Tensor> &input_tensors_, int offset_) {
+        TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
+        size_t input_count_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
+        long input_size_ = GET_TENSOR_DATA_SIZE(input_shape_, input_count_);
+        long tensor_num_ = input_tensors_.size();
+
+        long result_size_ = input_size_ * tensor_num_;
+        float result_data_[result_size_];
+
+        for (int input_index_ = 0; input_index_ < tensor_num_; ++input_index_) {
+            auto *input_data_ = input_tensors_[input_index_].GetTensorData<float>();
+            int start_at_ = input_index_ * input_size_;
+            for (int i = 1; i < input_size_; ++i) {
+                result_data_[start_at_ + i] = input_data_[i];
+            }
+        }
+
+        TensorShape shape_ = input_shape_;
+        shape_[offset_] *= tensor_num_;
+
+        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+            input_tensors_[0].GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
     static Tensor guidance(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_count_l_);
         GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_count_r_);
@@ -321,34 +349,6 @@ public:
             result_ = add(result_, input_tensors_[i], shape_);
         }
         return result_;
-    }
-
-    static Tensor merge(const std::vector<Tensor> &input_tensors_) {
-        TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
-        size_t input_count_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
-        long input_size_ = GET_TENSOR_DATA_SIZE(input_shape_, input_count_);
-        long tensor_num_ = input_tensors_.size();
-
-        long result_size_ = input_size_ * tensor_num_;
-        float result_data_[result_size_];
-
-        for (int input_index_ = 0; input_index_ < tensor_num_; ++input_index_) {
-            auto *input_data_ = input_tensors_[input_index_].GetTensorData<float>();
-            int offset_ = input_index_ * input_size_;
-            for (int i = 1; i < input_size_; ++i) {
-                result_data_[offset_ + i] = input_data_[i];
-            }
-        }
-
-        TensorShape shape_ = input_shape_;
-        shape_[0] = tensor_num_;
-
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
-            input_tensors_[0].GetTensorMemoryInfo(), result_data_, result_size_,
-            shape_.data(), shape_.size()
-        );
-
-        return result_tensor_;
     }
 
 #undef GET_TENSOR_DATA_INFO

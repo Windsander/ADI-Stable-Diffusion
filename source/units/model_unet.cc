@@ -26,7 +26,6 @@ using namespace detail;
         /*sd_input_width*/      512,                                 \
         /*sd_input_height*/     512,                                 \
         /*sd_input_channel*/    4,                                   \
-        /*sd_scale_guidance*/   0.9f,                                \
         /*sd_scale_positive*/   0.9f                                 \
     }                                                                \
 
@@ -37,7 +36,6 @@ typedef struct ModelUNetConfig {
     uint64_t sd_input_width;
     uint64_t sd_input_height;
     uint64_t sd_input_channel;
-    float sd_scale_guidance;
     float sd_scale_positive;
 } ModelUNetConfig;
 
@@ -50,7 +48,7 @@ public:
     explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONDIG);
     ~UNet() override;
 
-    Tensor inference(const Tensor &emb_positive_,const Tensor &emb_negative_, const Tensor &encoded_img_);
+    Tensor inference(const Tensor &embs_positive_,const Tensor &embs_negative_, const Tensor &encoded_img_);
 };
 
 UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
@@ -69,8 +67,8 @@ UNet::~UNet(){
 }
 
 Tensor UNet::inference(
-    const Tensor &emb_positive_,
-    const Tensor &emb_negative_,
+    const Tensor &embs_positive_,
+    const Tensor &embs_negative_,
     const Tensor &encoded_img_
 ) {
 
@@ -91,50 +89,38 @@ Tensor UNet::inference(
             sd_scheduler_p->scale(init_mask_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
 
-        // do positive
-        Tensor guided_pred_positive_ =TensorHelper::create(latent_shape_, latent_empty_);
-        if (emb_positive_.HasValue()){
+        // do positive N_pos_embed_num times
+        Tensor pred_positive_ = TensorHelper::duplicate(model_latent_, latent_shape_);
+        if (embs_positive_.HasValue()){
             std::vector<Tensor> input_tensors;
             Ort::AllocatorWithDefaultOptions ort_alloc;
-            input_tensors.push_back(emb_positive_.GetValue(0, ort_alloc));
-            input_tensors.push_back(model_latent_.GetValue(0, ort_alloc));
+            input_tensors.push_back(embs_positive_.GetValue(0, ort_alloc));
+            input_tensors.push_back(pred_positive_.GetValue(0, ort_alloc));
             input_tensors.push_back(timestep_.GetValue(0, ort_alloc));
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
-
-            // Split output_tensors from [N_pos_embed_num, 4, 64, 64] to [1, 4, 64, 64]
-            std::vector<Tensor> model_result_positive_;
-            model_result_positive_ = TensorHelper::split(output_tensors[0].GetValue(0, ort_alloc));
-            guided_pred_positive_ = TensorHelper::guidance(
-                model_result_positive_[0], model_result_positive_[1], sd_unet_config.sd_scale_guidance
-            );
+            pred_positive_ = output_tensors[0].GetValue(0, ort_alloc);
         }
 
-        // do negative
-        Tensor guided_pred_negative_ =TensorHelper::create(latent_shape_, latent_empty_);
-        if (emb_negative_.HasValue()){
+        // do negative N_neg_embed_num times
+        Tensor pred_negative_ = TensorHelper::duplicate(model_latent_, latent_shape_);
+        if (embs_negative_.HasValue()) {
             std::vector<Tensor> input_tensors;
             Ort::AllocatorWithDefaultOptions ort_alloc;
-            input_tensors.push_back(emb_negative_.GetValue(0, ort_alloc));
-            input_tensors.push_back(model_latent_.GetValue(0, ort_alloc));
+            input_tensors.push_back(embs_negative_.GetValue(0, ort_alloc));
+            input_tensors.push_back(pred_negative_.GetValue(0, ort_alloc));
             input_tensors.push_back(timestep_.GetValue(0, ort_alloc));
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
-
-            // Split output_tensors from [N_neg_embed_num, 4, 64, 64] to [1, 4, 64, 64]
-            std::vector<Tensor> model_result_negative_;
-            model_result_negative_ = TensorHelper::split(output_tensors[0].GetValue(0, ort_alloc));
-            guided_pred_negative_ = TensorHelper::guidance(
-                model_result_negative_[0], model_result_negative_[1], sd_unet_config.sd_scale_guidance
-            );
+            pred_negative_ = output_tensors[0].GetValue(0, ort_alloc);
         }
 
         // do merge
         float merge_factor_ = sd_unet_config.sd_scale_positive;
         Tensor guided_pred_ = (
-            (guided_pred_negative_.HasValue()) ?
-            TensorHelper::guidance(guided_pred_negative_, guided_pred_positive_, merge_factor_) :
-            TensorHelper::duplicate(guided_pred_positive_, latent_shape_)
+            (pred_negative_.HasValue()) ?
+            TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
+            TensorHelper::duplicate(pred_positive_, latent_shape_)
         );
 
         latents_ = sd_scheduler_p->step(model_latent_, guided_pred_, i);

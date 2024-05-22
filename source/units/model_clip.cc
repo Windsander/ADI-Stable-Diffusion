@@ -18,31 +18,33 @@ using namespace tokenizer;
 using namespace Ort;
 using namespace detail;
 
-typedef struct ModelUNetConfig {
+#define DEFAULT_CLIP_CONDIG                                          \
+    {                                                                \
+        /*sd_tokenizer_config*/ DEFAULT_TOKENIZER_CONDIG,            \
+        /*sd_tokenizer_type*/   TokenizerType::TOKENIZER_BPE         \
+    }                                                                \
+
+typedef struct ModelClipConfig {
     TokenizerConfig sd_tokenizer_config;
     TokenizerType sd_tokenizer_type;
-    float sd_scale_decode_strength = 0.18215f;
-    int32_t blank_token_size = 49408;           // blank token generated for unconditional input
-    int32_t model_max_length = 77;              // max token length
-    int32_t model_hidden_dim = 768;             // out token length
-} ModelUNetConfig ;
+} ModelClipConfig ;
 
 class Clip : public ModelBase {
 private:
     typedef std::vector<std::pair<std::string, float>> PromptWeight_map;
 
 private:
-    ModelUNetConfig sd_clip_config;
+    ModelClipConfig sd_clip_config;
     TokenizerEntity_ptr sd_tokenizer_p;
 
 public:
-    explicit Clip(const std::string &model_path_,  const ModelUNetConfig &clip_config_ = {});
+    explicit Clip(const std::string &model_path_,  const ModelClipConfig &clip_config_ = DEFAULT_CLIP_CONDIG);
     ~Clip() override;
 
     Tensor embedding(const std::string& prompts_);
 };
 
-Clip::Clip(const std::string &model_path_, const ModelUNetConfig &clip_config_) : ModelBase(model_path_){
+Clip::Clip(const std::string &model_path_, const ModelClipConfig &clip_config_) : ModelBase(model_path_){
     sd_clip_config = clip_config_;
     sd_tokenizer_p = TokenizerRegister::request_tokenizer(
         clip_config_.sd_tokenizer_type,
@@ -54,7 +56,7 @@ Clip::Clip(const std::string &model_path_, const ModelUNetConfig &clip_config_) 
 Clip::~Clip(){
     sd_tokenizer_p->uninit();
     sd_tokenizer_p = TokenizerRegister::recycle_tokenizer(sd_tokenizer_p);
-    sd_clip_config.~ModelUNetConfig();
+    sd_clip_config.~ModelClipConfig();
 }
 
 Tensor Clip::embedding(const std::string& prompts_) {
@@ -69,14 +71,15 @@ Tensor Clip::embedding(const std::string& prompts_) {
         std::vector<Tensor> input_tensors;
         Ort::AllocatorWithDefaultOptions ort_alloc;
         input_tensors.push_back(tokens_.GetValue(0, ort_alloc));
-        std::vector<Tensor> output_tensors;           // [77, 768]
+        std::vector<Tensor> output_tensors;           // [1, 77, 768]
         execute(input_tensors, output_tensors);
 
         merged_hidden_.push_back(
             TensorHelper::weight(output_tensors[0], weight_, 1, true)  // [1, 77, 768]
         );
     }
-    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_);  // [N, 77, 768]
+    // seems not right
+    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_, 1);  // [1, 77 * N, 768]
 
     return hidden_state_;
 }
