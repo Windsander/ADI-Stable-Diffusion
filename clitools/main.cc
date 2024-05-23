@@ -4,16 +4,12 @@
  * Image tools provide by: [stb] https://github.com/nothings/stb
  * Created by Arikan.Li on 2024/05/23.
  */
-#include <iostream>
-#include <sstream>
-#include <random>
 #include <string>
 #include <vector>
 
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include <time.h>
+#include <cstdio>
+#include <cstring>
+#include <ctime>
 
 #include "ort_sd.h"
 
@@ -77,42 +73,42 @@ struct CommandLineInput {
     std::string positive_prompt;
     std::string negative_prompt;
 
-    std::string onnx_clip_path;                         // Model: CLIP Path (also known as text_encoder)
-    std::string onnx_unet_path;                         // Model: UNet Path
-    std::string onnx_vae_encoder_path;                  // Model: VAE Encoder Path (also known as vae_encoder)
-    std::string onnx_vae_decoder_path;                  // Model: VAE Decoder Path (also known as vae_decoder)
-    std::string onnx_control_net_path;                  // Model: ControlNet Path (currently not available)
-    std::string onnx_safty_path;                        // Model: Safety Security Model Path (currently not available)
+    std::string onnx_clip_path;                                             // Model: CLIP Path (also known as text_encoder)
+    std::string onnx_unet_path;                                             // Model: UNet Path
+    std::string onnx_vae_encoder_path;                                      // Model: VAE Encoder Path (also known as vae_encoder)
+    std::string onnx_vae_decoder_path;                                      // Model: VAE Decoder Path (also known as vae_decoder)
+    std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
+    std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
 
-    AvailableSchedulerType sd_scheduler_type;           // Scheduler: scheduler type (Eular_A, LMS)
-    uint64_t scheduler_training_steps;                  // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
-    float scheduler_beta_start;                         // Scheduler: Beta start (recommend 0.00085f)
-    float scheduler_beta_end;                           // Scheduler: Beta end (recommend 0.012f)
-    uint64_t scheduler_seed;                            // Scheduler: seed for random (config if u need certain output)
-    AvailableBetaType scheduler_beta_type;              // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
-    AvailableAlphaType scheduler_alpha_type;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
-    AvailablePredictionType scheduler_predict_type;     // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
+    AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULAR_A; // Scheduler: scheduler type (Eular_A, LMS)
+    uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
+    float scheduler_beta_start = 0.00085f;                                  // Scheduler: Beta start (recommend 0.00085f)
+    float scheduler_beta_end = 0.012f;                                      // Scheduler: Beta end (recommend 0.012f)
+    uint64_t scheduler_seed = -1;                                           // Scheduler: seed for random (config if u need certain output)
+    AvailableBetaType scheduler_beta_type = BETA_TYPE_LINEAR;               // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
+    AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
+    AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
 
-    AvailableTokenizerType sd_tokenizer_type;           // Tokenizer: tokenizer type (currently only provide BPE)
-    std::string tokenizer_dictionary_at;                // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
-    int32_t avail_token_count;                          // Tokenizer: all available token in vocabulary totally
-    int32_t avail_token_size;                           // Tokenizer: max token length (include <start> & <end>, so 75 avail)
-    int32_t major_hidden_dim;                           // Tokenizer: out token length
-    float major_boundary_factor;                        // Tokenizer: weights for <start> & <end> mark-token
-    float txt_attn_increase_factor;                     // Tokenizer: weights for (prompt) to gain attention by this factor
-    float txt_attn_decrease_factor;                     // Tokenizer: weights for [prompt] to loss attention by this factor
+    AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
+    std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
+    int32_t avail_token_count = 49408;                                      // Tokenizer: all available token in vocabulary totally
+    int32_t avail_token_size = 77;                                          // Tokenizer: max token length (include <start> & <end>, so 75 avail)
+    int32_t major_hidden_dim = 768;                                         // Tokenizer: out token length
+    float major_boundary_factor = 1.0f;                                     // Tokenizer: weights for <start> & <end> mark-token
+    float txt_attn_increase_factor = 1.1f;                                  // Tokenizer: weights for (prompt) to gain attention by this factor
+    float txt_attn_decrease_factor = 1 / 1.1f;                              // Tokenizer: weights for [prompt] to loss attention by this factor
 
-    uint64_t sd_inference_steps;                        // Infer_Major: inference step
-    uint64_t sd_input_width;                            // Infer_Major: IO image width (match SD-model training sets, Constant)
-    uint64_t sd_input_height;                           // Infer_Major: IO image height (match SD-model training sets, Constant)
-    uint64_t sd_input_channel;                          // Infer_Major: IO image channel (match SD-model training sets, Constant)
-    float sd_scale_guidance;                            // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
-    float sd_decode_scale_strength;                     // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
+    uint64_t sd_inference_steps = 2;                                        // Infer_Major: inference step
+    uint64_t sd_input_width = 512;                                          // Infer_Major: IO image width (match SD-model training sets, Constant)
+    uint64_t sd_input_height = 512;                                         // Infer_Major: IO image height (match SD-model training sets, Constant)
+    uint64_t sd_input_channel = 3;                                          // Infer_Major: IO image channel (match SD-model training sets, Constant)
+    float sd_scale_guidance = 7.5f;                                         // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
+    float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
 
-    bool verbose;  // CLI-Mark: for extra infos of this tools
+    bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
 
-void print_params(CommandLineInput params) {
+void print_params(const CommandLineInput& params) {
     printf("Params: \n");
     printf("{\n");
     printf("  IO: \n");
@@ -382,12 +378,6 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_decode_scale_strength = std::stof(argv[i]);
-        } else if (arg == "--decoding") {
-            if (++i >= argc) {
-                invalid_arg = true;
-                break;
-            }
-            params.sd_decode_scale_strength = std::stof(argv[i]);
         } else if (arg == "--steps") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -512,9 +502,10 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         exit(1);
     }
 
+    // seed random check
     if (params.scheduler_seed < 0) {
-        srand((int)time(NULL));
-        params.scheduler_seed = rand();
+        srandom((int)time(nullptr));
+        params.scheduler_seed = random();
     }
 }
 
@@ -522,10 +513,10 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
 
 static std::string get_image_params(const CommandLineInput &params) {
     std::string parameter_string = " \n";
-    if (params.positive_prompt.size() != 0) {
+    if (!params.positive_prompt.empty()) {
         parameter_string += "Positive prompt: " + params.positive_prompt + "\n";
     }
-    if (params.negative_prompt.size() != 0) {
+    if (!params.negative_prompt.empty()) {
         parameter_string += "Negative prompt: " + params.negative_prompt + "\n";
     }
     parameter_string += "Guidance: " + std::to_string(params.sd_scale_guidance) + ", ";
@@ -554,7 +545,7 @@ static void read_image(const CommandLineInput &params, uint8_t** image_data){
     (*image_data) = stbi_load(params.input_path.c_str(), &width, &height, &channel, 3);
 
     // Check image_data available
-    if ((*image_data) == NULL) {
+    if ((*image_data) == nullptr) {
         fprintf(stderr, "load image from '%s' failed\n", params.input_path.c_str());
         return;
     }
@@ -578,11 +569,11 @@ static void read_image(const CommandLineInput &params, uint8_t** image_data){
     if (params.sd_input_height != height || params.sd_input_width != width) {
         printf("resize input image from %dx%d to %llux%llu\n", width, height, params.sd_input_width,
                params.sd_input_height);
-        int resized_height = params.sd_input_height;
-        int resized_width = params.sd_input_width;
+        int resized_height = int(params.sd_input_height);
+        int resized_width = int(params.sd_input_width);
 
-        uint8_t *resized_image_buffer = (uint8_t *) malloc(resized_height * resized_width * 3);
-        if (resized_image_buffer == NULL) {
+        auto *resized_image_buffer = (uint8_t *) malloc(resized_height * resized_width * 3);
+        if (resized_image_buffer == nullptr) {
             fprintf(stderr, "error: allocate memory for resize input image\n");
             free((*image_data));
             return;
@@ -604,24 +595,22 @@ static void save_image(const CommandLineInput &params, uint8_t* image_data){
         return;
     }
 
-    size_t last = params.output_path.find_last_of(".");
-    std::string file_name = (last != std::string::npos) ?
-        params.output_path.substr(0, last) :
-        params.output_path;
+    size_t last = params.output_path.find_last_of('.');
+    std::string file_name = (last != std::string::npos) ? params.output_path.substr(0, last) : params.output_path;
     std::string final_image_path = file_name + ".png";
     stbi_write_png(
         final_image_path.c_str(),
-        params.sd_input_width, params.sd_input_height, params.sd_input_channel,
+        (int) params.sd_input_width, (int) params.sd_input_height, (int) params.sd_input_channel,
         image_data, 0
     );
     printf("save result image to '%s'\n", final_image_path.c_str());
     printf("\n");
     printf("all done with option '%s'\n", get_image_params(params).c_str());
     free(image_data);
-    image_data = NULL;
+    image_data = nullptr;
 }
 
-int main(int argc, const char* argv[]) {
+int main(int argc, const char *argv[]) {
     CommandLineInput params;
 
     parse_args(argc, argv, params);
