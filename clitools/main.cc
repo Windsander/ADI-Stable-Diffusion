@@ -191,7 +191,7 @@ void print_usage(int argc, const char* argv[]) {
 
     printf("  --beta-start <float>               Beta start (default 0.00085f) \n");
     printf("  --beta-end <float>                 Beta end (default 0.012f) \n");
-    printf("  --guidance <float>                 immersion rate for [value * (Positive - Negative)] residual (default 0.9f) \n");
+    printf("  --guidance <float>                 Scale for classifier-free guidance, immersion rate for [value * (Positive - Negative)] residual (default 7.5f) \n");
     printf("  --decoding <float>                 for VAE Decoding result merged (default 0.18215f) \n");
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
