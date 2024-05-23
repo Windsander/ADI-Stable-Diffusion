@@ -13,8 +13,6 @@ namespace scheduler {
 
 using namespace base;
 using namespace amon;
-using namespace Ort;
-using namespace detail;
 
 class SchedulerBase {
 private:

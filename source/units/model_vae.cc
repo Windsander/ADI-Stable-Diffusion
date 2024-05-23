@@ -5,8 +5,6 @@
 #ifndef MODEL_VAE_H
 #define MODEL_VAE_H
 
-#include <utility>
-
 #include "model_base.cc"
 
 namespace onnx {
@@ -15,10 +13,8 @@ namespace units {
 
 using namespace base;
 using namespace amon;
-using namespace scheduler;
 using namespace Ort;
 using namespace detail;
-
 
 #define DEFAULT_VAEs_CONDIG                                          \
     {                                                                \

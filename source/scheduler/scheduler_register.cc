@@ -5,7 +5,6 @@
 #ifndef SCHEDULER_REGISTER_ONCE
 #define SCHEDULER_REGISTER_ONCE
 
-#include "onnxsd_foundation.cc"
 #include "scheduler_base.cc"
 #include "scheduler_discrete_eular_a.cc"
 #include "scheduler_discrete_lms.cc"

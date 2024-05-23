@@ -7,7 +7,6 @@
 
 #include "onnxsd_basic_refs.h"
 #include "onnxsd_basic_tools.cc"
-#include "scheduler_register.cc"
 #include "onnxsd_executor.cc"
 
 #endif  // BASEMENT_REGISTER_ONCE

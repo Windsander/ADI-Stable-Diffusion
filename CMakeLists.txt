@@ -104,7 +104,7 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 #link references
 auto_link_reference_library(${library_name})
 
-target_compile_features(${library_name} PUBLIC cxx_std_11)
+target_compile_features(${library_name} PUBLIC cxx_std_14)
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 
 message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")

@@ -11,9 +11,6 @@ namespace onnx {
 namespace sd {
 namespace tokenizer {
 
-using namespace base;
-using namespace amon;
-
 class BPETokenizer : public TokenizerBase {
 protected:
     const std::string bep_vocab_end = ",";

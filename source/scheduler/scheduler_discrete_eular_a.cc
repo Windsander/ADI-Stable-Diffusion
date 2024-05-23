@@ -11,13 +11,13 @@ namespace onnx {
 namespace sd {
 namespace scheduler {
 
-class EularAncestralDiscreteScheduler: public SchedulerBase {
+class EularAncestralDiscreteScheduler : public SchedulerBase {
 private:
     RandomGenerator eular_a_random;
 
 protected:
     std::vector<float> execute_method(
-        const float* samples_data_,
+        const float *samples_data_,
         const float* predict_data_,
         long data_size_,
         long step_index_,
@@ -26,6 +26,7 @@ protected:
 
 public:
     explicit EularAncestralDiscreteScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
+        eular_a_random.seed(scheduler_config_.scheduler_seed);
     }
 
     ~EularAncestralDiscreteScheduler() override = default;
