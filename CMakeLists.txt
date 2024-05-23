@@ -26,6 +26,18 @@ else()
     set(SD_STANDALONE OFF)
 endif()
 
+# do prepare option auto enable, based on paltform
+if (WIN32 OR MSVC)                  # for Windows
+    set(DEFAULT_CUDA_STATE ON)
+    set(DEFAULT_TRT_STATE ON)
+elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
+    set(DEFAULT_CUDA_STATE OFF)
+    set(DEFAULT_TRT_STATE OFF)
+elseif (UNIX AND NOT APPLE)         # for Linux, BSD, Solaris, Minix
+    set(DEFAULT_CUDA_STATE ON)
+    set(DEFAULT_TRT_STATE OFF)
+endif ()
+
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
@@ -33,6 +45,8 @@ option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STA
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
 option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ON)
 option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
+option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
+option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 
 # 2. Add inference engine to project
 if (ORT_ONLINE_COMPILED)
@@ -64,6 +78,17 @@ if (ORT_LOCALS_BUILDING)
     add_definitions(-DEXECUTION_PROVIDER_TENSORRT)
     message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
 endif ()
+
+# 3. Check Provider Enable State
+if (ORT_ENABLE_CUDA)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CUDA Provider${ColourReset}")
+    add_definitions(-DENABLE_CUDA)
+endif ()
+if (ORT_ENABLE_TENSOR_RT)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
+    add_definitions(-DENABLE_TENSOR_RT)
+endif ()
+message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CPU Provider${ColourReset}")
 
 message("[onnx.runtime.sd][I] onnxruntime target ${Blue}version${ColourReset}: ${ONNX_INFERENCE_VERSION}")
 message("[onnx.runtime.sd][I] onnxruntime target ${Blue}platform${ColourReset}: ${ONNX_INFERENCE_TARGET}")
