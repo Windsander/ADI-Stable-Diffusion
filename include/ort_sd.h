@@ -23,12 +23,14 @@ enum AvailableBetaType {
     BETA_TYPE_LINEAR            = 0x01,
     BETA_TYPE_SCALED_LINEAR     = 0x02,
     BETA_TYPE_SQUAREDCOS_CAP_V2 = 0x03,
+    BETA_COUNT,
 };
 
 /* Scheduler Alpha Provide */
 enum AvailableAlphaType {
     ALPHA_TYPE_COSINE           = 0x01,
     ALPHA_TYPE_EXP              = 0x02,
+    ALPHA_COUNT,
 };
 
 /* Scheduler Prediction Provide */
@@ -36,18 +38,21 @@ enum AvailablePredictionType {
     PREDICT_TYPE_EPSILON        = 0x01,
     PREDICT_TYPE_V_PREDICTION   = 0x02,
     PREDICT_TYPE_SAMPLE         = 0x03,
+    AVAILABLE_PREDICTOR_COUNT,
 };
 
 /* Scheduler Type Provide */
 enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_EULAR_A     = 0x01,
     AVAILABLE_SCHEDULER_LMS         = 0x02,
+    AVAILABLE_SCHEDULER_COUNT,
 };
 
 /* Tokenizer Type Provide */
 enum AvailableTokenizerType {
     AVAILABLE_TOKENIZER_BPE         = 0x01,
     /*AVAILABLE_TOKENIZER_WORD_PIECE  = 0x02,*/
+    AVAILABLE_TOKENIZER_COUNT,
 };
 
 /* Diffusion Main Configuration ===========================================*/
