@@ -26,7 +26,7 @@ using namespace detail;
         /*sd_input_width*/      512,                                 \
         /*sd_input_height*/     512,                                 \
         /*sd_input_channel*/    4,                                   \
-        /*sd_scale_positive*/   0.9f                                 \
+        /*sd_scale_positive*/   7.5f                                 \
     }                                                                \
 
 typedef struct ModelUNetConfig {

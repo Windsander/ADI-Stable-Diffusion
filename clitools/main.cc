@@ -497,8 +497,8 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         exit(1);
     }
 
-    if (params.sd_scale_guidance < 0.f || params.sd_scale_guidance > 1.f) {
-        fprintf(stderr, "error: can only work with guidance in [0.0, 1.0]\n");
+    if (params.sd_decode_scale_strength < 0.f || params.sd_decode_scale_strength > 1.f) {
+        fprintf(stderr, "error: can only work with VAE Decoding scale in [0.0, 1.0]\n");
         exit(1);
     }
 
