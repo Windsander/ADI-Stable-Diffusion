@@ -7,7 +7,7 @@ PROJECT("onnxruntime-sd")
 SET(ENGINE_NAME "ORT-TensorRT")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET osx-arm64)
-SET(ONNX_INFERENCE_VERSION "1.17.3" CACHE STRING "ONNXRuntime version" FORCE)
+SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -27,13 +27,20 @@ else()
 endif()
 
 # do prepare option auto enable, based on paltform
-if (WIN32 OR MSVC)                  # for Windows
+if (WIN32)                          # for Windows x32
+    SET(ONNX_INFERENCE_TARGET win-x86)
+    set(DEFAULT_CUDA_STATE ON)
+    set(DEFAULT_TRT_STATE OFF)
+elseif (WIN64)                      # for Windows x64
+    SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE ON)
 elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
+    SET(ONNX_INFERENCE_TARGET osx-arm64)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
 elseif (UNIX AND NOT APPLE)         # for Linux, BSD, Solaris, Minix
+    SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
 endif ()
