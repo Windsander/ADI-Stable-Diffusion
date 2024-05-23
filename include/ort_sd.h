@@ -107,14 +107,16 @@ typedef struct IOrtSDConfig {
     float sd_decode_scale_strength;         // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
 } IOrtSDConfig;
 
-typedef void* IOrtSDContext_ptr;
+namespace ortsd{
+    typedef void* IOrtSDContext_ptr;
 
-ORT_ENTRY static void generate_context(IOrtSDContext_ptr* ctx_pp_, struct IOrtSDConfig ctx_config_);
-ORT_ENTRY static void released_context(IOrtSDContext_ptr* ctx_pp_);
-ORT_ENTRY static void init(IOrtSDContext_ptr ctx_p_);
-ORT_ENTRY static void prepare(IOrtSDContext_ptr ctx_p_, const char* positive_prompts_, const char*negative_prompts_);
-ORT_ENTRY static IO_IMAGE inference(IOrtSDContext_ptr ctx_p_, IO_IMAGE image_data_);
-ORT_ENTRY static void release(IOrtSDContext_ptr ctx_p_);
+    ORT_ENTRY void generate_context(IOrtSDContext_ptr* ctx_pp_, struct IOrtSDConfig ctx_config_);
+    ORT_ENTRY void released_context(IOrtSDContext_ptr* ctx_pp_);
+    ORT_ENTRY void init(IOrtSDContext_ptr ctx_p_);
+    ORT_ENTRY void prepare(IOrtSDContext_ptr ctx_p_, const char* positive_prompts_, const char*negative_prompts_);
+    ORT_ENTRY IO_IMAGE inference(IOrtSDContext_ptr ctx_p_, IO_IMAGE image_data_);
+    ORT_ENTRY void release(IOrtSDContext_ptr ctx_p_);
+}
 
 #ifdef __cplusplus
 }
