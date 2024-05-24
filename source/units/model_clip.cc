@@ -18,15 +18,13 @@ using namespace tokenizer;
 using namespace Ort;
 using namespace detail;
 
-#define DEFAULT_CLIP_CONDIG                                          \
+#define DEFAULT_CLIP_CONFIG                                          \
     {                                                                \
-        /*sd_tokenizer_config*/ DEFAULT_TOKENIZER_CONDIG,            \
-        /*sd_tokenizer_type*/   TokenizerType::TOKENIZER_BPE         \
+        /*sd_tokenizer_config*/ DEFAULT_TOKENIZER_CONFIG             \
     }                                                                \
 
 typedef struct ModelClipConfig {
     TokenizerConfig sd_tokenizer_config;
-    TokenizerType sd_tokenizer_type;
 } ModelClipConfig ;
 
 class Clip : public ModelBase {
@@ -38,7 +36,7 @@ private:
     TokenizerEntity_ptr sd_tokenizer_p;
 
 public:
-    explicit Clip(const std::string &model_path_,  const ModelClipConfig &clip_config_ = DEFAULT_CLIP_CONDIG);
+    explicit Clip(const std::string &model_path_,  const ModelClipConfig &clip_config_ = DEFAULT_CLIP_CONFIG);
     ~Clip() override;
 
     Tensor embedding(const std::string& prompts_);
@@ -46,10 +44,7 @@ public:
 
 Clip::Clip(const std::string &model_path_, const ModelClipConfig &clip_config_) : ModelBase(model_path_){
     sd_clip_config = clip_config_;
-    sd_tokenizer_p = TokenizerRegister::request_tokenizer(
-        clip_config_.sd_tokenizer_type,
-        clip_config_.sd_tokenizer_config
-    );
+    sd_tokenizer_p = TokenizerRegister::request_tokenizer(clip_config_.sd_tokenizer_config);
     sd_tokenizer_p->init();
 }
 

@@ -201,7 +201,7 @@ protected:
     virtual std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) = 0;
 
 public:
-    explicit TokenizerBase(const TokenizerConfig &config_ = DEFAULT_TOKENIZER_CONDIG) : sd_tokenizer_config(config_) {};
+    explicit TokenizerBase(const TokenizerConfig &config_ = DEFAULT_TOKENIZER_CONFIG) : sd_tokenizer_config(config_) {};
     virtual ~TokenizerBase() { sd_tokenizer_config.~TokenizerConfig();};
 
     void create();

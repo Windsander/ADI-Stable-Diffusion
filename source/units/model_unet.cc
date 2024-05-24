@@ -18,10 +18,9 @@ using namespace scheduler;
 using namespace Ort;
 using namespace detail;
 
-#define DEFAULT_UNET_CONDIG                                          \
+#define DEFAULT_UNET_CONFIG                                          \
     {                                                                \
-        /*sd_scheduler_config*/ DEFAULT_SCHEDULER_CONDIG,            \
-        /*sd_scheduler_type*/   SchedulerType::SCHEDULER_EULAR_A,    \
+        /*sd_scheduler_config*/ DEFAULT_SCHEDULER_CONFIG,            \
         /*sd_inference_steps*/  3,                                   \
         /*sd_input_width*/      512,                                 \
         /*sd_input_height*/     512,                                 \
@@ -31,7 +30,6 @@ using namespace detail;
 
 typedef struct ModelUNetConfig {
     SchedulerConfig sd_scheduler_config;
-    SchedulerType sd_scheduler_type;
     uint64_t sd_inference_steps;
     uint64_t sd_input_width;
     uint64_t sd_input_height;
@@ -41,11 +39,11 @@ typedef struct ModelUNetConfig {
 
 class UNet : public ModelBase {
 private:
-    ModelUNetConfig sd_unet_config = DEFAULT_UNET_CONDIG;
+    ModelUNetConfig sd_unet_config = DEFAULT_UNET_CONFIG;
     SchedulerEntity_ptr sd_scheduler_p;
 
 public:
-    explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONDIG);
+    explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONFIG);
     ~UNet() override;
 
     Tensor inference(const Tensor &embs_positive_,const Tensor &embs_negative_, const Tensor &encoded_img_);
@@ -53,10 +51,7 @@ public:
 
 UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
     sd_unet_config = unet_config_;
-    sd_scheduler_p = SchedulerRegister::request_scheduler(
-        unet_config_.sd_scheduler_type,
-        unet_config_.sd_scheduler_config
-    );
+    sd_scheduler_p = SchedulerRegister::request_scheduler(unet_config_.sd_scheduler_config);
     sd_scheduler_p->init(unet_config_.sd_inference_steps);
 }
 

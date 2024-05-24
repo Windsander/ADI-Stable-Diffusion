@@ -16,7 +16,7 @@ using namespace amon;
 using namespace Ort;
 using namespace detail;
 
-#define DEFAULT_VAEs_CONDIG                                          \
+#define DEFAULT_VAEs_CONFIG                                          \
     {                                                                \
         /*sd_decode_scale_strength*/ 0.18215f                        \
     }                                                                \
@@ -27,10 +27,10 @@ typedef struct ModelVAEsConfig {
 
 class VAE : public ModelBase {
 private:
-    ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONDIG;
+    ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONFIG;
 
 public:
-    explicit VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONDIG);
+    explicit VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONFIG);
     ~VAE() override;
 
     Tensor encode(const Tensor &inimage_);
@@ -53,7 +53,7 @@ Tensor VAE::encode(const Tensor &inimage_) {
     std::vector<Tensor> output_tensors;
     execute(input_tensors, output_tensors);
 
-    Tensor result_ = output_tensors.front().GetValue(0, ort_alloc);
+    Tensor result_ = TensorHelper::multiple(output_tensors.front(), sd_vae_config.sd_decode_scale_strength);
     return result_;
 }
 

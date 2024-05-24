@@ -29,8 +29,6 @@ typedef struct OrtSD_Config {
     ModelPathConfig sd_modelpath_config; //= {};
     SchedulerConfig sd_scheduler_config; //= {};
     TokenizerConfig sd_tokenizer_config; //= {};
-    SchedulerType sd_scheduler_type    ; //= SchedulerType::SCHEDULER_EULAR_A;
-    TokenizerType sd_tokenizer_type    ; //= TokenizerType::TOKENIZER_BPE;
     uint64_t sd_inference_steps        ; //= 3;
     uint64_t sd_input_width            ; //= 512;
     uint64_t sd_input_height           ; //= 512;
@@ -145,8 +143,7 @@ void OrtSD_Context::init() {
     ort_sd_clip = new Clip(
         ort_config.sd_modelpath_config.onnx_clip_path,
         {
-            ort_config.sd_tokenizer_config,
-            ort_config.sd_tokenizer_type
+            ort_config.sd_tokenizer_config
         }
     );
 
@@ -154,7 +151,6 @@ void OrtSD_Context::init() {
         ort_config.sd_modelpath_config.onnx_unet_path,
         {
             ort_config.sd_scheduler_config,
-            ort_config.sd_scheduler_type,
             ort_config.sd_inference_steps,
             ort_config.sd_input_width,
             ort_config.sd_input_height,

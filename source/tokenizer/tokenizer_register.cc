@@ -21,9 +21,9 @@ typedef TokenizerBase::PreparedToken_vec PairedTokenWeight;
 
 class TokenizerRegister {
 public:
-    static TokenizerEntity_ptr request_tokenizer(TokenizerType tokenizer_type, const TokenizerConfig &tokenizer_config_) {
+    static TokenizerEntity_ptr request_tokenizer(const TokenizerConfig &tokenizer_config_) {
         TokenizerEntity_ptr result_ptr_ = nullptr;
-        switch (tokenizer_type) {
+        switch (tokenizer_config_.tokenizer_type) {
             case TOKENIZER_BPE: {
                 result_ptr_ = new BPETokenizer(tokenizer_config_);
                 break;

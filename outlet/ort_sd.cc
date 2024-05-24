@@ -25,6 +25,7 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
                 },
                 {
+                    onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
                     ctx_config_.sd_scheduler_config.scheduler_training_steps,
                     ctx_config_.sd_scheduler_config.scheduler_beta_start,
                     ctx_config_.sd_scheduler_config.scheduler_beta_end,
@@ -34,6 +35,7 @@ namespace ortsd {
                     onnx::sd::base::PredictionType(ctx_config_.sd_scheduler_config.scheduler_predict_type)
                 },
                 {
+                    onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),
                     ctx_config_.sd_tokenizer_config.tokenizer_dictionary_at,
                     ctx_config_.sd_tokenizer_config.avail_token_count,
                     ctx_config_.sd_tokenizer_config.avail_token_size,
@@ -42,8 +44,6 @@ namespace ortsd {
                     ctx_config_.sd_tokenizer_config.txt_attn_increase_factor,
                     ctx_config_.sd_tokenizer_config.txt_attn_decrease_factor
                 },
-                onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
-                onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),
                 ctx_config_.sd_inference_steps,
                 ctx_config_.sd_input_width,
                 ctx_config_.sd_input_height,

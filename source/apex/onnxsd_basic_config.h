@@ -67,8 +67,9 @@ typedef enum PredictionType {
     PREDICT_TYPE_SAMPLE         = 3,
 } PredictionType;
 
-#define DEFAULT_SCHEDULER_CONDIG                             \
+#define DEFAULT_SCHEDULER_CONFIG                             \
     {                                                        \
+        /*scheduler_type*/              SCHEDULER_EULAR_A,   \
         /*scheduler_training_steps*/    1000,                \
         /*scheduler_beta_start*/        0.00085f,            \
         /*scheduler_beta_end*/          0.012f,              \
@@ -79,6 +80,7 @@ typedef enum PredictionType {
     }
 
 typedef struct SchedulerConfig {
+    SchedulerType scheduler_type;
     uint64_t scheduler_training_steps;
     float scheduler_beta_start;
     float scheduler_beta_end;
@@ -90,13 +92,14 @@ typedef struct SchedulerConfig {
 
 /* Diffusion Tokenizer Settings ===========================================*/
 /* Tokenizer Type Provide */
-enum TokenizerType {
+typedef enum TokenizerType {
     TOKENIZER_BPE               = 1,
     TOKENIZER_WORD_PIECE        = 2,
-};
+} TokenizerType;
 
-#define DEFAULT_TOKENIZER_CONDIG                            \
+#define DEFAULT_TOKENIZER_CONFIG                            \
     {                                                       \
+         /*tokenizer_type*/              TOKENIZER_BPE,     \
          /*tokenizer_dictionary_at*/     "",                \
          /*avail_token_count*/           49408,             \
          /*avail_token_size*/            77,                \
@@ -107,6 +110,7 @@ enum TokenizerType {
     }
 
 typedef struct TokenizerConfig {
+    TokenizerType tokenizer_type;
     std::string tokenizer_dictionary_at;        // vocabulary lib <one vocab per line, row treate as index>
     int32_t avail_token_count;                  // all available token in vocabulary totally
     int32_t avail_token_size;                   // max token length (include <start> & <end>, so 75 avail)

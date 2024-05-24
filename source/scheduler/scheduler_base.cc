@@ -19,7 +19,7 @@ private:
     RandomGenerator random_generator;
 
 protected:
-    SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONDIG;
+    SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONFIG;
     float           scheduler_max_sigma;
     vector<float>   scheduler_timesteps;
     vector<float>   scheduler_sigmas;
@@ -33,7 +33,7 @@ protected:
         long data_size_, long step_index_, long order_) = 0;
 
 public:
-    explicit SchedulerBase(const SchedulerConfig &scheduler_config_ = DEFAULT_SCHEDULER_CONDIG);
+    explicit SchedulerBase(const SchedulerConfig &scheduler_config_ = DEFAULT_SCHEDULER_CONFIG);
     virtual ~SchedulerBase();
 
     void create();
