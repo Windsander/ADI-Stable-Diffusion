@@ -42,8 +42,8 @@ typedef struct OrtSD_Config {
 class OrtSD_Context {
 private:
     typedef struct OrtSD_Remain {
-        Tensor embeded_positive = TensorHelper::create(TensorShape{1}, std::vector<float>{});
-        Tensor embeded_negative = TensorHelper::create(TensorShape{1}, std::vector<float>{});
+        Tensor embeded_positive = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        Tensor embeded_negative = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     } OrtSD_Remain;
 
 private:

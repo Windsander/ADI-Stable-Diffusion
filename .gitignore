@@ -20,10 +20,10 @@ test/
 *.synctex.gz
 
 cmake-build-*
-#sd/io-test
+sd/io-test
 sd/sd-loras
 sd/sd-control-net
 sd/sd-embeddings
-#sd/sd-dictionary
+sd/sd-dictionary
 sd/sd-base-model
 engine

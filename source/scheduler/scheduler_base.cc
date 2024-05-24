@@ -86,7 +86,7 @@ void SchedulerBase::create() {
                 float beta_norm = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
                 product *= 1.0f - beta_norm;
                 float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod[i] = comprod_sigma;
+                alphas_cumprod.push_back(comprod_sigma);
             }
             break;
         }
@@ -101,7 +101,7 @@ void SchedulerBase::create() {
                 float beta_norm = powf(beta_dire, 2.0f);
                 product *= 1.0f - beta_norm;
                 float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod[i] = comprod_sigma;
+                alphas_cumprod.push_back(comprod_sigma);
             }
             break;
         }
@@ -126,7 +126,7 @@ void SchedulerBase::create() {
                 float beta_norm = std::min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), beta_max);
                 product *= 1.0f - beta_norm;
                 float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod[i] = comprod_sigma;
+                alphas_cumprod.push_back(comprod_sigma);
             }
             break;
         }

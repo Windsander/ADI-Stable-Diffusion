@@ -628,6 +628,7 @@ int main(int argc, const char *argv[]) {
                 params.onnx_unet_path.c_str(),
                 params.onnx_vae_encoder_path.c_str(),
                 params.onnx_vae_decoder_path.c_str(),
+                params.onnx_control_net_path.c_str(),
                 params.onnx_safty_path.c_str()
             },
             {
