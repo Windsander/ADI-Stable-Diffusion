@@ -59,22 +59,22 @@ Tensor Clip::embedding(const std::string& prompts_) {
     PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
     std::vector<Tensor> merged_hidden_;
-    for (auto &tw_pair_: tokenizer_output_) {
+    for (auto &tw_pair_: tokenizer_output_) {          // major_hidden_dim = 768 in SD, 1280 in SDXL
         const Tensor &tokens_ = tw_pair_.first;        // [1, 77]
         const Tensor &weight_ = tw_pair_.second;       // [1, 77]
 
         std::vector<Tensor> input_tensors;
         Ort::AllocatorWithDefaultOptions ort_alloc;
         input_tensors.push_back(tokens_.GetValue(0, ort_alloc));
-        std::vector<Tensor> output_tensors;           // [1, 77, 768]
+        std::vector<Tensor> output_tensors;           // [1, 77, major_hidden_dim]
         execute(input_tensors, output_tensors);
 
         merged_hidden_.push_back(
-            TensorHelper::weight(output_tensors[0], weight_, 1, true)  // [1, 77, 768]
+            TensorHelper::weight(output_tensors[0], weight_, 1, true)  // [1, 77, major_hidden_dim]
         );
     }
     // seems not right
-    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_, 1);  // [1, 77 * N, 768]
+    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_, 1);  // [1, 77 * N, major_hidden_dim]
 
     return hidden_state_;
 }
