@@ -180,10 +180,10 @@ void OrtSD_Context::init() {
 }
 
 void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::string &negative_prompts_){
-    // embeded_positive_ [1, 77 * pos_N, 768]
+    // embeded_positive_ [1, 77 * pos_N, 768], txt_encoder_1
     ort_remain.embeded_positive = ort_sd_clip->embedding(positive_prompts_);
 
-    // embeded_negative_ [1, 77 * neg_N, 768]
+    // embeded_negative_ [1, 77 * neg_N, 768], txt_encoder_1
     ort_remain.embeded_negative = ort_sd_clip->embedding(negative_prompts_);
 }
 
