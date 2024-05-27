@@ -42,6 +42,9 @@ private:
     ModelUNetConfig sd_unet_config = DEFAULT_UNET_CONFIG;
     SchedulerEntity_ptr sd_scheduler_p;
 
+protected:
+    void generate_output(std::vector<Tensor>& output_tensors_) override;
+
 public:
     explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONFIG);
     ~UNet() override;
@@ -61,6 +64,21 @@ UNet::~UNet(){
     sd_unet_config.~ModelUNetConfig();
 }
 
+void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
+    std::vector<float> output_hidden_(
+        sd_unet_config.sd_input_width *
+            sd_unet_config.sd_input_height *
+            sd_unet_config.sd_input_channel
+    );
+    TensorShape hidden_shape_ = {
+        1,
+        int64_t(sd_unet_config.sd_input_channel),
+        int64_t(sd_unet_config.sd_input_height),
+        int64_t(sd_unet_config.sd_input_width)
+    };
+    output_tensors_.emplace_back(TensorHelper::create(hidden_shape_, output_hidden_));
+}
+
 Tensor UNet::inference(
     const Tensor &embs_positive_,
     const Tensor &embs_negative_,
@@ -71,10 +89,10 @@ Tensor UNet::inference(
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
 
-    TensorShape latent_shape_{1, c_, h_ / 8, w_ / 8};
+    TensorShape latent_shape_{1, c_, h_, w_};
     std::vector<float> latent_empty_{};
     Tensor latents_ =  (encoded_img_.HasValue())?
-        TensorHelper::duplicate(encoded_img_, latent_shape_):
+        TensorHelper::duplicate<float>(encoded_img_, latent_shape_):
         TensorHelper::create(latent_shape_, latent_empty_);
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
 
@@ -85,35 +103,37 @@ Tensor UNet::inference(
         Tensor timestep_ = sd_scheduler_p->time(i);
 
         // do positive N_pos_embed_num times
-        Tensor pred_positive_ = TensorHelper::duplicate(model_latent_, latent_shape_);
+        Tensor pred_positive_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
         if (embs_positive_.HasValue()){
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(TensorHelper::duplicate(embs_positive_));
             input_tensors.emplace_back(std::move(pred_positive_));
-            input_tensors.emplace_back(TensorHelper::duplicate(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<float>(embs_positive_));
             std::vector<Tensor> output_tensors;
+            generate_output(output_tensors);
             execute(input_tensors, output_tensors);
             pred_positive_ = std::move(output_tensors[0]);
         }
 
         // do negative N_neg_embed_num times
-        Tensor pred_negative_ = TensorHelper::duplicate(model_latent_, latent_shape_);
+        Tensor pred_negative_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
         if (embs_negative_.HasValue()) {
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(TensorHelper::duplicate(embs_negative_));
             input_tensors.emplace_back(std::move(pred_negative_));
-            input_tensors.emplace_back(TensorHelper::duplicate(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<float>(embs_negative_));
             std::vector<Tensor> output_tensors;
+            generate_output(output_tensors);
             execute(input_tensors, output_tensors);
             pred_negative_ = std::move(output_tensors[0]);
         }
 
-        // do merge
+        // Merge and update
         float merge_factor_ = sd_unet_config.sd_scale_positive;
         Tensor guided_pred_ = (
             (pred_negative_.HasValue()) ?
             TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
-            TensorHelper::duplicate(pred_positive_, latent_shape_)
+            TensorHelper::duplicate<float>(pred_positive_, latent_shape_)
         );
 
         latents_ = sd_scheduler_p->step(model_latent_, guided_pred_, i);

@@ -74,12 +74,13 @@ OrtSD_Context::OrtSD_Context(const OrtSD_Config& ort_config_){
 }
 
 OrtSD_Context::~OrtSD_Context(){
-    if (ort_executor) {
-        ort_executor->~ONNXRuntimeExecutor();
+    if (ort_executor != nullptr) {
         delete ort_executor;
+        ort_executor = nullptr;
     }
-    this->ort_config.~OrtSD_Config();
-    this->ort_remain.~OrtSD_Remain();
+    this->ort_remain.embeded_negative.release();
+    this->ort_remain.embeded_positive.release();
+    this->ort_config = {};
 }
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
@@ -152,8 +153,8 @@ void OrtSD_Context::init() {
         {
             ort_config.sd_scheduler_config,
             ort_config.sd_inference_steps,
-            ort_config.sd_input_width,
-            ort_config.sd_input_height,
+            ort_config.sd_input_width / 8,
+            ort_config.sd_input_height / 8,
             ort_config.sd_input_channel,
             ort_config.sd_scale_guidance
         }
@@ -162,14 +163,20 @@ void OrtSD_Context::init() {
     ort_sd_vae_encoder = new VAE(
         ort_config.sd_modelpath_config.onnx_vae_encoder_path,
         {
-            ort_config.sd_decode_scale_strength   // it's unused for encoding
+            ort_config.sd_decode_scale_strength,
+            ort_config.sd_input_width / 8,
+            ort_config.sd_input_height / 8,
+            ort_config.sd_input_channel,
         }
     );
 
     ort_sd_vae_decoder = new VAE(
         ort_config.sd_modelpath_config.onnx_vae_decoder_path,
         {
-            ort_config.sd_decode_scale_strength
+            ort_config.sd_decode_scale_strength,
+            ort_config.sd_input_width,
+            ort_config.sd_input_height,
+            ort_config.sd_input_channel,
         }
     );
 

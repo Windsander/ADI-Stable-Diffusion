@@ -8,7 +8,7 @@
 #include "onnxsd_basic_refs.h"
 
 #ifdef ENABLE_TENSOR_RT
-#include tensorrt_provider_factory.h"
+#include "tensorrt_provider_factory.h"
 #endif
 #ifdef ENABLE_CUDA
 #include "cuda_provider_factory.h"
@@ -16,6 +16,7 @@
 #ifdef ENABLE_COREML
 #include "coreml_provider_factory.h"
 #endif
+#include "cpu_provider_factory.h"
 
 namespace onnx {
 namespace sd {
@@ -51,6 +52,7 @@ ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
 #ifdef ENABLE_COREML
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(ort_session_config, device_id));
 #endif
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CPU(ort_session_config, device_id));
     ort_session_config.SetGraphOptimizationLevel(ort_config_.onnx_graph_optimize);
     ort_session_config.SetExecutionMode(ort_config_.onnx_execution_mode);
 }

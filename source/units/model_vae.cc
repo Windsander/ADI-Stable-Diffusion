@@ -18,16 +18,25 @@ using namespace detail;
 
 #define DEFAULT_VAEs_CONFIG                                          \
     {                                                                \
-        /*sd_decode_scale_strength*/ 0.18215f                        \
+        /*sd_decode_scale_strength*/  0.18215f,                      \
+        /*sd_input_width*/            512,                           \
+        /*sd_input_height*/           512,                           \
+        /*sd_input_channel*/          4,                             \
     }                                                                \
 
 typedef struct ModelVAEsConfig {
     float sd_decode_scale_strength;
+    uint64_t sd_input_width;
+    uint64_t sd_input_height;
+    uint64_t sd_input_channel;
 } ModelVAEsConfig;
 
 class VAE : public ModelBase {
 private:
     ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONFIG;
+
+protected:
+    void generate_output(std::vector<Tensor>& output_tensors_) override;
 
 public:
     explicit VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONFIG);
@@ -45,10 +54,26 @@ VAE::~VAE(){
     sd_vae_config.~ModelVAEsConfig();
 }
 
+void VAE::generate_output(std::vector<Tensor> &output_tensors_) {
+    std::vector<float> output_hidden_(
+        sd_vae_config.sd_input_width *
+        sd_vae_config.sd_input_height *
+        sd_vae_config.sd_input_channel
+    );
+    TensorShape hidden_shape_ = {
+        1,
+        int64_t(sd_vae_config.sd_input_channel),
+        int64_t(sd_vae_config.sd_input_height),
+        int64_t(sd_vae_config.sd_input_width)
+    };
+    output_tensors_.emplace_back(TensorHelper::create(hidden_shape_, output_hidden_));
+}
+
 Tensor VAE::encode(const Tensor &inimage_) {
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(inimage_, 2.0f, -1.0f));
     std::vector<Tensor> output_tensors;
+    generate_output(output_tensors);
     execute(input_tensors, output_tensors);
 
     Tensor result_ = TensorHelper::multiple(output_tensors.front(), sd_vae_config.sd_decode_scale_strength);
@@ -59,6 +84,7 @@ Tensor VAE::decode(const Tensor &latents_) {
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(latents_, (1.0f / sd_vae_config.sd_decode_scale_strength)));
     std::vector<Tensor> output_tensors;
+    generate_output(output_tensors);
     execute(input_tensors, output_tensors);
 
     Tensor result_ = std::move(output_tensors.front());

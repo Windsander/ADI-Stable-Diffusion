@@ -20,12 +20,13 @@ private:
 
 protected:
     SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONFIG;
-    float           scheduler_max_sigma;
-    vector<float>   scheduler_timesteps;
-    vector<float>   scheduler_sigmas;
-    vector<float>   alphas_cumprod;
+    std::map<long, int64_t> scheduler_timesteps;
+    vector<float> scheduler_sigmas;
+    vector<float> alphas_cumprod;
+    float scheduler_max_sigma;
 
 protected:
+    long find_closest_timestep_index(long time_);
     float generate_sigma_at(float timestep_);
 
     virtual std::vector<float> execute_method(
@@ -39,9 +40,9 @@ public:
     void create();
     void init(uint32_t inference_steps_) ;
     Tensor mask(const TensorShape& mask_shape_);
-    Tensor scale(const Tensor& sample_, int time_);
-    Tensor time(int time_);
-    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int time_, int order_ = 4);
+    Tensor scale(const Tensor& sample_, int step_index_);
+    Tensor time(int step_index_);
+    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, int order_ = 4);
     void uninit();
     void release();
 };
@@ -58,6 +59,19 @@ SchedulerBase::~SchedulerBase(){
     scheduler_sigmas.clear();
     scheduler_timesteps.clear();
     random_generator.~RandomGenerator();
+}
+
+long SchedulerBase::find_closest_timestep_index(long time_) {
+    auto it = scheduler_timesteps.lower_bound(time_);
+    if (it == scheduler_timesteps.end()) {
+        throw std::runtime_error("closest index found failed");
+    }
+    if ((it != scheduler_timesteps.begin()) &&
+        (it == scheduler_timesteps.end() ||
+         std::abs(it->second - time_) >= std::abs(std::prev(it)->second - time_))) {
+        --it;
+    }
+    return it->first;
 }
 
 float SchedulerBase::generate_sigma_at(float timestep_) {
@@ -154,7 +168,7 @@ void SchedulerBase::init(uint32_t inference_steps_) {
     for (uint32_t i = 0; i < inference_steps_; ++i) {
         float t = float(end_when) - step_gap * float(i);
         float sigma = generate_sigma_at(t);
-        scheduler_timesteps.push_back(t);
+        scheduler_timesteps.insert(make_pair(i, t));
         scheduler_sigmas.push_back(sigma);
         scheduler_max_sigma = std::max(scheduler_max_sigma, sigma);
     }
@@ -165,24 +179,22 @@ Tensor SchedulerBase::mask(const TensorShape& mask_shape_){
     return TensorHelper::random(mask_shape_, random_generator, scheduler_max_sigma);
 }
 
-Tensor SchedulerBase::scale(const Tensor& sample_, int time_){
+Tensor SchedulerBase::scale(const Tensor& sample_, int step_index_){
     // Get step index of timestep from TimeSteps
-    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
-    if (step_index_ == scheduler_timesteps.size()) {
-        throw std::runtime_error("Timestep not found in TimeSteps.");
+    if (step_index_ >= scheduler_timesteps.size()) {
+        throw std::runtime_error("from time not found target TimeSteps.");
     }
     float sigma = scheduler_sigmas[step_index_];
     sigma = std::sqrtf(sigma * sigma + 1);
     return TensorHelper::divide(sample_, sigma);
 }
 
-Tensor SchedulerBase::time(int time_){
+Tensor SchedulerBase::time(int step_index_){
     // Get step index of timestep from TimeSteps
-    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
-    if (step_index_ == scheduler_timesteps.size()) {
-        throw std::runtime_error("Timestep not found in TimeSteps.");
+    if (step_index_ >= scheduler_timesteps.size()) {
+        throw std::runtime_error("from time not found target TimeSteps.");
     }
-    vector<float> timestep_value_{scheduler_timesteps[step_index_]};
+    vector<int64_t> timestep_value_{scheduler_timesteps[step_index_]};
     TensorShape timestep_shape_{1};
     return TensorHelper::create(timestep_shape_, timestep_value_);
 }
@@ -190,13 +202,12 @@ Tensor SchedulerBase::time(int time_){
 Tensor SchedulerBase::step(
     const Tensor& sample_,
     const Tensor& dnoise_,
-    int time_,
+    int step_index_,
     int order_
 ) {
     // Get step index of timestep from TimeSteps
-    long step_index_ = std::find(scheduler_timesteps.begin(), scheduler_timesteps.end(), time_) - scheduler_timesteps.begin();
-    if (step_index_ == scheduler_timesteps.size()) {
-        throw std::runtime_error("Timestep not found in TimeSteps.");
+    if (step_index_ >= scheduler_timesteps.size()) {
+        throw std::runtime_error("from time not found target TimeSteps.");
     }
 
     TensorShape output_shape_ = sample_.GetTensorTypeAndShapeInfo().GetShape();

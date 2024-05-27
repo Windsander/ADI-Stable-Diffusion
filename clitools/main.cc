@@ -603,10 +603,11 @@ static void save_image(const CommandLineInput &params, uint8_t* image_data){
         (int) params.sd_input_width, (int) params.sd_input_height, (int) params.sd_input_channel,
         image_data, 0
     );
+    printf("\n");
     printf("save result image to '%s'\n", final_image_path.c_str());
     printf("\n");
     printf("all done with option '%s'\n", get_image_params(params).c_str());
-    free(image_data);
+    printf("\n");
     image_data = nullptr;
 }
 

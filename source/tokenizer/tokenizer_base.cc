@@ -25,17 +25,21 @@ class TokenizerBase {
 public:
     typedef std::vector<std::pair<std::string, float>> PromptWeight_map;
     typedef std::vector<std::pair<Tensor, Tensor>> PreparedToken_vec;
+    typedef std::vector<std::vector<float>> Embeddings_matrix;
+    typedef std::vector<std::vector<float>> Positional_matrix;
 
 protected:
     typedef std::map<std::string, int> Token_2_ID_dict;
     typedef std::map<int, std::string> ID_2_Token_dict;
-    typedef std::vector<int>   Tokens;
+    typedef std::vector<int32_t> Tokens;
     typedef std::vector<float> Multis;
 
 protected:
     TokenizerConfig sd_tokenizer_config;
     Token_2_ID_dict sd_tokenizer_tok2id;
     ID_2_Token_dict sd_tokenizer_id2tok;
+    Embeddings_matrix embeddings_matrix;
+    Positional_matrix positional_matrix;
 
     const std::regex re_focusing = std::regex(
         R"(\\\(|\\\)|\\\[|\\\]|\\\\|\\|\(|\[|:([+-]?[.\d]+)\)|\)|\]|[^\\()\[\]:]+|:)"
@@ -207,6 +211,7 @@ public:
     void create();
     void init();
     PreparedToken_vec tokenize(const std::string &prompts_);
+    Tensor embedding(const Tensor &token_);
     std::string untokenize(const std::pair<Tensor, Tensor> &tpair_);
     void uninit();
     void release();
@@ -226,6 +231,42 @@ void TokenizerBase::init(){
         idx++;
     }
     vocab_file.close();
+
+    // prepare token embeddings_matrix
+    {
+        embeddings_matrix.resize(
+            sd_tokenizer_config.avail_token_count,
+            std::vector<float>(sd_tokenizer_config.major_hidden_dim)
+        );
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> dis(-0.1, 0.1);
+
+        for (int i = 0; i < sd_tokenizer_config.avail_token_count; ++i) {
+            for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
+                embeddings_matrix[i][j] = dis(gen);
+            }
+        }
+    }
+
+    // prepare token positional_matrix
+    {
+        positional_matrix.resize(
+            sd_tokenizer_config.avail_token_size,
+            std::vector<float>(sd_tokenizer_config.major_hidden_dim, 0.0)
+        );
+
+        for (int pos = 0; pos < sd_tokenizer_config.avail_token_size; ++pos) {
+            for (int i = 0; i < sd_tokenizer_config.major_hidden_dim; i += 2) {
+                positional_matrix[pos][i] = std::sin(
+                    pos / std::pow(10000, 2.0 * i / sd_tokenizer_config.major_hidden_dim));
+                if (i + 1 < sd_tokenizer_config.major_hidden_dim) {
+                    positional_matrix[pos][i + 1] = std::cos(
+                        pos / std::pow(10000, 2.0 * (i + 1) / sd_tokenizer_config.major_hidden_dim));
+                }
+            }
+        }
+    }
 }
 
 TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prompts_) {
@@ -253,8 +294,8 @@ TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prom
 
         TensorShape paired_shape_ = {1, sd_tokenizer_config.avail_token_size};
         matched_results_.emplace_back(
-                TensorHelper::create(paired_shape_, tokens_cache_),
-                TensorHelper::create(paired_shape_, multis_cache_)
+                std::move(TensorHelper::create(paired_shape_, tokens_cache_)),
+                std::move(TensorHelper::create(paired_shape_, multis_cache_))
 
         );
 
@@ -263,6 +304,27 @@ TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prom
     }
 
     return matched_results_;
+}
+
+Tensor TokenizerBase::embedding(const Tensor &token_) {
+
+    auto *token_data_ = token_.GetTensorData<int>();
+    long token_size_ = TensorHelper::get_data_size(token_);
+
+    std::vector<float> result_(token_size_ * sd_tokenizer_config.major_hidden_dim);
+
+    for (int i = 0; i < sd_tokenizer_config.avail_token_size; ++i) {
+        std::vector<float> embeddings_ = embeddings_matrix[token_data_[i]];
+        std::vector<float> positional_ = positional_matrix[i];
+
+        int offset_ = sd_tokenizer_config.avail_token_size * i;
+        for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
+            result_[offset_ + j] = embeddings_[j] + positional_[j];
+        }
+    }
+
+    TensorShape shape_ = {1, sd_tokenizer_config.avail_token_size, sd_tokenizer_config.major_hidden_dim};
+    return TensorHelper::create(shape_, result_);
 }
 
 std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) {
