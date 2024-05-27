@@ -104,7 +104,7 @@ Tensor UNet::inference(
 
         // do positive N_pos_embed_num times
         Tensor pred_positive_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
-        if (embs_positive_.HasValue()){
+        if (embs_positive_.GetTensorTypeAndShapeInfo().GetElementCount() != 0){
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(std::move(pred_positive_));
             input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
@@ -117,7 +117,7 @@ Tensor UNet::inference(
 
         // do negative N_neg_embed_num times
         Tensor pred_negative_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
-        if (embs_negative_.HasValue()) {
+        if (embs_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) {
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(std::move(pred_negative_));
             input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
@@ -131,7 +131,7 @@ Tensor UNet::inference(
         // Merge and update
         float merge_factor_ = sd_unet_config.sd_scale_positive;
         Tensor guided_pred_ = (
-            (pred_negative_.HasValue()) ?
+            (embs_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) ?
             TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
             TensorHelper::duplicate<float>(pred_positive_, latent_shape_)
         );
