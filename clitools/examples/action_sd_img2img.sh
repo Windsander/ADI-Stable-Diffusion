@@ -3,7 +3,7 @@ find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
 # executing Stable Diffusion with params below
-../../cmake-build-debug/bin/onnxruntime-sd-clitools\
+././cmake-build-debug/bin/onnxruntime-sd-clitools\
  -p "\
  best quality, extremely detailed,\
  (keep main character),\
@@ -18,15 +18,16 @@ find . -name "._*" -type f -delete
  connected hand, bad hands, missing fingers, extra fingers, 4 fingers, 3 fingers, deformed hands,\
  extra legs, bad legs, many legs, more than two legs, bad feet, extra feet\
  "\
- -m txt2img\
- -o ../../sd/io-test/output.png\
+ -m img2img\
+ -i ././sd/io-test/input.png\
+ -o ././sd/io-test/output.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
  --dims 768\
- --clip ../../sd/sd-base-model/onnx-sdxl-turbo/text_encoder/model.onnx\
- --unet ../../sd/sd-base-model/onnx-sdxl-turbo/unet/model.onnx\
- --vae-encoder ../../sd/sd-base-model/onnx-sdxl-turbo/vae_encoder/model.onnx\
- --vae-decoder ../../sd/sd-base-model/onnx-sdxl-turbo/vae_decoder/model.onnx\
+ --clip ../../sd/sd-base-model/onnx-sd-v15/text_encoder/model.onnx\
+ --unet ../../sd/sd-base-model/onnx-sd-v15/unet/model.onnx\
+ --vae-encoder ../../sd/sd-base-model/onnx-sd-v15/vae_encoder/model.onnx\
+ --vae-decoder ../../sd/sd-base-model/onnx-sd-v15/vae_decoder/model.onnx\
  --dict ../../sd/sd-dictionary/vocab.txt\
  --beta-start 0.00085\
  --beta-end 0.012\

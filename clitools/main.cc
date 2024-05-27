@@ -48,7 +48,7 @@ const char* scheduler_sampler_fuc_str[] = {
 
 // below order match AvailablePredictionType order
 const char* tokenizer_series_str[] = {
-    "byte_pair_encoding",
+    "bpe",
     "word_piece",
 };
 
@@ -230,7 +230,7 @@ void print_usage(int argc, const char* argv[]) {
             invalid_arg = true;                      \
             return -1;                               \
         }                                            \
-        return found;                                \
+        return (found + 1);                          \
     }()
 
 void parse_args(int argc, const char** argv, CommandLineInput& params) {

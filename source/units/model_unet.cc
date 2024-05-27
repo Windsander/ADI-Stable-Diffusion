@@ -88,26 +88,24 @@ Tensor UNet::inference(
         Tensor pred_positive_ = TensorHelper::duplicate(model_latent_, latent_shape_);
         if (embs_positive_.HasValue()){
             std::vector<Tensor> input_tensors;
-            Ort::AllocatorWithDefaultOptions ort_alloc;
-            input_tensors.push_back(embs_positive_.GetValue(0, ort_alloc));
-            input_tensors.push_back(pred_positive_.GetValue(0, ort_alloc));
-            input_tensors.push_back(timestep_.GetValue(0, ort_alloc));
+            input_tensors.emplace_back(TensorHelper::duplicate(embs_positive_));
+            input_tensors.emplace_back(std::move(pred_positive_));
+            input_tensors.emplace_back(TensorHelper::duplicate(timestep_));
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
-            pred_positive_ = output_tensors[0].GetValue(0, ort_alloc);
+            pred_positive_ = std::move(output_tensors[0]);
         }
 
         // do negative N_neg_embed_num times
         Tensor pred_negative_ = TensorHelper::duplicate(model_latent_, latent_shape_);
         if (embs_negative_.HasValue()) {
             std::vector<Tensor> input_tensors;
-            Ort::AllocatorWithDefaultOptions ort_alloc;
-            input_tensors.push_back(embs_negative_.GetValue(0, ort_alloc));
-            input_tensors.push_back(pred_negative_.GetValue(0, ort_alloc));
-            input_tensors.push_back(timestep_.GetValue(0, ort_alloc));
+            input_tensors.emplace_back(TensorHelper::duplicate(embs_negative_));
+            input_tensors.emplace_back(std::move(pred_negative_));
+            input_tensors.emplace_back(TensorHelper::duplicate(timestep_));
             std::vector<Tensor> output_tensors;
             execute(input_tensors, output_tensors);
-            pred_negative_ = output_tensors[0].GetValue(0, ort_alloc);
+            pred_negative_ = std::move(output_tensors[0]);
         }
 
         // do merge

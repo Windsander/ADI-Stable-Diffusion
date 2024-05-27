@@ -3,7 +3,7 @@ find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
 # executing Stable Diffusion with params below
-././cmake-build-debug/bin/onnxruntime-sd-clitools\
+../../cmake-build-debug/bin/onnxruntime-sd-clitools\
  -p "\
  best quality, extremely detailed,\
  (keep main character),\
@@ -19,21 +19,20 @@ find . -name "._*" -type f -delete
  extra legs, bad legs, many legs, more than two legs, bad feet, extra feet\
  "\
  -m txt2img\
- -i ././sd/io-test/input.png\
- -o ././sd/io-test/output.png\
+ -o ../../sd/io-test/output.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
- --dim 768\
- --clip ././sd/sd-base-model/onnx-sd-v15/txt_encoder/model.onnx\
- --unet ././sd/sd-base-model/onnx-sd-v15/unet/model.onnx\
- --vae-encoder ././sd/sd-base-model/onnx-sd-v15/vae_encoder/model.onnx\
- --vae-decoder ././sd/sd-base-model/onnx-sd-v15/vae_decoder/model.onnx\
- --dict ././sd/sd-dictionary/vocab.txt\
+ --dims 768\
+ --clip ../../sd/sd-base-model/onnx-sd-v15/text_encoder/model.onnx\
+ --unet ../../sd/sd-base-model/onnx-sd-v15/unet/model.onnx\
+ --vae-encoder ../../sd/sd-base-model/onnx-sd-v15/vae_encoder/model.onnx\
+ --vae-decoder ../../sd/sd-base-model/onnx-sd-v15/vae_decoder/model.onnx\
+ --dict ../../sd/sd-dictionary/vocab.txt\
  --beta-start 0.00085\
  --beta-end 0.012\
  --beta linear\
  --alpha cos\
- --scheduler lcm\
+ --scheduler eular_a\
  --predictor epsilon\
  --tokenizer bpe\
  --train-steps 1000\

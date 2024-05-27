@@ -46,8 +46,6 @@ VAE::~VAE(){
 }
 
 Tensor VAE::encode(const Tensor &inimage_) {
-    Ort::AllocatorWithDefaultOptions ort_alloc;
-
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(inimage_, 2.0f, -1.0f));
     std::vector<Tensor> output_tensors;
@@ -58,14 +56,12 @@ Tensor VAE::encode(const Tensor &inimage_) {
 }
 
 Tensor VAE::decode(const Tensor &latents_) {
-    Ort::AllocatorWithDefaultOptions ort_alloc;
-
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(latents_, (1.0f / sd_vae_config.sd_decode_scale_strength)));
     std::vector<Tensor> output_tensors;
     execute(input_tensors, output_tensors);
 
-    Tensor result_ = output_tensors.front().GetValue(0, ort_alloc);
+    Tensor result_ = std::move(output_tensors.front());
     return result_;
 }
 

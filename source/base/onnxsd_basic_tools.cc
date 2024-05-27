@@ -130,7 +130,7 @@ public:
         return result_tensor_;
     }
 
-    static Tensor duplicate(const Tensor &input_, TensorShape shape_) {
+    static Tensor duplicate(const Tensor &input_, TensorShape shape_ = {}) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_count_);
         long input_size_ = GET_TENSOR_DATA_SIZE(input_shape_, input_count_);
         float result_data_[input_size_];
@@ -139,9 +139,10 @@ public:
             result_data_[i] = input_data_[i];
         }
 
+        TensorShape result_shape_ = shape_.empty() ? input_shape_ : shape_;
         Tensor result_tensor_ = Tensor::CreateTensor<float>(
             input_.GetTensorMemoryInfo(), result_data_, input_size_,
-            shape_.data(), shape_.size()
+            result_shape_.data(), result_shape_.size()
         );
 
         return result_tensor_;

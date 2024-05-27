@@ -5,6 +5,8 @@
 #ifndef MODEL_BASE_H
 #define MODEL_BASE_H
 
+#include <utility>
+
 #include "onnxsd_foundation.cc"
 
 namespace onnx {
@@ -35,7 +37,7 @@ protected:
     void execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_);
 
 public:
-    explicit ModelBase(const std::string &model_path_) : model_path(model_path_) {};
+    explicit ModelBase(std::string model_path_) : model_path(std::move(model_path_)) {};
     virtual ~ModelBase() = default;
 
     void init(ONNXRuntimeExecutor &ort_executor_);
