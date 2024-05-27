@@ -1,4 +1,4 @@
-set(TARGET "onnxruntime-sd-clitools")
+set(TARGET "ort-sd-clitools")
 
 add_executable(${TARGET} main.cc)
 install(TARGETS ${TARGET} RUNTIME)

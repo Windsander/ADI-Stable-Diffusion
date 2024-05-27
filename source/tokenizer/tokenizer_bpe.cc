@@ -15,7 +15,7 @@ class BPETokenizer : public TokenizerBase {
 protected:
     const std::string bep_vocab_end = ",";
     const std::regex bep_split_reg = std::regex(
-        R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[[:alpha:]]+|[[:digit:]]|[^[:space:][:alpha:][:digit:]]+)",
+        R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
         std::regex::icase
     );
 
@@ -35,7 +35,7 @@ protected:
         for (auto concise_: prompt_weight_) {
             std::vector<std::string> vocab = PromptsHelper::split(
                 PromptsHelper::whitespace(concise_.first),
-                bep_split_reg
+                bep_split_reg, false
             );
             for (const std::string& character_: vocab) {
                 bool reach_space_mark_ = (character_ == bep_vocab_end);

@@ -647,6 +647,7 @@ int main(int argc, const char *argv[]) {
                 params.avail_token_count,
                 params.avail_token_size,
                 params.major_hidden_dim,
+                params.major_boundary_factor,
                 params.txt_attn_increase_factor,
                 params.txt_attn_decrease_factor
             },

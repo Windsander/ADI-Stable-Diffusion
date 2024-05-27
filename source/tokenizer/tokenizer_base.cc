@@ -252,11 +252,10 @@ TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prom
         multis_cache_.push_back(get_boundary_factor());
 
         TensorShape paired_shape_ = {1, sd_tokenizer_config.avail_token_size};
-        matched_results_.push_back(
-            std::pair<Tensor, Tensor>{
+        matched_results_.emplace_back(
                 TensorHelper::create(paired_shape_, tokens_cache_),
                 TensorHelper::create(paired_shape_, multis_cache_)
-            }
+
         );
 
         encoded_token_index_= encoded_token_index_ + avail_token_size_;

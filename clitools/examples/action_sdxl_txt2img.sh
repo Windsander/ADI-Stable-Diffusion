@@ -3,7 +3,7 @@ find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
 # executing Stable Diffusion with params below
-../../cmake-build-debug/bin/onnxruntime-sd-clitools\
+../../cmake-build-debug/bin/ort-sd-clitools\
  -p "\
  best quality, extremely detailed,\
  (keep main character),\

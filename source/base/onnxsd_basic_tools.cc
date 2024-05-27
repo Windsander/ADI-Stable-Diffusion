@@ -361,11 +361,23 @@ public:
         return std::regex_replace(text, std::regex("\\s+"), " ");
     }
 
-    static std::vector<std::string> split(const std::string &str, const std::regex &regex){
-        std::vector<string> result;
-        std::sregex_token_iterator first(str.begin(), str.end(), regex, -1);
-        std::sregex_token_iterator last;
-        return {first, last};
+    static std::vector<std::string> split(const std::string &str, const std::regex &regex, bool match_break = true){
+        if (match_break) {
+            std::sregex_token_iterator first(str.begin(), str.end(), regex, -1);
+            std::sregex_token_iterator last;
+            return {first, last};
+        } else {
+            std::vector<std::string> result;
+            auto words_begin = std::sregex_iterator(str.begin(), str.end(), regex);
+            auto words_end = std::sregex_iterator();
+
+            for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+                std::smatch match = *i;
+                result.push_back(match.str());
+            }
+
+            return result;
+        }
     }
 };
 
