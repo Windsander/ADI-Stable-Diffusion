@@ -106,7 +106,7 @@ Tensor UNet::inference(
         if (embs_positive_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) {
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(TensorHelper::duplicate<float>(model_latent_));
-            input_tensors.emplace_back(TensorHelper::duplicate<int>(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
             input_tensors.emplace_back(TensorHelper::duplicate<float>(embs_positive_));
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);

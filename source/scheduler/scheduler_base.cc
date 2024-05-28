@@ -227,7 +227,7 @@ Tensor SchedulerBase::step(
             }
             case PREDICT_TYPE_V_PREDICTION: {
                 // c_out + input * c_skip
-                predict_data_[i] = dnoise_data_[i] * (-sigma / std::sqrt(std::powf(sigma,2) + 1)) + (sample_data_[i] / (std::powf(sigma,2) + 1));
+                predict_data_[i] = (sample_data_[i] / (std::powf(sigma,2) + 1)) + (dnoise_data_[i] * (-sigma / std::sqrt(std::powf(sigma,2) + 1)));
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {

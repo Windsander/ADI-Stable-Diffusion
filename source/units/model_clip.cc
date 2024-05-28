@@ -90,7 +90,6 @@ Tensor Clip::embedding(const std::string& prompts_) {
         Tensor &tokens_ = tw_pair_.first;        // [1, 77]
         Tensor &weight_ = tw_pair_.second;       // [1, 77]
 
-
         std::vector<Tensor> input_tensors;
         input_tensors.emplace_back(std::move(tokens_));  // [vocab_size, major_hidden_dim]
         std::vector<Tensor> output_tensors;           // [1, 77, major_hidden_dim]

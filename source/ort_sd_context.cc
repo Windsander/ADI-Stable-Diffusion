@@ -126,7 +126,6 @@ IMAGE_DATA OrtSD_Context::convert_tensor(const onnx::sd::base::Tensor &tensor_) 
     auto tensor_data_ = tensor_.GetTensorData<float>();
     auto image_data_ = new IMAGE_BYTE[image_size_];
 
-    // 将 Tensor 数据转换为图像数据
     for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
             for (int c = 0; c < channels; ++c) {
@@ -232,7 +231,7 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     // infered_latent_ [1, 3, 512, 512]
     Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(encoded_sample_);
 
-    return convert_result(decoded_tensor_);
+    return convert_tensor(decoded_tensor_);
 }
 
 void OrtSD_Context::release(){

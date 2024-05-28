@@ -106,14 +106,18 @@ public:
     }
 
     template<class T>
-    static Tensor create(
-        TensorShape shape_, vector<T> value_,
-        Ort::MemoryInfo mem_info_ = Ort::MemoryInfo::CreateCpu(
-            OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault
-        )
-    ) {
+    static Tensor create(TensorShape shape_, vector<T> value_) {
+        long input_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
+        auto result_data_ = new T[input_size_];
+
+        for (int i = 0; i < input_size_; i++) {
+            result_data_[i] = value_[i];
+        }
+
         Tensor result_tensor_ = Tensor::CreateTensor<T>(
-            mem_info_, value_.data(), value_.size(),
+            Ort::MemoryInfo::CreateCpu(
+                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault
+            ), result_data_, input_size_,
             shape_.data(), shape_.size()
         );
 

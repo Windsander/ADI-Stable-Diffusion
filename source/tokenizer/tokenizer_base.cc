@@ -65,6 +65,31 @@ protected:
     }
 
     /**
+     * @details Check tensor_ range, to prevent idx error setting. Method for debugging
+     * @param tensor_ to check
+     * @param min_value_ min limit
+     * @param max_value_ max limit
+     * @return if out of range, then return true
+     */
+    bool check_tensor_range(const Tensor& tensor_, int64_t min_value_, int64_t max_value_) {
+        bool match_case_ = false;
+        auto tensor_info = tensor_.GetTensorTypeAndShapeInfo();
+        auto shape = tensor_info.GetShape();
+        size_t total_elements = tensor_info.GetElementCount();
+
+        auto data = tensor_.GetTensorData<int32_t>();
+        for (size_t i = 0; i < total_elements; ++i) {
+            if (data[i] < min_value_ || data[i] > max_value_) {
+                std::cerr << "Error: Index " << data[i]
+                          << " at position " << i << " is out of bounds. Must be within the range ["
+                          << min_value_ << ", " << max_value_ << "]." << std::endl;
+                match_case_ = true;
+            }
+        }
+        return match_case_;
+    }
+
+    /**
      * @details get available customizable token max size, set by config[avail_token_size]
      * @return always equal to <avail_token_size - 2>
      */
@@ -293,11 +318,11 @@ TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prom
         multis_cache_.push_back(get_boundary_factor());
 
         TensorShape paired_shape_ = {1, sd_tokenizer_config.avail_token_size};
-        matched_results_.emplace_back(
-                std::move(TensorHelper::create(paired_shape_, tokens_cache_)),
-                std::move(TensorHelper::create(paired_shape_, multis_cache_))
+        Tensor token_tensor = TensorHelper::create<int32_t>(paired_shape_, tokens_cache_);
+        Tensor multi_tensor = TensorHelper::create<float>(paired_shape_, multis_cache_);
+        matched_results_.emplace_back(std::move(token_tensor), std::move(multi_tensor));
 
-        );
+        check_tensor_range(matched_results_.back().first, -49408, 49407);
 
         encoded_token_index_= encoded_token_index_ + avail_token_size_;
         encoded_multi_index_= encoded_multi_index_ + avail_token_size_;
