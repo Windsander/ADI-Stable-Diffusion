@@ -122,7 +122,7 @@ public:
 
     static Tensor random(TensorShape shape_, RandomGenerator random_, float factor_) {
         long input_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
-        float result_data_[input_size_];
+        auto result_data_ = new float[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = random_.next() * factor_;
@@ -138,12 +138,16 @@ public:
         return result_tensor_;
     }
 
-    static Tensor divide(const Tensor &input_, float denominator_, float offset_ = 0.0f) {
+    static Tensor divide(const Tensor &input_, float denominator_, float offset_ = 0.0f, bool normalize_ = false) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
-        float result_data_[input_size_];
+        auto result_data_ = new float[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
-            result_data_[i] = input_data_[i] / denominator_ + offset_;
+            result_data_[i] = (
+                normalize_ ?
+                std::min(std::max((input_data_[i] / denominator_ + offset_), 0.0f), 1.0f) :
+                (input_data_[i] / denominator_ + offset_)
+            );
         }
 
         Tensor result_tensor_ = Tensor::CreateTensor<float>(
@@ -156,7 +160,7 @@ public:
 
     static Tensor multiple(const Tensor &input_, float multiplier_, float offset_ = 0.0f) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
-        float result_data_[input_size_];
+        auto result_data_ = new float[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = input_data_[i] * multiplier_ + offset_;
@@ -173,7 +177,7 @@ public:
     template<class T>
     static Tensor duplicate(const Tensor &input_, TensorShape shape_ = {}) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
-        T result_data_[input_size_];
+        T* result_data_ = new T[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = input_data_[i];
@@ -190,8 +194,8 @@ public:
 
     static std::vector<Tensor> split(const Tensor &input_) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
-        float split_data_l_[input_size_ / 2];
-        float split_data_r_[input_size_ / 2];
+        auto split_data_l_ = new float[input_size_ / 2];
+        auto split_data_r_ = new float[input_size_ / 2];
         long split_size_ = input_size_ / 2;
 
         size_t max_w_ = input_shape_[3];
@@ -238,7 +242,7 @@ public:
         long tensor_num_ = input_tensors_.size();
 
         long result_size_ = input_size_ * tensor_num_;
-        float result_data_[result_size_];
+        auto result_data_ = new float[result_size_];
 
         for (int input_index_ = 0; input_index_ < tensor_num_; ++input_index_) {
             auto *input_data_ = input_tensors_[input_index_].GetTensorData<float>();
@@ -269,7 +273,7 @@ public:
 
         TensorShape result_shape_ = input_shape_l_;
         long result_size_ = input_size_l_;
-        float result_data_[result_size_];
+        auto result_data_ = new float[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] + guidance_scale_ * (input_data_r_[i] - input_data_l_[i]);
@@ -295,7 +299,7 @@ public:
 
         long single_size_ = input_size_l_ / element_count_;
         long result_size_ = input_size_l_;
-        float result_data_[result_size_];
+        auto result_data_ = new float[result_size_];                   
 
         float original_mean_ = 0.0f;
         float weighted_mean_ = 0.0f;
@@ -332,7 +336,7 @@ public:
         }
 
         long result_size_ = input_size_l_;
-        float result_data_[result_size_];
+        auto result_data_ = new float[result_size_];                   
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] + input_data_r_[i];
@@ -355,7 +359,7 @@ public:
         }
 
         long result_size_ = input_size_l_;
-        float result_data_[result_size_];
+        auto result_data_ = new float[result_size_];                   
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] - input_data_r_[i];

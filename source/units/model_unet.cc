@@ -67,8 +67,8 @@ UNet::~UNet(){
 void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
     std::vector<float> output_hidden_(
         sd_unet_config.sd_input_width *
-            sd_unet_config.sd_input_height *
-            sd_unet_config.sd_input_channel
+        sd_unet_config.sd_input_height *
+        sd_unet_config.sd_input_channel
     );
     TensorShape hidden_shape_ = {
         1,
@@ -84,30 +84,29 @@ Tensor UNet::inference(
     const Tensor &embs_negative_,
     const Tensor &encoded_img_
 ) {
-
     int w_ = int(sd_unet_config.sd_input_width);
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
 
     TensorShape latent_shape_{1, c_, h_, w_};
-    std::vector<float> latent_empty_{};
-    Tensor latents_ =  (encoded_img_.HasValue())?
-        TensorHelper::duplicate<float>(encoded_img_, latent_shape_):
-        TensorHelper::create(latent_shape_, latent_empty_);
+    std::vector<float> latent_empty_(c_ * h_ * w_, 0.0f);
+    Tensor latents_ = (encoded_img_.HasValue()) ?
+                      TensorHelper::duplicate<float>(encoded_img_, latent_shape_) :
+                      TensorHelper::create(latent_shape_, latent_empty_);
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
 
     for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
-        Tensor model_latent_ =  (latents_.HasValue())?
-            TensorHelper::add(latents_, sd_scheduler_p->scale(init_mask_, i), latent_shape_) :
-            sd_scheduler_p->scale(init_mask_, i);
+        Tensor model_latent_ = (latents_.HasValue()) ?
+                               TensorHelper::add(latents_, sd_scheduler_p->scale(init_mask_, i), latent_shape_) :
+                               sd_scheduler_p->scale(init_mask_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
 
         // do positive N_pos_embed_num times
-        Tensor pred_positive_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
-        if (embs_positive_.GetTensorTypeAndShapeInfo().GetElementCount() != 0){
+        Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        if (embs_positive_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) {
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(std::move(pred_positive_));
-            input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
+            input_tensors.emplace_back(TensorHelper::duplicate<float>(model_latent_));
+            input_tensors.emplace_back(TensorHelper::duplicate<int>(timestep_));
             input_tensors.emplace_back(TensorHelper::duplicate<float>(embs_positive_));
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
@@ -116,10 +115,10 @@ Tensor UNet::inference(
         }
 
         // do negative N_neg_embed_num times
-        Tensor pred_negative_ = TensorHelper::duplicate<float>(model_latent_, latent_shape_);
+        Tensor pred_negative_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         if (embs_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) {
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(std::move(pred_negative_));
+            input_tensors.emplace_back(TensorHelper::duplicate<float>(model_latent_));
             input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
             input_tensors.emplace_back(TensorHelper::duplicate<float>(embs_negative_));
             std::vector<Tensor> output_tensors;
@@ -131,7 +130,7 @@ Tensor UNet::inference(
         // Merge and update
         float merge_factor_ = sd_unet_config.sd_scale_positive;
         Tensor guided_pred_ = (
-            (embs_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) ?
+            (pred_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) ?
             TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
             TensorHelper::duplicate<float>(pred_positive_, latent_shape_)
         );

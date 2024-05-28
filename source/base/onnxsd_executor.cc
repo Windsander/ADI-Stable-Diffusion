@@ -42,7 +42,7 @@ public:
 
 ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
     ort_commons_config = ort_config_;
-    ort_env = Ort::Env{ORT_LOGGING_LEVEL_ERROR, DEFAULT_ORT_ENGINE_NAME};
+    ort_env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, DEFAULT_ORT_ENGINE_NAME};
 #ifdef ENABLE_TENSOR_RT
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
 #endif

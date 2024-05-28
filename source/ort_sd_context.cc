@@ -56,6 +56,7 @@ private:
 
 private:
     Tensor convert_images(const IMAGE_DATA &image_data_) const;
+    IMAGE_DATA convert_tensor(const Tensor &tensor_) const;
     IMAGE_DATA convert_result(const Tensor &infer_output_) const;
 
 public:
@@ -84,19 +85,16 @@ OrtSD_Context::~OrtSD_Context(){
 }
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
-    auto* input_data_ = image_data_.data_;
-    vector<float> convert_value_;
+    IMAGE_BYTE* input_data_ = image_data_.data_;
+    vector<float> convert_value_(image_data_.size_);
 
-    for (int h = 0; h < ort_config.sd_input_height; ++h) {
-        for (int w = 0; w < ort_config.sd_input_width; ++w) {
+    for (int w = 0; w < ort_config.sd_input_width; ++w) {
+        for (int h = 0; h < ort_config.sd_input_height; ++h) {
             for (int c = 0; c < ort_config.sd_input_channel; ++c) {
                 if (c >= 3) { continue; }
-                int cur_pixel_ = int(
-                    h * ort_config.sd_input_width +
-                    w * ort_config.sd_input_channel +
-                    c
-                );
-                convert_value_.push_back(float(input_data_[cur_pixel_]) / 255.0f);
+                int cur_pixel_ = int(w + h * ort_config.sd_input_width) * int(ort_config.sd_input_channel) + c;
+                int tensor_at_ = int(h + c * ort_config.sd_input_height) * int(ort_config.sd_input_width) + w;
+                convert_value_[tensor_at_] = (float(input_data_[cur_pixel_]) / 255.0f);
             }
         }
     }
@@ -107,37 +105,63 @@ Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
     return TensorHelper::create(convert_shape_, convert_value_);
 }
 
-IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) const {
-    long data_size_ = TensorHelper::get_data_size(infer_output_);
-    auto* infer_data_ = infer_output_.GetTensorData<float>();
+IMAGE_DATA OrtSD_Context::convert_tensor(const onnx::sd::base::Tensor &tensor_) const {
+    auto tensor_info = tensor_.GetTensorTypeAndShapeInfo();
+    auto shape = tensor_info.GetShape();
 
-    IMAGE_BYTE image_data_[data_size_];
-    auto image_size_ = uint64_t(
-        ort_config.sd_input_height *
-        ort_config.sd_input_width *
-        ort_config.sd_input_channel
-    );
+    if (shape.size() != 4) {
+        throw std::runtime_error("Expected 4D tensor (N, C, H, W)");
+    }
 
-    for (int h = 0; h < ort_config.sd_input_height; ++h) {
-        for (int w = 0; w < ort_config.sd_input_width; ++w) {
-            for (int c = 0; c < ort_config.sd_input_channel; ++c) {
-                int cur_pixel_ = int(
-                    h * ort_config.sd_input_width +
-                    w * ort_config.sd_input_channel +
-                    c
-                );
-                image_data_[cur_pixel_] = (c < 3) ? (IMAGE_BYTE) (uint8_t(std::round(
-                    std::min(std::max((infer_data_[cur_pixel_] / 2 + 0.5), 0.0), 1.0) * 255)
-                )) : (IMAGE_BYTE) (uint8_t(1));
+    int batch_size = shape[0];
+    int channels = shape[1];
+    int height = shape[2];
+    int width = shape[3];
+
+    if (batch_size != 1) {
+        throw std::runtime_error("Batch size > 1 is not supported");
+    }
+
+    uint64_t image_size_ = height * width * channels;
+    auto tensor_data_ = tensor_.GetTensorData<float>();
+    auto image_data_ = new IMAGE_BYTE[image_size_];
+
+    // 将 Tensor 数据转换为图像数据
+    for (int h = 0; h < height; ++h) {
+        for (int w = 0; w < width; ++w) {
+            for (int c = 0; c < channels; ++c) {
+                int tensor_index = (c * height + h) * width + w;
+                int image_index = (h * width + w) * channels + c;
+                image_data_[image_index] = static_cast<IMAGE_BYTE>(std::round(
+                    std::min(std::max(tensor_data_[tensor_index], 0.0f), 1.0f) * 255
+                ));
             }
         }
     }
 
-    IMAGE_DATA image_result_ = {
-        image_data_, image_size_
-    };
+    return IMAGE_DATA{image_data_, image_size_};
+}
 
-    return image_result_;
+IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) const {
+    uint64_t image_size_ = TensorHelper::get_data_size(infer_output_);
+    auto infer_data_ = infer_output_.GetTensorData<float>();
+    auto image_data_ = new IMAGE_BYTE[image_size_];
+
+    for (int w = 0; w < ort_config.sd_input_width; ++w) {
+        for (int h = 0; h < ort_config.sd_input_height; ++h) {
+            for (int c = 0; c < ort_config.sd_input_channel; ++c) {
+                int cur_pixel_ = int(w + h * ort_config.sd_input_width) * int(ort_config.sd_input_channel) + c;
+                int tensor_at_ = int(h + c * ort_config.sd_input_height) * int(ort_config.sd_input_width) + w;
+                if (c < 3) {
+                    image_data_[cur_pixel_] = IMAGE_BYTE(infer_data_[tensor_at_] * 255);
+                } else {
+                    image_data_[cur_pixel_] = 255;  // Alpha 通道设为 255
+                }
+            }
+        }
+    }
+
+    return IMAGE_DATA{image_data_, image_size_};
 }
 
 void OrtSD_Context::init() {
@@ -155,7 +179,7 @@ void OrtSD_Context::init() {
             ort_config.sd_inference_steps,
             ort_config.sd_input_width / 8,
             ort_config.sd_input_height / 8,
-            ort_config.sd_input_channel,
+            4,
             ort_config.sd_scale_guidance
         }
     );
@@ -166,7 +190,7 @@ void OrtSD_Context::init() {
             ort_config.sd_decode_scale_strength,
             ort_config.sd_input_width / 8,
             ort_config.sd_input_height / 8,
-            ort_config.sd_input_channel,
+            4,
         }
     );
 
@@ -206,7 +230,7 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     Tensor infered_latent_ = ort_sd_unet->inference(ort_remain.embeded_positive, ort_remain.embeded_negative, encoded_sample_);
 
     // infered_latent_ [1, 3, 512, 512]
-    Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(infered_latent_);
+    Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(encoded_sample_);
 
     return convert_result(decoded_tensor_);
 }

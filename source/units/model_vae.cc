@@ -87,7 +87,7 @@ Tensor VAE::decode(const Tensor &latents_) {
     generate_output(output_tensors);
     execute(input_tensors, output_tensors);
 
-    Tensor result_ = std::move(output_tensors.front());
+    Tensor result_ = TensorHelper::divide(output_tensors.front(), 2.0f, +0.5f, true);
     return result_;
 }
 
