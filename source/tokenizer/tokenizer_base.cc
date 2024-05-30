@@ -8,6 +8,7 @@
 #define TOKENIZER_BASE_H
 
 #include "onnxsd_foundation.cc"
+#include "json.hpp"
 
 namespace onnx {
 namespace sd {
@@ -226,6 +227,42 @@ protected:
         return prompt_weight_;
     }
 
+    void load_vocab_json(const std::string &vocab_path_) {
+        std::ifstream vocab_file(vocab_path_);
+        if (!vocab_file) {
+            std::cerr << "Failed to open " << vocab_path_ << std::endl;
+            exit(1);
+        }
+
+        nlohmann::json json;
+        vocab_file >> json;
+
+        for (auto it = json.begin(); it != json.end(); ++it) {
+            std::string str_key = it.key();
+            int int_idx = it.value().get<int>();
+
+            str_key = PromptsHelper::replace(str_key, "\\u0120", " ");  // \u0120 -> space
+            str_key = PromptsHelper::replace(str_key, "\\u010a", "\n"); // \u010a -> new line
+            str_key = PromptsHelper::replace(str_key, "\\\"", "\"");    // \\\"   -> "
+
+            sd_tokenizer_tok2id[str_key] = int_idx;
+            sd_tokenizer_id2tok[int_idx] = str_key;
+        }
+    }
+
+    void load_vocab_text(const std::string & vocab_path_) {
+        std::ifstream vocab_file;
+        vocab_file.open(vocab_path_);
+        std::string vocab;
+        int idx = 0;
+        while (getline(vocab_file, vocab)) {
+            sd_tokenizer_tok2id.insert(std::pair<std::string, int>(vocab, idx));
+            sd_tokenizer_id2tok.insert(std::pair<int, std::string>(idx, vocab));
+            idx++;
+        }
+        vocab_file.close();
+    }
+
 protected:
     virtual std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) = 0;
 
@@ -246,16 +283,12 @@ void TokenizerBase::create() {
 }
 
 void TokenizerBase::init(){
-    std::ifstream vocab_file;
-    vocab_file.open(sd_tokenizer_config.tokenizer_dictionary_at.data());
-    std::string vocab;
-    int idx = 0;
-    while (getline(vocab_file, vocab)) {
-        sd_tokenizer_tok2id.insert(std::pair<std::string, int>(vocab, idx));
-        sd_tokenizer_id2tok.insert(std::pair<int, std::string>(idx, vocab));
-        idx++;
+
+    if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".json")) {
+        load_vocab_json(sd_tokenizer_config.tokenizer_dictionary_at);
+    } else if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".txt")) {
+        load_vocab_text(sd_tokenizer_config.tokenizer_dictionary_at);
     }
-    vocab_file.close();
 
     // prepare token embeddings_matrix
     {
