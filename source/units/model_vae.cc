@@ -36,7 +36,7 @@ private:
     ModelVAEsConfig sd_vae_config = DEFAULT_VAEs_CONFIG;
 
 protected:
-    void generate_output(std::vector<Tensor>& output_tensors_) override;
+    void generate_output(std::vector<Tensor> &output_tensors_) override;
 
 public:
     explicit VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_ = DEFAULT_VAEs_CONFIG);

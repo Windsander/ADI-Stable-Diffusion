@@ -50,7 +50,6 @@ public:
 
 void ModelBase::print_model_detail(const Ort::AllocatorWithDefaultOptions& allocator, bool is_input) {
     size_t num_nodes = is_input ? model_session->GetInputCount() : model_session->GetOutputCount();
-    std::cout << model_path.c_str() << std::endl;
     std::cout << (is_input ? "Input" : "Output")  << " [" << std::endl;
 
     for (size_t i = 0; i < num_nodes; ++i) {
@@ -106,6 +105,7 @@ void ModelBase::init(ONNXRuntimeExecutor &ort_executor_) {
     model_meta.tensor_count_i = input_count;
     model_meta.tensor_count_o = output_count;
 
+    std::cout << model_path.c_str() << std::endl;
     print_model_detail(ort_alloc, true);
     print_model_detail(ort_alloc, false);
 }

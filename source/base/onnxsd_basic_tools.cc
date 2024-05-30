@@ -73,7 +73,7 @@ public:
         size_t total_elements = tensor_info.GetElementCount();
         auto data = tensor_.GetTensorData<T>();
 
-        std::cout << mark_ << " [" << std::endl;
+        std::cout << mark_;
 
         std::vector<size_t> indices(shape.size(), 0);
         size_t depth = 0;
@@ -87,21 +87,21 @@ public:
 
         while (true) {
             if (depth == shape.size() - 1) {
-                print_indent(depth + 1);
+                print_indent(depth);
                 std::cout << "[" << std::endl;;
-                print_indent(depth + 2);
+                print_indent(depth + 1);
                 for (indices[depth] = 0; indices[depth] < shape[depth]; ++indices[depth]) {
                     std::cout << data[index++];
                     if (indices[depth] < shape[depth] - 1) {
                         std::cout << ", ";
                         if (indices[depth] % 3 == 2) {
                             std::cout << std::endl;
-                            print_indent(depth + 2);
+                            print_indent(depth + 1);
                         }
                     }
                 }
                 std::cout << std::endl;
-                print_indent(depth + 1);
+                print_indent(depth);
                 std::cout << "]";
                 if (depth == 0) break;
                 --depth;
@@ -109,27 +109,35 @@ public:
                 std::cout << std::endl;
             } else {
                 if (indices[depth] == 0) {
-                    print_indent(depth + 1);
+                    print_indent(depth);
                     std::cout << "[" << std::endl;
                 }
                 if (indices[depth] < shape[depth]) {
                     ++depth;
                     indices[depth] = 0;
                 } else {
-                    print_indent(depth + 1);
+                    print_indent(depth);
                     std::cout << "]";
                     std::cout << std::endl;
                     if (depth == 0) break;
                     --depth;
                     ++indices[depth];
                     if (indices[depth] < shape[depth]) {
-                        print_indent(depth + 1);
+                        print_indent(depth);
                         std::cout << "," << std::endl;
                     }
                 }
             }
         }
-        std::cout << "] " << std::endl;
+
+        std::cout << mark_ << " Shape: [";
+        for (size_t i = 0; i < shape.size(); ++i) {
+            std::cout << shape[i];
+            if (i < shape.size() - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << "]" << std::endl;
     }
 
     static long get_data_size(const Tensor &input_) {
@@ -392,14 +400,14 @@ public:
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors guidance without match"));
         }
 
-        TensorShape result_shape_ = input_shape_l_;
-        long result_size_ = input_size_l_;
+        long result_size_ =long(input_size_l_);
         auto result_data_ = new float[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] + guidance_scale_ * (input_data_r_[i] - input_data_l_[i]);
         }
 
+        TensorShape result_shape_ = input_shape_l_;
         Tensor result_tensor_ = Tensor::CreateTensor<float>(
             input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
             result_shape_.data(), result_shape_.size()
@@ -412,25 +420,19 @@ public:
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_);
         GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_);
 
-        size_t weight_at_dim_ = input_shape_r_.size() - offset_;
-        size_t element_count_ = 1;
-        for (int dim_index_ = 0; dim_index_ < weight_at_dim_; dim_index_++) {
-            element_count_ *= input_shape_l_[dim_index_];
-        }
-
-        long single_size_ = input_size_l_ / element_count_;
-        long result_size_ = input_size_l_;
+        long result_size_ = long(input_size_l_);
         auto result_data_ = new float[result_size_];
 
         float original_mean_ = 0.0f;
         float weighted_mean_ = 0.0f;
-
-        for (int e = 0; e < result_size_; e = int(e + single_size_)) {
-            int weight_index_ = e / single_size_;
-            for (int i = 0; i < single_size_; ++i) {
-                result_data_[e + i] = input_data_l_[e + i] * input_data_r_[weight_index_];
-                original_mean_ += input_data_l_[e + i] / float(single_size_) ;
-                weighted_mean_ += result_data_[e + i] / float(single_size_) ;
+        size_t elements_per_r = std::accumulate(
+            input_shape_l_.begin() + offset_ + 1, input_shape_l_.end(), 1, std::multiplies<>()
+        );
+        for (size_t i = 0; i < input_shape_r_[offset_]; ++i) {
+            for (size_t j = 0; j < elements_per_r; ++j) {
+                result_data_[i * elements_per_r + j] = input_data_l_[i * elements_per_r + j] * input_data_r_[i];
+                original_mean_ += input_data_l_[i * elements_per_r + j] / float(input_size_l_) ;
+                weighted_mean_ += result_data_[i * elements_per_r + j] / float(input_size_l_) ;
             }
         }
 
@@ -456,7 +458,7 @@ public:
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors adding with data not match"));
         }
 
-        long result_size_ = input_size_l_;
+        long result_size_ = long(input_size_l_);
         auto result_data_ = new float[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
@@ -479,7 +481,7 @@ public:
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors subtract with data not match"));
         }
 
-        long result_size_ = input_size_l_;
+        long result_size_ = long(input_size_l_);
         auto result_data_ = new float[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
@@ -528,6 +530,24 @@ public:
             }
 
             return result;
+        }
+    }
+
+    static std::string replace(const std::string & s, const std::string & from, const std::string & to) {
+        std::string result = s;
+        size_t pos = 0;
+        while ((pos = result.find(from, pos)) != std::string::npos) {
+            result.replace(pos, from.length(), to);
+            pos += to.length();
+        }
+        return result;
+    }
+
+    static bool has_extension(const std::string& filename, const std::string& extension) {
+        if (filename.length() >= extension.length()) {
+            return (0 == filename.compare(filename.length() - extension.length(), extension.length(), extension));
+        } else {
+            return false;
         }
     }
 };

@@ -90,20 +90,26 @@ Tensor UNet::inference(
 
     TensorShape latent_shape_{1, c_, h_, w_};
     std::vector<float> latent_empty_(c_ * h_ * w_, 0.0f);
-    Tensor latents_ = (encoded_img_.HasValue()) ?
+    Tensor latents_ = (TensorHelper::have_data(encoded_img_)) ?
                       TensorHelper::duplicate<float>(encoded_img_, latent_shape_) :
                       TensorHelper::create(latent_shape_, latent_empty_);
+//    TensorHelper::print_tensor_data<float>(latents_, "init_latents_");
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
+//    TensorHelper::print_tensor_data<float>(init_mask_, "init_mask_");
+    latents_ = TensorHelper::add(latents_, init_mask_, latent_shape_);
+//    TensorHelper::print_tensor_data<float>(latents_, "masked_latents_");
+//    TensorHelper::print_tensor_data<float>(embs_positive_,  "embs_positive_");
+//    TensorHelper::print_tensor_data<float>(embs_negative_,  "embs_negative_");
 
     for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
-        Tensor model_latent_ = (latents_.HasValue()) ?
-                               TensorHelper::add(latents_, sd_scheduler_p->scale(init_mask_, i), latent_shape_) :
-                               sd_scheduler_p->scale(init_mask_, i);
+        Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
+        //TensorHelper::print_tensor_data<int64_t>(timestep_,  "timestep_" + std::to_string(i));
+        //TensorHelper::print_tensor_data<float>(model_latent_,  "model_latent_" + std::to_string(i));
 
         // do positive N_pos_embed_num times
         Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
-        if (embs_positive_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) {
+        if (TensorHelper::have_data(embs_positive_)) {
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(TensorHelper::duplicate<float>(model_latent_));
             input_tensors.emplace_back(TensorHelper::duplicate<int64_t>(timestep_));
@@ -130,7 +136,7 @@ Tensor UNet::inference(
         // Merge and update
         float merge_factor_ = sd_unet_config.sd_scale_positive;
         Tensor guided_pred_ = (
-            (pred_negative_.GetTensorTypeAndShapeInfo().GetElementCount() != 0) ?
+            (TensorHelper::have_data(pred_negative_)) ?
             TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
             TensorHelper::duplicate<float>(pred_positive_, latent_shape_)
         );
