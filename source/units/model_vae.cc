@@ -70,6 +70,7 @@ void VAE::generate_output(std::vector<Tensor> &output_tensors_) {
 }
 
 Tensor VAE::encode(const Tensor &inimage_) {
+    if (!TensorHelper::have_data(inimage_)) { return TensorHelper::empty<float>(); }
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(inimage_, 2.0f, -1.0f));
     std::vector<Tensor> output_tensors;
@@ -81,6 +82,7 @@ Tensor VAE::encode(const Tensor &inimage_) {
 }
 
 Tensor VAE::decode(const Tensor &latents_) {
+    if (!TensorHelper::have_data(latents_)) { return TensorHelper::empty<float>(); }
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple(latents_, (1.0f / sd_vae_config.sd_decode_scale_strength)));
     std::vector<Tensor> output_tensors;

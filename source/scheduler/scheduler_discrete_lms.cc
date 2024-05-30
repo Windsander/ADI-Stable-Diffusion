@@ -20,8 +20,8 @@ private:
 
 protected:
     std::vector<float> execute_method(
-        const float* samples_data_,
         const float* predict_data_,
+        const float* samples_data_,
         long data_size_,
         long step_index_,
         long order_
@@ -60,8 +60,8 @@ float LMSDiscreteScheduler::get_lms_coefficient(long order, long t, int current_
 }
 
 std::vector<float> LMSDiscreteScheduler::execute_method(
-    const float* samples_data_,
     const float* predict_data_,
+    const float* samples_data_,
     long data_size_,
     long step_index_,
     long order_

@@ -51,17 +51,21 @@ env_prepare() {
   echo "Installed..."
 }
 
-auto_convert_sd_turbo() {
+auto_convert_sd() {
   echo "===========================Auto converting start==========================="
   optimum-cli export onnx --model runwayml/stable-diffusion-v1-5 onnx-sd-v15/
+  optimum-cli export onnx --model stabilityai/sd-turbo onnx-sd-turbo/
   echo "===========================Auto converting done.==========================="
+  echo "========================Auto cloning official start========================"
+  git clone https://huggingface.co/runwayml/stable-diffusion-v1-5 -b onnx onnx-official-sd-v15/
+  echo "========================Auto cloning official done.========================"
 }
 
 # do script
 if confirm; then
   env_prepare
-  auto_convert_sd_turbo
+  auto_convert_sd
 else
   env_skipped
-  auto_convert_sd_turbo
+  auto_convert_sd
 fi

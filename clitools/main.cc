@@ -84,7 +84,7 @@ struct CommandLineInput {
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
     float scheduler_beta_start = 0.00085f;                                  // Scheduler: Beta start (recommend 0.00085f)
     float scheduler_beta_end = 0.012f;                                      // Scheduler: Beta end (recommend 0.012f)
-    uint64_t scheduler_seed = -1;                                           // Scheduler: seed for random (config if u need certain output)
+    int64_t scheduler_seed = -1;                                            // Scheduler: seed for random (config if u need certain output)
     AvailableBetaType scheduler_beta_type = BETA_TYPE_LINEAR;               // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
     AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
@@ -526,13 +526,13 @@ static std::string get_image_params(const CommandLineInput &params) {
     parameter_string += "Seed: " + std::to_string(params.scheduler_seed) + ", ";
     parameter_string += "Size: " +
                         std::to_string(params.sd_input_width) + "x" +
-                        std::to_string(params.sd_input_height) + ", ";
+                        std::to_string(params.sd_input_height) + ", " + "\n";
     parameter_string += "Scheduler: " + std::string(scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]) +
-                        "[ Beta " + std::string(scheduler_beta_type_str[params.scheduler_beta_type - 1]) +
-                        "  Alpha " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type - 1]) +
-                        "], ";
-    parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type - 1]) + ", ";
-    parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type - 1]) + ", ";
+                        "[ Beta >> " + std::string(scheduler_beta_type_str[params.scheduler_beta_type - 1]) +
+                        "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type - 1]) +
+                        "], " + "\n";
+    parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type - 1]) + ", " + "\n";
+    parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type - 1]) + ", " + "\n";
     parameter_string += "Version: ONNXRuntime-Stable-Diffusion";
     return parameter_string;
 }

@@ -45,6 +45,8 @@ private:
     } OrtSD_Remain;
 
 private:
+    std::mutex ort_thread_lock;
+
     ONNXRuntimeExecutor* ort_executor = nullptr;
     OrtSD_Config ort_config;
     OrtSD_Remain ort_remain;
@@ -85,6 +87,7 @@ OrtSD_Context::~OrtSD_Context(){
 }
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
+    if (!image_data_.data_) return TensorHelper::empty<float>();
     IMAGE_BYTE* input_data_ = image_data_.data_;
     vector<float> convert_value_(image_data_.size_);
 
@@ -210,6 +213,9 @@ void OrtSD_Context::init() {
 }
 
 void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::string &negative_prompts_){
+    // make sure thread security, prevent prepare & inference conflict
+    std::lock_guard<std::mutex> lock(ort_thread_lock);
+
     // embeded_positive_ [1, 77 * pos_N, 768], txt_encoder_1
     ort_remain.embeded_positive = ort_sd_clip->embedding(positive_prompts_);
 
@@ -218,6 +224,8 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
 }
 
 IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
+    // make sure thread security, prevent prepare & inference conflict
+    std::lock_guard<std::mutex> lock(ort_thread_lock);
 
     // input_image [1, 3, 512, 512]
     Tensor sample_image_ = convert_images(image_data_);
@@ -229,7 +237,7 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     Tensor infered_latent_ = ort_sd_unet->inference(ort_remain.embeded_positive, ort_remain.embeded_negative, encoded_sample_);
 
     // infered_latent_ [1, 3, 512, 512]
-    Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(encoded_sample_);
+    Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(infered_latent_);
 
     return convert_tensor(decoded_tensor_);
 }

@@ -7,7 +7,7 @@ find . -name "._*" -type f -delete
  -p "\
  best quality, extremely detailed,\
  (keep main character),\
- at night with stars\
+ A cat in the water at sunset\
  "\
  -n "\
  worst quality, low quality, normal quality, lowres, watermark, monochrome, grayscale, ugly, blurry,\
@@ -43,5 +43,5 @@ find . -name "._*" -type f -delete
  --gain 1.1\
  --decoding 0.18215\
  --guidance 7.5\
- --steps 3\
+ --steps 30\
  -v

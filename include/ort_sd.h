@@ -82,7 +82,7 @@ typedef struct IOrtSDConfig {
         uint64_t scheduler_training_steps;              // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
         float scheduler_beta_start;                     // Scheduler: Beta start (recommend 0.00085f)
         float scheduler_beta_end;                       // Scheduler: Beta end (recommend 0.012f)
-        uint64_t scheduler_seed;                        // Scheduler: seed for random (config if u need certain output)
+        int64_t scheduler_seed;                         // Scheduler: seed for random (config if u need certain output)
         enum AvailableBetaType scheduler_beta_type;     // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
         enum AvailableAlphaType scheduler_alpha_type;   // Scheduler: Alpha(Beta) Method (Cos, Exp)
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)

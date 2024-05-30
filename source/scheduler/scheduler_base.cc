@@ -30,7 +30,7 @@ protected:
     float generate_sigma_at(float timestep_);
 
     virtual std::vector<float> execute_method(
-        const float* samples_data_, const float* predict_data_,
+        const float* predict_data_, const float* samples_data_,
         long data_size_, long step_index_, long order_) = 0;
 
 public:
@@ -40,7 +40,7 @@ public:
     void create();
     void init(uint32_t inference_steps_) ;
     Tensor mask(const TensorShape& mask_shape_);
-    Tensor scale(const Tensor& sample_, int step_index_);
+    Tensor scale(const Tensor& masker_, int step_index_);
     Tensor time(int step_index_);
     Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, int order_ = 4);
     void uninit();
@@ -75,11 +75,13 @@ long SchedulerBase::find_closest_timestep_index(long time_) {
 }
 
 float SchedulerBase::generate_sigma_at(float timestep_) {
-    int low_idx  = static_cast<int>(std::floor(timestep_));
-    int high_idx = static_cast<int>(std::ceil(timestep_));
-    float w      = timestep_ - static_cast<float>(low_idx);      // divide always 1
-    float sigma  = (1.0f - w) * alphas_cumprod[low_idx] + w * alphas_cumprod[high_idx];
-    return sigma;
+    int low_idx   = static_cast<int>(std::floor(timestep_));
+    int high_idx  = static_cast<int>(std::ceil(timestep_));
+    float l_sigma = std::log(alphas_cumprod[low_idx]);
+    float h_sigma = std::log(alphas_cumprod[high_idx]);
+    float w       = timestep_ - static_cast<float>(low_idx);      // divide always 1
+    float sigma   = (1.0f - w) * l_sigma + w * h_sigma;
+    return std::exp(sigma);
 }
 
 void SchedulerBase::create() {
@@ -179,14 +181,14 @@ Tensor SchedulerBase::mask(const TensorShape& mask_shape_){
     return TensorHelper::random(mask_shape_, random_generator, scheduler_max_sigma);
 }
 
-Tensor SchedulerBase::scale(const Tensor& sample_, int step_index_){
+Tensor SchedulerBase::scale(const Tensor& masker_, int step_index_){
     // Get step index of timestep from TimeSteps
     if (step_index_ >= scheduler_timesteps.size()) {
         throw std::runtime_error("from time not found target TimeSteps.");
     }
     float sigma = scheduler_sigmas[step_index_];
     sigma = std::sqrtf(sigma * sigma + 1);
-    return TensorHelper::divide(sample_, sigma);
+    return TensorHelper::divide(masker_, sigma);
 }
 
 Tensor SchedulerBase::time(int step_index_){
@@ -214,7 +216,7 @@ Tensor SchedulerBase::step(
     long data_size_ = TensorHelper::get_data_size(sample_);
     auto* sample_data_ = sample_.GetTensorData<float>();
     auto* dnoise_data_ = dnoise_.GetTensorData<float>();
-    float predict_data_[data_size_];
+    std::vector<float> predict_data_(data_size_);
 
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
@@ -238,7 +240,7 @@ Tensor SchedulerBase::step(
     }
 
     std::vector<float> latent_value_ = execute_method(
-        sample_data_, predict_data_, data_size_, step_index_, order_
+        predict_data_.data(), sample_data_, data_size_, step_index_, order_
     );
     Tensor result_latent = TensorHelper::create(output_shape_, latent_value_);
 

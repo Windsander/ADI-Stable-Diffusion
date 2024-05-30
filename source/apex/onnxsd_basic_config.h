@@ -84,7 +84,7 @@ typedef struct SchedulerConfig {
     uint64_t scheduler_training_steps;
     float scheduler_beta_start;
     float scheduler_beta_end;
-    uint64_t scheduler_seed;
+    int64_t scheduler_seed;
     BetaType scheduler_beta_type;
     AlphaType scheduler_alpha_type;
     PredictionType scheduler_predict_type;
