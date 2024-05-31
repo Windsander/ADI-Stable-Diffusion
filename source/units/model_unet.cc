@@ -65,14 +65,15 @@ UNet::~UNet(){
 }
 
 void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
+    const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
     std::vector<float> output_hidden_(
-        2 *
+        (need_guidance_ ? 2 : 1) *
         sd_unet_config.sd_input_width *
         sd_unet_config.sd_input_height *
         sd_unet_config.sd_input_channel, 0.0f
     );
     TensorShape hidden_shape_ = {
-        2,
+        (need_guidance_ ? 2 : 1) ,
         int64_t(sd_unet_config.sd_input_channel),
         int64_t(sd_unet_config.sd_input_height),
         int64_t(sd_unet_config.sd_input_width)
@@ -97,12 +98,10 @@ Tensor UNet::inference(
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
     latents_ = TensorHelper::add(latents_, init_mask_, latent_shape_);
 
-    if (need_guidance_) {
-        latents_ = TensorHelper::duplicate<float>(latents_);
-    }
-
     for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
-        Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
+        Tensor model_latent_ = (need_guidance_) ?
+                               sd_scheduler_p->scale(TensorHelper::duplicate<float>(latents_), i) :
+                               sd_scheduler_p->scale(latents_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
         //TensorHelper::print_tensor_data<int64_t>(timestep_,  "timestep_" + std::to_string(i));
         //TensorHelper::print_tensor_data<float>(model_latent_,  "model_latent_" + std::to_string(i));

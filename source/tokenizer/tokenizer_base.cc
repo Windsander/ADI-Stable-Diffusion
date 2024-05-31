@@ -364,64 +364,72 @@ void TokenizerBase::init(){
 
 TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prompts_) {
 
-    PromptWeight_map cur_parsed_attention = parse_prompt_attention(prompts_);
-
-    std::tuple<Tokens, Multis, size_t> encoded_input = encode(cur_parsed_attention);     // {tokens, weights}
-
     PreparedToken_vec matched_results_;
 
-    Tokens encoded_tokens_ = std::get<0>(encoded_input);
-    Multis encoded_multis_ = std::get<1>(encoded_input);
-    size_t encoded_pair_num = std::get<2>(encoded_input);
-    const int avail_token_size_ = get_avail_token_size();      // limit of current token_size
-
-    auto encoded_token_index_ = encoded_tokens_.begin();
-    auto encoded_multi_index_ = encoded_multis_.begin();
-    for (int i = 0; i < encoded_pair_num; ++i) {
-        Tokens tokens_cache_(encoded_token_index_, encoded_token_index_ + avail_token_size_);
-        Multis multis_cache_(encoded_multi_index_, encoded_multi_index_ + avail_token_size_);
-        tokens_cache_.insert(tokens_cache_.begin(), get_start_token_index());
-        multis_cache_.insert(multis_cache_.begin(), get_boundary_factor());
-        tokens_cache_.push_back(get_end_token_index());
-        multis_cache_.push_back(get_boundary_factor());
-
+    bool need_uncond_manual = prompts_.empty();
+    if (need_uncond_manual) {
+        // manual make uncondtational <token_idx, weight>
         TensorShape paired_shape_ = {1, sd_tokenizer_config.avail_token_size};
+        Tokens tokens_cache_(sd_tokenizer_config.avail_token_size);
+        Multis multis_cache_(sd_tokenizer_config.avail_token_size);
+        {
+            tokens_cache_[0] = get_start_token_index();
+            tokens_cache_[1] = get_end_token_index();
+            multis_cache_[0] = get_boundary_factor();
+            multis_cache_[1] = get_boundary_factor();
+            for (int i = 2; i < sd_tokenizer_config.avail_token_size; ++i) {
+                tokens_cache_[i] = get_pad_token_index();
+                multis_cache_[i] = get_boundary_factor();
+            }
+        }
         Tensor token_tensor = TensorHelper::create<int32_t>(paired_shape_, tokens_cache_);
         Tensor multi_tensor = TensorHelper::create<float>(paired_shape_, multis_cache_);
         matched_results_.emplace_back(std::move(token_tensor), std::move(multi_tensor));
+    } else {
+        // parsing input prompts to get <token_idx, weight>
+        PromptWeight_map cur_parsed_attention = parse_prompt_attention(prompts_);
+        std::tuple<Tokens, Multis, size_t> encoded_input = encode(cur_parsed_attention);     // {tokens, weights}
 
-        check_tensor_range(matched_results_.back().first, -49408, 49407);
+        Tokens encoded_tokens_ = std::get<0>(encoded_input);
+        Multis encoded_multis_ = std::get<1>(encoded_input);
+        size_t encoded_pair_num = std::get<2>(encoded_input);
+        const int avail_token_size_ = get_avail_token_size();      // limit of current token_size
 
-        encoded_token_index_= encoded_token_index_ + avail_token_size_;
-        encoded_multi_index_= encoded_multi_index_ + avail_token_size_;
+        auto encoded_token_index_ = encoded_tokens_.begin();
+        auto encoded_multi_index_ = encoded_multis_.begin();
+        for (int i = 0; i < encoded_pair_num; ++i) {
+            Tokens tokens_cache_(encoded_token_index_, encoded_token_index_ + avail_token_size_);
+            Multis multis_cache_(encoded_multi_index_, encoded_multi_index_ + avail_token_size_);
+            tokens_cache_.insert(tokens_cache_.begin(), get_start_token_index());
+            multis_cache_.insert(multis_cache_.begin(), get_boundary_factor());
+            tokens_cache_.push_back(get_end_token_index());
+            multis_cache_.push_back(get_boundary_factor());
+
+            TensorShape paired_shape_ = {1, sd_tokenizer_config.avail_token_size};
+            Tensor token_tensor = TensorHelper::create<int32_t>(paired_shape_, tokens_cache_);
+            Tensor multi_tensor = TensorHelper::create<float>(paired_shape_, multis_cache_);
+            matched_results_.emplace_back(std::move(token_tensor), std::move(multi_tensor));
+
+            check_tensor_range(matched_results_.back().first, -49408, 49407);
+
+            encoded_token_index_= encoded_token_index_ + avail_token_size_;
+            encoded_multi_index_= encoded_multi_index_ + avail_token_size_;
+        }
     }
 
     return matched_results_;
 }
 
 Tensor TokenizerBase::embedding(const Tensor &token_p_, const Tensor &token_n_) {
-    // TODO Must manual match, if two input channel is different
-    // check
-    bool need_uncond_manual = !TensorHelper::have_data(token_n_);
     Tensor encoded_token_ = TensorHelper::clone<float>(token_p_);
-    Tensor unconditional_ = need_uncond_manual?
-                            TensorHelper::clone<float>(token_p_) :
-                            TensorHelper::clone<float>(token_n_);
-    // make
-    if (need_uncond_manual) {
-        auto *uncond_data_ = unconditional_.GetTensorMutableData<int>();
-        long uncond_size_ = TensorHelper::get_data_size(unconditional_);
-        uncond_data_[0] = get_start_token_index();
-        uncond_data_[1] = get_end_token_index();
-        for (int i = 2; i < uncond_size_; ++i) {
-            uncond_data_[i] = get_pad_token_index();
-        }
-    }
+    Tensor unconditional_ = TensorHelper::clone<float>(token_n_);
+
+    // TODO Must manual match, if two input channel is different
 
     std::vector<Tensor> target_tensors;
     target_tensors.emplace_back(std::move(encoded_token_));
     target_tensors.emplace_back(std::move(unconditional_));
-    return TensorHelper::merge(target_tensors, 1);
+    return TensorHelper::merge(target_tensors, 0);
 }
 
 std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) {

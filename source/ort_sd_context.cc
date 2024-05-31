@@ -57,7 +57,6 @@ private:
 
 private:
     Tensor convert_images(const IMAGE_DATA &image_data_) const;
-    IMAGE_DATA convert_tensor(const Tensor &tensor_) const;
     IMAGE_DATA convert_result(const Tensor &infer_output_) const;
 
 public:
@@ -93,8 +92,8 @@ Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
         for (int h = 0; h < ort_config.sd_input_height; ++h) {
             for (int c = 0; c < ort_config.sd_input_channel; ++c) {
                 if (c >= 3) { continue; }
-                int cur_pixel_ = int(w + h * ort_config.sd_input_width) * int(ort_config.sd_input_channel) + c;
-                int tensor_at_ = int(h + c * ort_config.sd_input_height) * int(ort_config.sd_input_width) + w;
+                int cur_pixel_ = int(h * ort_config.sd_input_width + w) * int(ort_config.sd_input_channel) + c;
+                int tensor_at_ = int(c * ort_config.sd_input_height + h) * int(ort_config.sd_input_width) + w;
                 convert_value_[tensor_at_] = (float(input_data_[cur_pixel_]) / 255.0f);
             }
         }
@@ -106,7 +105,7 @@ Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
     return TensorHelper::create(convert_shape_, convert_value_);
 }
 
-IMAGE_DATA OrtSD_Context::convert_tensor(const onnx::sd::base::Tensor &tensor_) const {
+IMAGE_DATA OrtSD_Context::convert_result(const onnx::sd::base::Tensor &tensor_) const {
     auto tensor_info = tensor_.GetTensorTypeAndShapeInfo();
     auto shape = tensor_info.GetShape();
 
@@ -127,36 +126,14 @@ IMAGE_DATA OrtSD_Context::convert_tensor(const onnx::sd::base::Tensor &tensor_) 
     auto tensor_data_ = tensor_.GetTensorData<float>();
     auto image_data_ = new IMAGE_BYTE[image_size_];
 
-    for (int h = 0; h < height; ++h) {
-        for (int w = 0; w < width; ++w) {
-            for (int c = 0; c < channels; ++c) {
-                int tensor_index = (c * height + h) * width + w;
-                int image_index = (h * width + w) * channels + c;
-                image_data_[image_index] = static_cast<IMAGE_BYTE>(std::round(
-                    std::min(std::max(tensor_data_[tensor_index], 0.0f), 1.0f) * 255
+    for (int c = 0; c < channels; ++c) {
+        for (int h = 0; h < height; ++h) {
+            for (int w = 0; w < width; ++w) {
+                int tensor_at_ = (c * height + h) * width + w;
+                int cur_pixel_ = (h * width + w) * channels + c;
+                image_data_[cur_pixel_] = static_cast<IMAGE_BYTE>(std::round(
+                    std::min(std::max(tensor_data_[tensor_at_], 0.0f), 1.0f) * 255
                 ));
-            }
-        }
-    }
-
-    return IMAGE_DATA{image_data_, image_size_};
-}
-
-IMAGE_DATA OrtSD_Context::convert_result(const Tensor &infer_output_) const {
-    uint64_t image_size_ = TensorHelper::get_data_size(infer_output_);
-    auto infer_data_ = infer_output_.GetTensorData<float>();
-    auto image_data_ = new IMAGE_BYTE[image_size_];
-
-    for (int w = 0; w < ort_config.sd_input_width; ++w) {
-        for (int h = 0; h < ort_config.sd_input_height; ++h) {
-            for (int c = 0; c < ort_config.sd_input_channel; ++c) {
-                int cur_pixel_ = int(w + h * ort_config.sd_input_width) * int(ort_config.sd_input_channel) + c;
-                int tensor_at_ = int(h + c * ort_config.sd_input_height) * int(ort_config.sd_input_width) + w;
-                if (c < 3) {
-                    image_data_[cur_pixel_] = IMAGE_BYTE(infer_data_[tensor_at_] * 255);
-                } else {
-                    image_data_[cur_pixel_] = 255;  // Alpha 通道设为 255
-                }
             }
         }
     }
@@ -234,7 +211,7 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     // infered_latent_ [1, 3, 512, 512]
     Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(infered_latent_);
 
-    return convert_tensor(decoded_tensor_);
+    return convert_result(decoded_tensor_);
 }
 
 void OrtSD_Context::release(){

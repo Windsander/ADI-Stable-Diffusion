@@ -247,16 +247,16 @@ public:
         int64_t max_s_ = input_shape_[0];
         int64_t out_c_ = max_c_ / 2;
 
-        for (int w = 0; w < max_w_; w++) {
-            for (int h = 0; h < max_h_; h++) {
-                for (int c = 0; c < max_c_; c++) {
-                    for (int i = 0; i < out_c_; i++) {
-                        int cur_at_ = int(c + int(w + h * max_w_) * int(max_c_)) * int(max_s_) + i;
-                        int var_at_ = int(c + 2 + int(w + h * max_w_) * int(max_c_)) * int(max_s_) + i;
+        for (int i = 0; i < max_s_; i++) {
+            for (int c = 0; c < out_c_; c++) {
+                for (int h = 0; h < max_h_; h++) {
+                    for (int w = 0; w < max_w_; w++) {
+                        int64_t cur_at_ = (((i * max_c_ + c) * max_h_ + h) * max_w_ + w) ;
+                        int64_t var_at_ = (((i * max_c_ + (c + out_c_)) * max_h_ + h) * max_w_ + w) ;
                         float mean_ = input_data_[cur_at_];
                         float logvar_ = input_data_[var_at_];
                         logvar_ = std::max(-30.0f, std::min(logvar_, 20.0f));
-                        result_data_[i] = mean_+ std::exp(0.5f * logvar_) * random_.next();
+                        result_data_[i] = mean_ + std::exp(0.5f * logvar_) * random_.next();
                         result_data_[i] *= factor_;
                     }
                 }
@@ -319,8 +319,9 @@ public:
         }
 
         TensorShape result_shape_ = input_shape_;
+        result_shape_[0] *= 2;
         Tensor result_tensor_ = Tensor::CreateTensor<T>(
-            input_.GetTensorMemoryInfo(), result_data_, input_size_,
+            input_.GetTensorMemoryInfo(), result_data_, input_size_ * 2,
             result_shape_.data(), result_shape_.size()
         );
 
@@ -352,9 +353,22 @@ public:
         auto split_data_r_ = new float[split_size_];
         bool enough_data_ = (input_size_ == split_size_ * 2);
 
-        for (long i = 0; i < split_size_; i++) {
-            split_data_l_[i] = input_data_[i];
-            split_data_r_[i] = enough_data_? input_data_[split_size_ + i] : 0;
+        int64_t max_w_ = input_shape_[3];
+        int64_t max_h_ = input_shape_[2];
+        int64_t max_c_ = input_shape_[1];
+        int64_t max_s_ = input_shape_[0];
+        int64_t out_s_ = max_s_ / 2;
+
+        for (int i = 0; i < out_s_; i++) {
+            for (int c = 0; c < max_c_; c++) {
+                for (int h = 0; h < max_h_; h++) {
+                    for (int w = 0; w < max_w_; w++) {
+                        int64_t data_at_ = (((i * max_c_ + c) * max_h_ + h) * max_w_ + w) ;
+                        split_data_l_[data_at_] = input_data_[data_at_];
+                        split_data_r_[data_at_] = input_data_[data_at_ + split_size_];
+                    }
+                }
+            }
         }
 
         std::vector<Tensor> result_;
@@ -373,16 +387,31 @@ public:
     static Tensor merge(const std::vector<Tensor> &input_tensors_, int offset_) {
         TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
         size_t input_size_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
-        long tensor_num_ = input_tensors_.size();
+        long tensor_num_ = input_tensors_.size();   // [1, 77, 768]
 
         long result_size_ = input_size_ * tensor_num_;
         auto result_data_ = new float[result_size_];
 
-        for (int input_index_ = 0; input_index_ < tensor_num_; ++input_index_) {
-            auto *input_data_ = input_tensors_[input_index_].GetTensorData<float>();
-            int start_at_ = input_index_ * input_size_;
-            for (int i = 1; i < input_size_; ++i) {
-                result_data_[start_at_ + i] = input_data_[i];
+        long inner_dim = std::accumulate(
+            input_shape_.begin() + offset_ + 1, input_shape_.end(), 1, std::multiplies<>()
+        );  // 768
+        long outer_dim = std::accumulate(
+            input_shape_.begin(), input_shape_.end() - offset_ - 1, 1, std::multiplies<>()
+        ); // 1
+        long concat_dim = input_shape_[offset_];    //  77
+        long newest_dim = concat_dim * tensor_num_; // 154
+
+        for (int l = 0; l < outer_dim; ++l) {           // 1
+            for (int m = 0; m < concat_dim; ++m) {      // 77
+                for (int i = 0; i < inner_dim; ++i) {   // 768
+                    for (long index_ = 0; index_ < tensor_num_; ++index_) {  // 2
+                        auto *input_data_ = input_tensors_[index_].GetTensorData<float>();
+                        long n = m + index_ * concat_dim;
+                        long old_index = l * concat_dim * inner_dim + m * inner_dim + i;
+                        long new_index = l * newest_dim * inner_dim + n * inner_dim + i;
+                        result_data_[new_index] = input_data_[old_index];
+                    }
+                }
             }
         }
 

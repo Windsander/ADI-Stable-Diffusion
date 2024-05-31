@@ -82,8 +82,7 @@ void Clip::generate_output(std::vector<Tensor> &output_tensors_) {
 }
 
 Tensor Clip::tokenizing(const std::string& prompts_) {
-    if (prompts_.empty()) return TensorHelper::create(TensorShape{0}, std::vector<float>{});
-
+    // tokenize prompts
     PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
     std::vector<Tensor> merged_hidden_;
