@@ -115,6 +115,17 @@ protected:
     }
 
     /**
+     * @details get token index for padding, its different defined by mode
+     * Examples:
+     *    SD - Using <|endoftext|> = 49407 as pad_token_idx
+     *    SDXL - Using simple Nan-Mark = 0 as pad_token_idx
+     * @return padding token index in model setting
+     */
+    int32_t get_pad_token_index() const {
+        return get_end_token_index();
+    }
+
+    /**
      * @details get <|startoftext|>  <|endoftext|> etc. marks multiply,
      * set by config[major_boundary_factor]
      * @return <|startoftext|> index in dictionary
@@ -263,6 +274,65 @@ protected:
         vocab_file.close();
     }
 
+private:        // WARNING: Test ONLY!
+    void test_encoder_prepare() {
+        // test(simple encoding): prepare token embeddings_matrix
+        {
+            embeddings_matrix.resize(
+                sd_tokenizer_config.avail_token_count,
+                vector<float>(sd_tokenizer_config.major_hidden_dim)
+            );
+            random_device rd;
+            mt19937 gen(rd());
+            uniform_real_distribution<> dis(-0.1, 0.1);
+
+            for (int i = 0; i < sd_tokenizer_config.avail_token_count; ++i) {
+                for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
+                    embeddings_matrix[i][j] = dis(gen);
+                }
+            }
+        }
+
+        // test(simple encoding): prepare token positional_matrix
+        {
+            positional_matrix.resize(
+                sd_tokenizer_config.avail_token_size,
+                vector<float>(sd_tokenizer_config.major_hidden_dim, 0.0)
+            );
+
+            for (int pos = 0; pos < sd_tokenizer_config.avail_token_size; ++pos) {
+                for (int i = 0; i < sd_tokenizer_config.major_hidden_dim; i += 2) {
+                    positional_matrix[pos][i] = sin(
+                        pos / pow(10000, 2.0 * i / sd_tokenizer_config.major_hidden_dim));
+                    if (i + 1 < sd_tokenizer_config.major_hidden_dim) {
+                        positional_matrix[pos][i + 1] = cos(
+                            pos / pow(10000, 2.0 * (i + 1) / sd_tokenizer_config.major_hidden_dim));
+                    }
+                }
+            }
+        }
+    }
+
+    Tensor test_encoding(const Tensor &token_) {
+        auto *token_data_ = token_.GetTensorData<int>();
+        long token_size_ = TensorHelper::get_data_size(token_);
+
+        std::vector<float> result_(token_size_ * sd_tokenizer_config.major_hidden_dim);
+
+        for (int i = 0; i < sd_tokenizer_config.avail_token_size; ++i) {
+            std::vector<float> embeddings_ = embeddings_matrix[token_data_[i]];
+            std::vector<float> positional_ = positional_matrix[i];
+
+            int offset_ = sd_tokenizer_config.avail_token_size * i;
+            for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
+                result_[offset_ + j] = embeddings_[j] + positional_[j];
+            }
+        }
+
+        TensorShape shape_ = {1, sd_tokenizer_config.avail_token_size, sd_tokenizer_config.major_hidden_dim};
+        return TensorHelper::create(shape_, result_);
+    }
+
 protected:
     virtual std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) = 0;
 
@@ -273,7 +343,7 @@ public:
     void create();
     void init();
     PreparedToken_vec tokenize(const std::string &prompts_);
-    Tensor embedding(const Tensor &token_);
+    Tensor embedding(const Tensor &token_p_,const Tensor &token_n_);
     std::string untokenize(const std::pair<Tensor, Tensor> &tpair_);
     void uninit();
     void release();
@@ -283,48 +353,13 @@ void TokenizerBase::create() {
 }
 
 void TokenizerBase::init(){
-
+    // loading vocabulary
     if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".json")) {
         load_vocab_json(sd_tokenizer_config.tokenizer_dictionary_at);
     } else if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".txt")) {
         load_vocab_text(sd_tokenizer_config.tokenizer_dictionary_at);
     }
-
-    // prepare token embeddings_matrix
-    {
-        embeddings_matrix.resize(
-            sd_tokenizer_config.avail_token_count,
-            std::vector<float>(sd_tokenizer_config.major_hidden_dim)
-        );
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dis(-0.1, 0.1);
-
-        for (int i = 0; i < sd_tokenizer_config.avail_token_count; ++i) {
-            for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
-                embeddings_matrix[i][j] = dis(gen);
-            }
-        }
-    }
-
-    // prepare token positional_matrix
-    {
-        positional_matrix.resize(
-            sd_tokenizer_config.avail_token_size,
-            std::vector<float>(sd_tokenizer_config.major_hidden_dim, 0.0)
-        );
-
-        for (int pos = 0; pos < sd_tokenizer_config.avail_token_size; ++pos) {
-            for (int i = 0; i < sd_tokenizer_config.major_hidden_dim; i += 2) {
-                positional_matrix[pos][i] = std::sin(
-                    pos / std::pow(10000, 2.0 * i / sd_tokenizer_config.major_hidden_dim));
-                if (i + 1 < sd_tokenizer_config.major_hidden_dim) {
-                    positional_matrix[pos][i + 1] = std::cos(
-                        pos / std::pow(10000, 2.0 * (i + 1) / sd_tokenizer_config.major_hidden_dim));
-                }
-            }
-        }
-    }
+    test_encoder_prepare();
 }
 
 TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prompts_) {
@@ -364,25 +399,29 @@ TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prom
     return matched_results_;
 }
 
-Tensor TokenizerBase::embedding(const Tensor &token_) {
-
-    auto *token_data_ = token_.GetTensorData<int>();
-    long token_size_ = TensorHelper::get_data_size(token_);
-
-    std::vector<float> result_(token_size_ * sd_tokenizer_config.major_hidden_dim);
-
-    for (int i = 0; i < sd_tokenizer_config.avail_token_size; ++i) {
-        std::vector<float> embeddings_ = embeddings_matrix[token_data_[i]];
-        std::vector<float> positional_ = positional_matrix[i];
-
-        int offset_ = sd_tokenizer_config.avail_token_size * i;
-        for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
-            result_[offset_ + j] = embeddings_[j] + positional_[j];
+Tensor TokenizerBase::embedding(const Tensor &token_p_, const Tensor &token_n_) {
+    // TODO Must manual match, if two input channel is different
+    // check
+    bool need_uncond_manual = !TensorHelper::have_data(token_n_);
+    Tensor encoded_token_ = TensorHelper::clone<float>(token_p_);
+    Tensor unconditional_ = need_uncond_manual?
+                            TensorHelper::clone<float>(token_p_) :
+                            TensorHelper::clone<float>(token_n_);
+    // make
+    if (need_uncond_manual) {
+        auto *uncond_data_ = unconditional_.GetTensorMutableData<int>();
+        long uncond_size_ = TensorHelper::get_data_size(unconditional_);
+        uncond_data_[0] = get_start_token_index();
+        uncond_data_[1] = get_end_token_index();
+        for (int i = 2; i < uncond_size_; ++i) {
+            uncond_data_[i] = get_pad_token_index();
         }
     }
 
-    TensorShape shape_ = {1, sd_tokenizer_config.avail_token_size, sd_tokenizer_config.major_hidden_dim};
-    return TensorHelper::create(shape_, result_);
+    std::vector<Tensor> target_tensors;
+    target_tensors.emplace_back(std::move(encoded_token_));
+    target_tensors.emplace_back(std::move(unconditional_));
+    return TensorHelper::merge(target_tensors, 1);
 }
 
 std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) {

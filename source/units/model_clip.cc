@@ -34,12 +34,13 @@ private:
 
 protected:
     void generate_output(std::vector<Tensor>& output_tensors_) override;
+    Tensor tokenizing(const std::string& prompts_);
 
 public:
     explicit Clip(const std::string &model_path_,  const ModelClipConfig &clip_config_ = DEFAULT_CLIP_CONFIG);
     ~Clip() override;
 
-    Tensor embedding(const std::string& prompts_);
+    Tensor embedding(const std::string &positive_prompts_, const std::string &negative_prompts_);
 };
 
 Clip::Clip(const std::string &model_path_, const ModelClipConfig &clip_config_) : ModelBase(model_path_){
@@ -80,30 +81,36 @@ void Clip::generate_output(std::vector<Tensor> &output_tensors_) {
     }
 }
 
-Tensor Clip::embedding(const std::string& prompts_) {
+Tensor Clip::tokenizing(const std::string& prompts_) {
     if (prompts_.empty()) return TensorHelper::create(TensorShape{0}, std::vector<float>{});
 
     PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
     std::vector<Tensor> merged_hidden_;
-    for (auto &tw_pair_: tokenizer_output_) {          // major_hidden_dim = 768 in SD, 1280 in SDXL
-        Tensor &tokens_ = tw_pair_.first;        // [1, 77]
-        Tensor &weight_ = tw_pair_.second;       // [1, 77]
+    for (auto &tw_pair_: tokenizer_output_) {           // major_hidden_dim = 768 in SD, 1280 in SDXL
+        Tensor &tokens_ = tw_pair_.first;               // [1, 77]
+        Tensor &weight_ = tw_pair_.second;              // [1, 77]
 
         std::vector<Tensor> input_tensors;
-        input_tensors.emplace_back(std::move(tokens_));  // [vocab_size, major_hidden_dim]
-        std::vector<Tensor> output_tensors;           // [1, 77, major_hidden_dim]
+        input_tensors.emplace_back(std::move(tokens_)); // [vocab_size, major_hidden_dim]
+        std::vector<Tensor> output_tensors;             // [1, 77, major_hidden_dim]
         generate_output(output_tensors);
         execute(input_tensors, output_tensors);
 
-        merged_hidden_.push_back(
-            TensorHelper::weight(output_tensors[0], weight_, 1, true)  // [1, 77, major_hidden_dim]
+        merged_hidden_.push_back(                       // [1, 77, major_hidden_dim]
+            TensorHelper::weight(output_tensors[0], weight_, 1, true)
         );
     }
     // seems not right
     Tensor hidden_state_ = TensorHelper::merge(merged_hidden_, 1);  // [1, 77 * N, major_hidden_dim]
 
     return hidden_state_;
+}
+
+Tensor Clip::embedding(const std::string &positive_prompts_, const std::string &negative_prompts_) {
+    Tensor positive_ = tokenizing(positive_prompts_);           // [1, 77 * N_p, major_hidden_dim]
+    Tensor negative_ = tokenizing(negative_prompts_);           // [1, 77 * N_n, major_hidden_dim]
+    return  sd_tokenizer_p->embedding(positive_, negative_);    // [2, 77 * max(N_p, N_n), major_hidden_dim]
 }
 
 } // namespace units

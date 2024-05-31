@@ -145,6 +145,11 @@ public:
         return input_size_;
     }
 
+    static TensorShape get_shape(const Tensor &input_) {
+        TensorShape shape_ = input_.GetTensorTypeAndShapeInfo().GetShape();
+        return shape_;
+    }
+
     static std::string get_tensor_type(ONNXTensorElementDataType type) {
         switch (type) {
             case ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED:
@@ -304,7 +309,26 @@ public:
     }
 
     template<class T>
-    static Tensor duplicate(const Tensor &input_, TensorShape shape_ = {}) {
+    static Tensor duplicate(const Tensor &input_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        T* result_data_ = new T[input_size_ * 2];
+
+        for (int i = 0; i < input_size_; i++) {
+            result_data_[i] = input_data_[i];
+            result_data_[input_size_ + i] = input_data_[i];
+        }
+
+        TensorShape result_shape_ = input_shape_;
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, input_size_,
+            result_shape_.data(), result_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
+    template<class T>
+    static Tensor clone(const Tensor &input_, const TensorShape &shape_ = {}) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
         T* result_data_ = new T[input_size_];
 
@@ -321,37 +345,18 @@ public:
         return result_tensor_;
     }
 
-    static std::vector<Tensor> split(const Tensor &input_) {
+    static std::vector<Tensor> split(const Tensor &input_, const TensorShape &shape_ = {}) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
-        auto split_data_l_ = new float[input_size_ / 2];
-        auto split_data_r_ = new float[input_size_ / 2];
-        long split_size_ = input_size_ / 2;
+        long split_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
+        auto split_data_l_ = new float[split_size_];
+        auto split_data_r_ = new float[split_size_];
+        bool enough_data_ = (input_size_ == split_size_ * 2);
 
-        size_t max_w_ = input_shape_[3];
-        size_t max_h_ = input_shape_[2];
-        size_t max_c_ = input_shape_[1];
-        size_t max_s_ = input_shape_[0];
-        int split_ = int(max_s_ / 2);
-
-        for (int w = 0; w < max_w_; w++) {
-            for (int h = 0; h < max_h_; h++) {
-                for (int c = 0; c < max_c_; c++) {
-                    int index_ = int(
-                        h * max_w_ +
-                        w * max_c_ +
-                        c
-                    );
-                    for (int i = 0; i < split_; i++) {
-                        split_data_l_[index_] = input_data_[index_ + i];
-                    }
-                    for (int i = split_; i < max_s_; i++) {
-                        split_data_r_[index_] = input_data_[index_ + i];
-                    }
-                }
-            }
+        for (long i = 0; i < split_size_; i++) {
+            split_data_l_[i] = input_data_[i];
+            split_data_r_[i] = enough_data_? input_data_[split_size_ + i] : 0;
         }
 
-        TensorShape shape_{1, int(max_c_), int(max_h_), int(max_w_)};
         std::vector<Tensor> result_;
         result_.push_back(Tensor::CreateTensor<float>(
             input_.GetTensorMemoryInfo(), split_data_l_, split_size_,
@@ -497,7 +502,7 @@ public:
     }
 
     static Tensor sum(const Tensor* input_tensors_, const long input_size_, const TensorShape& shape_) {
-        Tensor result_ = duplicate<float>(input_tensors_[0], shape_);
+        Tensor result_ = clone<float>(input_tensors_[0], shape_);
         for (int i = 1; i < input_size_; ++i) {
             result_ = add(result_, input_tensors_[i], shape_);
         }
