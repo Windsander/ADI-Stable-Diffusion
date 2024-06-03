@@ -49,7 +49,7 @@ public:
     explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONFIG);
     ~UNet() override;
 
-    Tensor inference(const Tensor &txt_embeddings_, const Tensor &encoded_img_);
+    Tensor inference(const Tensor &embs_positive_,const Tensor &embs_negative_, const Tensor &encoded_img_);
 };
 
 UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
@@ -65,15 +65,13 @@ UNet::~UNet(){
 }
 
 void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
-    const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
     std::vector<float> output_hidden_(
-        (need_guidance_ ? 2 : 1) *
         sd_unet_config.sd_input_width *
         sd_unet_config.sd_input_height *
         sd_unet_config.sd_input_channel, 0.0f
     );
     TensorShape hidden_shape_ = {
-        (need_guidance_ ? 2 : 1) ,
+        1,
         int64_t(sd_unet_config.sd_input_channel),
         int64_t(sd_unet_config.sd_input_height),
         int64_t(sd_unet_config.sd_input_width)
@@ -82,7 +80,8 @@ void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
 }
 
 Tensor UNet::inference(
-    const Tensor &txt_embeddings_,
+    const Tensor &embs_positive_,
+    const Tensor &embs_negative_,
     const Tensor &encoded_img_
 ) {
     int w_ = int(sd_unet_config.sd_input_width);
@@ -99,33 +98,41 @@ Tensor UNet::inference(
     latents_ = TensorHelper::add(latents_, init_mask_, latent_shape_);
 
     for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
-        Tensor model_latent_ = (need_guidance_) ?
-                               sd_scheduler_p->scale(TensorHelper::duplicate<float>(latents_), i) :
-                               sd_scheduler_p->scale(latents_, i);
+        Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
-        //TensorHelper::print_tensor_data<int64_t>(timestep_,  "timestep_" + std::to_string(i));
-        //TensorHelper::print_tensor_data<float>(model_latent_,  "model_latent_" + std::to_string(i));
 
         // do positive N_pos_embed_num times
-        std::vector<Tensor> input_tensors;
-        input_tensors.emplace_back(TensorHelper::clone<float>(model_latent_));
-        input_tensors.emplace_back(TensorHelper::clone<int64_t>(timestep_));
-        input_tensors.emplace_back(TensorHelper::clone<float>(txt_embeddings_));
-        std::vector<Tensor> output_tensors;
-        generate_output(output_tensors);
-        execute(input_tensors, output_tensors);
+        Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        if (TensorHelper::have_data(embs_positive_)) {
+            std::vector<Tensor> input_tensors;
+            input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+            input_tensors.emplace_back(TensorHelper::clone<int64_t>(timestep_));
+            input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
+            std::vector<Tensor> output_tensors;
+            generate_output(output_tensors);
+            execute(input_tensors, output_tensors);
+            pred_positive_ = std::move(output_tensors[0]);
+        }
 
-        // Split results
-        std::vector<Tensor> output_splits = TensorHelper::split(output_tensors[0], latent_shape_);
-        Tensor pred_normal_ = std::move(output_splits[0]);
-        Tensor pred_uncond_ = std::move(output_splits[1]);
+        // do negative N_neg_embed_num times
+        Tensor pred_negative_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        if (TensorHelper::have_data(embs_negative_) && need_guidance_) {
+            std::vector<Tensor> input_tensors;
+            input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+            input_tensors.emplace_back(TensorHelper::clone<int64_t>(timestep_));
+            input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
+            std::vector<Tensor> output_tensors;
+            generate_output(output_tensors);
+            execute(input_tensors, output_tensors);
+            pred_negative_ = std::move(output_tensors[0]);
+        }
 
         // Merge predictions
         float merge_factor_ = sd_unet_config.sd_scale_guidance;
         Tensor guided_pred_ = (
-            need_guidance_ ?
-            TensorHelper::guidance(pred_normal_, pred_uncond_, merge_factor_) :
-            TensorHelper::clone<float>(pred_normal_, latent_shape_)
+            (need_guidance_) ?
+            TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
+            TensorHelper::clone<float>(pred_positive_, latent_shape_)
         );
 
         // Dnoise & Step

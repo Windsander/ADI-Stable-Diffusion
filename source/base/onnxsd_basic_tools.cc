@@ -16,13 +16,13 @@ using namespace amon;
 class RandomGenerator {
 protected:
     std::default_random_engine random_generator;
-    std::normal_distribution<float> random_style;
-//    std::uniform_real_distribution<float> random_style;
+//    std::normal_distribution<float> random_style;
+    std::uniform_real_distribution<float> random_style;
 
 public:
     explicit RandomGenerator(float mean_ = 0.0f, float stddev_ = 1.0f) {
-//        random_style = std::uniform_real_distribution<float>(mean_, stddev_);
-        random_style = std::normal_distribution<float>(mean_, stddev_);
+        random_style = std::uniform_real_distribution<float>();
+//        random_style = std::normal_distribution<float>(mean_, stddev_);
     }
 
     ~RandomGenerator() {
@@ -39,13 +39,13 @@ public:
     }
 
     float next() {
-//        float u1 = random_style(random_generator);
-//        float u2 = random_style(random_generator);
-//        float radius = std::sqrt(-2.0f * std::log(u1));
-//        float theta = float(2.0f * M_PI) * u2;
-//        float standard = radius * std::cos(theta);
-//        return standard;
-        return random_style(random_generator);
+        float u1 = random_style(random_generator);
+        float u2 = random_style(random_generator);
+        float radius = std::sqrt(-2.0f * std::log(u1));
+        float theta = float(2.0f * M_PI) * u2;
+        float standard = radius * std::cos(theta);
+        return standard;
+//        return random_style(random_generator);
     }
 };
 
@@ -60,9 +60,9 @@ class TensorHelper {
         return (long)(data_size_ * shape_size_);         \
     }()
 
-#define GET_TENSOR_DATA_INFO(tensor_, tensor_data_, tensor_shape_, shape_size_)     \
-    auto *tensor_data_ = tensor_.GetTensorData<float>();                            \
-    TensorShape tensor_shape_ = tensor_.GetTensorTypeAndShapeInfo().GetShape();     \
+#define GET_TENSOR_DATA_INFO(tensor_, tensor_data_, tensor_shape_, shape_size_, type_)  \
+    auto *tensor_data_ = tensor_.GetTensorData<type_>();                                \
+    TensorShape tensor_shape_ = tensor_.GetTensorTypeAndShapeInfo().GetShape();         \
     size_t shape_size_ = tensor_.GetTensorTypeAndShapeInfo().GetElementCount()
 
 public:
@@ -238,7 +238,7 @@ public:
     }
 
     static Tensor blur(const Tensor &input_, RandomGenerator random_, float factor_ = 1.0f) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
         auto result_data_ = new float[input_size_];
 
         int64_t max_w_ = input_shape_[3];
@@ -273,7 +273,7 @@ public:
     }
 
     static Tensor divide(const Tensor &input_, float denominator_, float offset_ = 0.0f, bool normalize_ = false) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
         auto result_data_ = new float[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
@@ -293,7 +293,7 @@ public:
     }
 
     static Tensor multiple(const Tensor &input_, float multiplier_, float offset_ = 0.0f) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
         auto result_data_ = new float[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
@@ -310,7 +310,7 @@ public:
 
     template<class T>
     static Tensor duplicate(const Tensor &input_) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
         T* result_data_ = new T[input_size_ * 2];
 
         for (int i = 0; i < input_size_; i++) {
@@ -330,7 +330,7 @@ public:
 
     template<class T>
     static Tensor clone(const Tensor &input_, const TensorShape &shape_ = {}) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
         T* result_data_ = new T[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
@@ -347,7 +347,7 @@ public:
     }
 
     static std::vector<Tensor> split(const Tensor &input_, const TensorShape &shape_ = {}) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
         long split_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
         auto split_data_l_ = new float[split_size_];
         auto split_data_r_ = new float[split_size_];
@@ -427,8 +427,8 @@ public:
     }
 
     static Tensor guidance(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors guidance without match"));
@@ -451,8 +451,8 @@ public:
     }
 
     static Tensor weight(const Tensor &input_l_, const Tensor &input_r_, int offset_, bool re_normalize_ = false) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
 
         long result_size_ = long(input_size_l_);
         auto result_data_ = new float[result_size_];
@@ -485,8 +485,8 @@ public:
     }
 
     static Tensor add(const Tensor &input_l_, const Tensor &input_r_, const TensorShape& shape_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors adding with data not match"));
@@ -508,8 +508,8 @@ public:
     }
 
     static Tensor sub(const Tensor &input_l_, const Tensor &input_r_, const TensorShape& shape_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors subtract with data not match"));

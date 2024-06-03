@@ -26,7 +26,7 @@ protected:
 
 public:
     explicit EularAncestralDiscreteScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
-        eular_a_random.seed(int64_t(scheduler_config_.scheduler_seed));
+        eular_a_random.seed(0);
     }
 
     ~EularAncestralDiscreteScheduler() override = default;
