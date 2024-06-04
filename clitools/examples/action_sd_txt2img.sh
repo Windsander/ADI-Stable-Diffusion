@@ -41,6 +41,6 @@ find . -name "._*" -type f -delete
  --token-border 1.0\
  --gain 1.1\
  --decoding 0.18215\
- --guidance 7.5\
- --steps 3\
+ --guidance 1.5\
+ --steps 10\
  -v

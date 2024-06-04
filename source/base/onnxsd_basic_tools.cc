@@ -219,15 +219,16 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor random(TensorShape shape_, RandomGenerator random_, float factor_ = 1.0f) {
         long input_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
-        auto result_data_ = new float[input_size_];
+        auto result_data_ = new T[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = random_.next() * factor_;
         }
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             Ort::MemoryInfo::CreateCpu(
                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault
             ), result_data_, input_size_,
@@ -237,9 +238,10 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor blur(const Tensor &input_, RandomGenerator random_, float factor_ = 1.0f) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
-        auto result_data_ = new float[input_size_];
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        auto result_data_ = new T[input_size_];
 
         int64_t max_w_ = input_shape_[3];
         int64_t max_h_ = input_shape_[2];
@@ -264,7 +266,7 @@ public:
         }
 
         TensorShape result_shape_{max_s_, out_c_, max_h_, max_w_};
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), result_data_, input_size_,
             result_shape_.data(), result_shape_.size()
         );
@@ -272,9 +274,10 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor divide(const Tensor &input_, float denominator_, float offset_ = 0.0f, bool normalize_ = false) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
-        auto result_data_ = new float[input_size_];
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        auto result_data_ = new T[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = (
@@ -284,7 +287,7 @@ public:
             );
         }
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), result_data_, input_size_,
             input_shape_.data(), input_shape_.size()
         );
@@ -292,15 +295,16 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor multiple(const Tensor &input_, float multiplier_, float offset_ = 0.0f) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
-        auto result_data_ = new float[input_size_];
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        auto result_data_ = new T[input_size_];
 
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = input_data_[i] * multiplier_ + offset_;
         }
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), result_data_, input_size_,
             input_shape_.data(), input_shape_.size()
         );
@@ -346,11 +350,12 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static std::vector<Tensor> split(const Tensor &input_, const TensorShape &shape_ = {}) {
-        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, float);
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
         long split_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
-        auto split_data_l_ = new float[split_size_];
-        auto split_data_r_ = new float[split_size_];
+        auto split_data_l_ = new T[split_size_];
+        auto split_data_r_ = new T[split_size_];
         bool enough_data_ = (input_size_ == split_size_ * 2);
 
         int64_t max_w_ = input_shape_[3];
@@ -372,11 +377,11 @@ public:
         }
 
         std::vector<Tensor> result_;
-        result_.push_back(Tensor::CreateTensor<float>(
+        result_.push_back(Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), split_data_l_, split_size_,
             shape_.data(), shape_.size()
         ));
-        result_.push_back(Tensor::CreateTensor<float>(
+        result_.push_back(Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), split_data_r_, split_size_,
             shape_.data(), shape_.size()
         ));
@@ -384,13 +389,14 @@ public:
         return result_;
     }
 
+    template<class T>
     static Tensor merge(const std::vector<Tensor> &input_tensors_, int offset_) {
         TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
         size_t input_size_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
         long tensor_num_ = input_tensors_.size();   // [1, 77, 768]
 
         long result_size_ = input_size_ * tensor_num_;
-        auto result_data_ = new float[result_size_];
+        auto result_data_ = new T[result_size_];
 
         long inner_dim = std::accumulate(
             input_shape_.begin() + offset_ + 1, input_shape_.end(), 1, std::multiplies<>()
@@ -405,7 +411,7 @@ public:
             for (int m = 0; m < concat_dim; ++m) {      // 77
                 for (int i = 0; i < inner_dim; ++i) {   // 768
                     for (long index_ = 0; index_ < tensor_num_; ++index_) {  // 2
-                        auto *input_data_ = input_tensors_[index_].GetTensorData<float>();
+                        auto *input_data_ = input_tensors_[index_].GetTensorData<T>();
                         long n = m + index_ * concat_dim;
                         long old_index = l * concat_dim * inner_dim + m * inner_dim + i;
                         long new_index = l * newest_dim * inner_dim + n * inner_dim + i;
@@ -418,7 +424,7 @@ public:
         TensorShape shape_ = input_shape_;
         shape_[offset_] *= tensor_num_;
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_tensors_[0].GetTensorMemoryInfo(), result_data_, result_size_,
             shape_.data(), shape_.size()
         );
@@ -426,23 +432,24 @@ public:
         return result_tensor_;
     }
 
-    static Tensor guidance(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
+    template<class T>
+    static Tensor guide(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors guidance without match"));
         }
 
-        long result_size_ =long(input_size_l_);
-        auto result_data_ = new float[result_size_];
+        long result_size_ = long(input_size_l_);
+        auto result_data_ = new T[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] + guidance_scale_ * (input_data_r_[i] - input_data_l_[i]);
         }
 
         TensorShape result_shape_ = input_shape_l_;
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
             result_shape_.data(), result_shape_.size()
         );
@@ -450,12 +457,13 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor weight(const Tensor &input_l_, const Tensor &input_r_, int offset_, bool re_normalize_ = false) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
 
         long result_size_ = long(input_size_l_);
-        auto result_data_ = new float[result_size_];
+        auto result_data_ = new T[result_size_];
 
         float original_mean_ = 0.0f;
         float weighted_mean_ = 0.0f;
@@ -471,35 +479,36 @@ public:
         }
 
         TensorShape shape_ = input_shape_l_;
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
             shape_.data(), shape_.size()
         );
 
         if (re_normalize_){
             float normalize_factor_ = original_mean_ / weighted_mean_;
-            result_tensor_ = multiple(result_tensor_, normalize_factor_);
+            result_tensor_ = multiple<T>(result_tensor_, normalize_factor_);
         }
 
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor add(const Tensor &input_l_, const Tensor &input_r_, const TensorShape& shape_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors adding with data not match"));
         }
 
         long result_size_ = long(input_size_l_);
-        auto result_data_ = new float[result_size_];
+        auto result_data_ = new T[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] + input_data_r_[i];
         }
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
             shape_.data(), shape_.size()
         );
@@ -507,22 +516,23 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor sub(const Tensor &input_l_, const Tensor &input_r_, const TensorShape& shape_) {
-        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, float);
-        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, float);
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
 
         if (input_size_l_ != input_size_r_){
             amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: 2 Tensors subtract with data not match"));
         }
 
         long result_size_ = long(input_size_l_);
-        auto result_data_ = new float[result_size_];
+        auto result_data_ = new T[result_size_];
 
         for (int i = 0; i < result_size_; i++) {
             result_data_[i] = input_data_l_[i] - input_data_r_[i];
         }
 
-        Tensor result_tensor_ = Tensor::CreateTensor<float>(
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
             shape_.data(), shape_.size()
         );
@@ -530,10 +540,11 @@ public:
         return result_tensor_;
     }
 
+    template<class T>
     static Tensor sum(const Tensor* input_tensors_, const long input_size_, const TensorShape& shape_) {
-        Tensor result_ = clone<float>(input_tensors_[0], shape_);
+        Tensor result_ = clone<T>(input_tensors_[0], shape_);
         for (int i = 1; i < input_size_; ++i) {
-            result_ = add(result_, input_tensors_[i], shape_);
+            result_ = add<T>(result_, input_tensors_[i], shape_);
         }
         return result_;
     }

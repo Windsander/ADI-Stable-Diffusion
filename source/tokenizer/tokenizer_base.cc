@@ -429,7 +429,7 @@ Tensor TokenizerBase::embedding(const Tensor &token_p_, const Tensor &token_n_) 
     std::vector<Tensor> target_tensors;
     target_tensors.emplace_back(std::move(encoded_token_));
     target_tensors.emplace_back(std::move(unconditional_));
-    return TensorHelper::merge(target_tensors, 0);
+    return TensorHelper::merge<float>(target_tensors, 0);
 }
 
 std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) {

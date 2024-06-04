@@ -178,7 +178,7 @@ void SchedulerBase::init(uint32_t inference_steps_) {
 }
 
 Tensor SchedulerBase::mask(const TensorShape& mask_shape_){
-    return TensorHelper::random(mask_shape_, random_generator, scheduler_max_sigma);
+    return TensorHelper::random<float>(mask_shape_, random_generator, scheduler_max_sigma);
 }
 
 Tensor SchedulerBase::scale(const Tensor& masker_, int step_index_){
@@ -188,7 +188,7 @@ Tensor SchedulerBase::scale(const Tensor& masker_, int step_index_){
     }
     float sigma = scheduler_sigmas[step_index_];
     sigma = std::sqrtf(sigma * sigma + 1);
-    return TensorHelper::divide(masker_, sigma);
+    return TensorHelper::divide<float>(masker_, sigma);
 }
 
 Tensor SchedulerBase::time(int step_index_){
@@ -198,7 +198,7 @@ Tensor SchedulerBase::time(int step_index_){
     }
     vector<int64_t> timestep_value_{scheduler_timesteps[step_index_]};
     TensorShape timestep_shape_{1};
-    return TensorHelper::create(timestep_shape_, timestep_value_);
+    return TensorHelper::create<int64_t>(timestep_shape_, timestep_value_);
 }
 
 Tensor SchedulerBase::step(

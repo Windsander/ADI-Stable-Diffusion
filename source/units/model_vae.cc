@@ -72,24 +72,24 @@ void VAE::generate_output(std::vector<Tensor> &output_tensors_) {
 Tensor VAE::encode(const Tensor &inimage_) {
     if (!TensorHelper::have_data(inimage_)) { return TensorHelper::empty<float>(); }
     std::vector<Tensor> input_tensors;
-    input_tensors.push_back(TensorHelper::multiple(inimage_, 2.0f, -1.0f));
+    input_tensors.push_back(TensorHelper::multiple<float>(inimage_, 2.0f, -1.0f));
     std::vector<Tensor> output_tensors;
     generate_output(output_tensors);
     execute(input_tensors, output_tensors);
 
-    Tensor result_ = TensorHelper::multiple(output_tensors.front(), sd_vae_config.sd_decode_scale_strength);
+    Tensor result_ = TensorHelper::multiple<float>(output_tensors.front(), sd_vae_config.sd_decode_scale_strength);
     return result_;
 }
 
 Tensor VAE::decode(const Tensor &latents_) {
     if (!TensorHelper::have_data(latents_)) { return TensorHelper::empty<float>(); }
     std::vector<Tensor> input_tensors;
-    input_tensors.push_back(TensorHelper::multiple(latents_, (1.0f / sd_vae_config.sd_decode_scale_strength)));
+    input_tensors.push_back(TensorHelper::multiple<float>(latents_, (1.0f / sd_vae_config.sd_decode_scale_strength)));
     std::vector<Tensor> output_tensors;
     generate_output(output_tensors);
     execute(input_tensors, output_tensors);
 
-    Tensor result_ = TensorHelper::divide(output_tensors.front(), 2.0f, +0.5f, true);
+    Tensor result_ = TensorHelper::divide<float>(output_tensors.front(), 2.0f, +0.5f, true);
     return result_;
 }
 

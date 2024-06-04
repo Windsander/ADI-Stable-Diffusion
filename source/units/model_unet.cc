@@ -95,7 +95,7 @@ Tensor UNet::inference(
                       TensorHelper::clone<float>(encoded_img_, latent_shape_) :
                       TensorHelper::create(latent_shape_, latent_empty_);
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
-    latents_ = TensorHelper::add(latents_, init_mask_, latent_shape_);
+    latents_ = TensorHelper::add<float>(latents_, init_mask_, latent_shape_);
 
     for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
         Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
@@ -131,7 +131,7 @@ Tensor UNet::inference(
         float merge_factor_ = sd_unet_config.sd_scale_guidance;
         Tensor guided_pred_ = (
             (need_guidance_) ?
-            TensorHelper::guidance(pred_negative_, pred_positive_, merge_factor_) :
+            TensorHelper::guide<float>(pred_negative_, pred_positive_, merge_factor_) :
             TensorHelper::clone<float>(pred_positive_, latent_shape_)
         );
 

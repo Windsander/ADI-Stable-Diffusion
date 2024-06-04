@@ -70,7 +70,6 @@ void Clip::generate_output(std::vector<Tensor> &output_tensors_) {
     }
     {
         std::vector<float> output_pooler_(
-            sd_clip_config.sd_tokenizer_config.avail_token_size *
             sd_clip_config.sd_tokenizer_config.major_hidden_dim
         );
         TensorShape pooler_shape_ = {
@@ -97,11 +96,11 @@ Tensor Clip::embedding(const std::string& prompts_) {
         execute(input_tensors, output_tensors);
 
         merged_hidden_.push_back(                       // [1, 77, major_hidden_dim]
-            TensorHelper::weight(output_tensors[0], weight_, 1, true)
+            TensorHelper::weight<float>(output_tensors[0], weight_, 1, true)
         );
     }
     // seems not right
-    Tensor hidden_state_ = TensorHelper::merge(merged_hidden_, 1);  // [1, 77 * N, major_hidden_dim]
+    Tensor hidden_state_ = TensorHelper::merge<float>(merged_hidden_, 1);  // [1, 77 * N, major_hidden_dim]
 
     return hidden_state_;
 }
