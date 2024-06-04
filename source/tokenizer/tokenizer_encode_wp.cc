@@ -1,9 +1,9 @@
 ﻿/*
- * Copyright (c) 2018-2050 Byte Pair Encoding(BEP) Tokenizer - Arikan.Li
+ * Copyright (c) 2018-2050 Word Piece Encoding(WP) Tokenizer - Arikan.Li
  * Created by Arikan.Li on 2024/05/14.
  */
-#ifndef TOKENIZER_BEP_H
-#define TOKENIZER_BEP_H
+#ifndef TOKENIZER_WP_H
+#define TOKENIZER_WP_H
 
 #include "tokenizer_base.cc"
 
@@ -11,29 +11,13 @@ namespace onnx {
 namespace sd {
 namespace tokenizer {
 
-class BPETokenizer : public TokenizerBase {
-private:
-    typedef std::vector<std::pair<std::string, std::string>> MergePair_map;
-
+class WPTokenizer : public TokenizerBase {
 protected:
     const std::string bep_vocab_end = ",";
     const std::regex bep_split_reg = std::regex(
         R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
         std::regex::icase
     );
-
-    MergePair_map read_merges(const std::string& merges_file) {
-        MergePair_map merges;
-        std::ifstream file(merges_file);
-        std::string line;
-        while (std::getline(file, line)) {
-            std::istringstream iss(line);
-            std::string first, second;
-            iss >> first >> second;
-            merges.emplace_back(first, second);
-        }
-        return merges;
-    }
 
 protected:
     std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) override {
@@ -89,13 +73,13 @@ protected:
     }
 
 public:
-    explicit BPETokenizer(const TokenizerConfig &tokenizer_config_ = {}) : TokenizerBase(tokenizer_config_) {};
-    ~BPETokenizer() override = default;
+    explicit WPTokenizer(const TokenizerConfig &tokenizer_config_ = {}) : TokenizerBase(tokenizer_config_) {};
+    ~WPTokenizer() override = default;
 };
 
 } // namespace tokenizer
 } // namespace sd
 } // namespace onnx
 
-#endif //TOKENIZER_BEP_H
+#endif //TOKENIZER_WP_H
 

@@ -7,7 +7,8 @@
 
 #include "onnxsd_foundation.cc"
 #include "tokenizer_base.cc"
-#include "tokenizer_bpe.cc"
+#include "tokenizer_encode_bpe.cc"
+#include "tokenizer_encode_wp.cc"
 
 namespace onnx {
 namespace sd {
@@ -29,7 +30,7 @@ public:
                 break;
             }
             case TOKENIZER_WORD_PIECE: {
-                // TODO WordPieceTokenizer
+                result_ptr_ = new WPTokenizer(tokenizer_config_);
                 break;
             }
             default:{
