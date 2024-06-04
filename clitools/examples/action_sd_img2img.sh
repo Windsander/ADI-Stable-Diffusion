@@ -33,7 +33,7 @@ find . -name "._*" -type f -delete
  --beta-end 0.012\
  --beta linear\
  --alpha cos\
- --scheduler eular_a\
+ --scheduler euler_a\
  --predictor epsilon\
  --tokenizer bpe\
  --train-steps 1000\

@@ -152,7 +152,7 @@ class SchedulerBase:
         self.alphas_cumprod.clear()
 
     def euler_a_execute_method(self, predict_data, samples_data, data_size, step_index, order):
-        eular_a_random = np.random.default_rng()  # random number
+        euler_a_random = np.random.default_rng()  # random number
         # 忽略 order 参数
         scaled_sample = np.zeros(data_size)
 
@@ -177,7 +177,7 @@ class SchedulerBase:
                 i] * sigma_dt  # previous_down = sample + derivative_out * dt
             if sigma_next > 0:
                 scaled_sample[
-                    i] += eular_a_random.normal() * sigma_up  # producted_out = previous_down + random_noise * sigma_up
+                    i] += euler_a_random.normal() * sigma_up  # producted_out = previous_down + random_noise * sigma_up
 
         return scaled_sample.tolist()
 

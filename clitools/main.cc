@@ -42,7 +42,8 @@ const char* scheduler_prediction_str[] = {
 
 // below order match AvailablePredictionType order
 const char* scheduler_sampler_fuc_str[] = {
-    "eular_a",
+    "euler",
+    "euler_a",
     "lms",
 };
 
@@ -80,7 +81,7 @@ struct CommandLineInput {
     std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
 
-    AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULAR_A; // Scheduler: scheduler type (Eular_A, LMS)
+    AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
     float scheduler_beta_start = 0.00085f;                                  // Scheduler: Beta start (recommend 0.00085f)
     float scheduler_beta_end = 0.012f;                                      // Scheduler: Beta end (recommend 0.012f)
@@ -192,7 +193,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [eular_a / lms] (default eular_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms] (default euler_a) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");

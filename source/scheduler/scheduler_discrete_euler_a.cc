@@ -2,8 +2,8 @@
  * Copyright (c) 2018-2050 SD_Scheduler - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
-#ifndef SCHEDULER_DISCRETE_EULAR_A
-#define SCHEDULER_DISCRETE_EULAR_A
+#ifndef SCHEDULER_DISCRETE_EULER_A
+#define SCHEDULER_DISCRETE_EULER_A
 
 #include "scheduler_base.cc"
 
@@ -11,9 +11,9 @@ namespace onnx {
 namespace sd {
 namespace scheduler {
 
-class EularAncestralDiscreteScheduler : public SchedulerBase {
+class EulerAncestralDiscreteScheduler : public SchedulerBase {
 private:
-    RandomGenerator eular_a_random;
+    RandomGenerator euler_a_random;
 
 protected:
     std::vector<float> execute_method(
@@ -25,14 +25,14 @@ protected:
     ) override;
 
 public:
-    explicit EularAncestralDiscreteScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
-        eular_a_random.seed(0);
+    explicit EulerAncestralDiscreteScheduler(SchedulerConfig scheduler_config_ = {}) : SchedulerBase(scheduler_config_){
+        euler_a_random.seed(0);
     }
 
-    ~EularAncestralDiscreteScheduler() override = default;
+    ~EulerAncestralDiscreteScheduler() override = default;
 };
 
-std::vector<float> EularAncestralDiscreteScheduler::execute_method(
+std::vector<float> EulerAncestralDiscreteScheduler::execute_method(
     const float* predict_data_,
     const float* samples_data_,
     long data_size_,
@@ -57,12 +57,12 @@ std::vector<float> EularAncestralDiscreteScheduler::execute_method(
         sigma_dt = sigma_down - sigma_curs;
     }
 
-    // Euler method:: current noise decrees
+    // Euler Ancestral method:: current noise decrees
     for (int i = 0; i < data_size_; i++) {
         scaled_sample_[i] = (samples_data_[i] - predict_data_[i]) / sigma_curs;         // derivative_out = (sample - predict_sample) / sigma
         scaled_sample_[i] = (samples_data_[i] + scaled_sample_[i] * sigma_dt);          // previous_down = sample + derivative_out * dt
         if (sigma_next > 0) {
-            scaled_sample_[i] = scaled_sample_[i] + eular_a_random.next() * sigma_up;    // producted_out = previous_down + random_noise * sigma_up
+            scaled_sample_[i] = scaled_sample_[i] + euler_a_random.next() * sigma_up;    // producted_out = previous_down + random_noise * sigma_up
         }
     }
 
@@ -73,4 +73,4 @@ std::vector<float> EularAncestralDiscreteScheduler::execute_method(
 } // namespace sd
 } // namespace onnx
 
-#endif //SCHEDULER_DISCRETE_EULAR_A
+#endif //SCHEDULER_DISCRETE_EULER_A

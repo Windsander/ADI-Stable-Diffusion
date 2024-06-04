@@ -46,8 +46,9 @@ typedef struct ORTBasicsConfig {
 /* Diffusion Scheduler Settings ===========================================*/
 /* Scheduler Type Provide */
 typedef enum SchedulerType {
-    SCHEDULER_EULAR_A           = 1,
-    SCHEDULER_LMS               = 2,
+    SCHEDULER_EULER             = 1,
+    SCHEDULER_EULER_A           = 2,
+    SCHEDULER_LMS               = 3,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
@@ -69,7 +70,7 @@ typedef enum PredictionType {
 
 #define DEFAULT_SCHEDULER_CONFIG                             \
     {                                                        \
-        /*scheduler_type*/              SCHEDULER_EULAR_A,   \
+        /*scheduler_type*/              SCHEDULER_EULER_A,   \
         /*scheduler_training_steps*/    1000,                \
         /*scheduler_beta_start*/        0.00085f,            \
         /*scheduler_beta_end*/          0.012f,              \

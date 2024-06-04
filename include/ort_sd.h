@@ -43,8 +43,9 @@ enum AvailablePredictionType {
 
 /* Scheduler Type Provide */
 enum AvailableSchedulerType {
-    AVAILABLE_SCHEDULER_EULAR_A     = 0x01,
-    AVAILABLE_SCHEDULER_LMS         = 0x02,
+    AVAILABLE_SCHEDULER_EULER       = 0x01,
+    AVAILABLE_SCHEDULER_EULER_A     = 0x02,
+    AVAILABLE_SCHEDULER_LMS         = 0x03,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -78,7 +79,7 @@ typedef struct IOrtSDConfig {
     } sd_modelpath_config;
 
     struct {
-        enum AvailableSchedulerType sd_scheduler_type;  // Scheduler: scheduler type (Eular_A, LMS)
+        enum AvailableSchedulerType sd_scheduler_type;  // Scheduler: scheduler type (Euler_A, LMS)
         uint64_t scheduler_training_steps;              // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
         float scheduler_beta_start;                     // Scheduler: Beta start (recommend 0.00085f)
         float scheduler_beta_end;                       // Scheduler: Beta end (recommend 0.012f)

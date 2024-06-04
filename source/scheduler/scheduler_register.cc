@@ -6,7 +6,8 @@
 #define SCHEDULER_REGISTER_ONCE
 
 #include "scheduler_base.cc"
-#include "scheduler_discrete_eular_a.cc"
+#include "scheduler_discrete_euler.cc"
+#include "scheduler_discrete_euler_a.cc"
 #include "scheduler_discrete_lms.cc"
 
 namespace onnx {
@@ -23,8 +24,12 @@ public:
     static SchedulerEntity_ptr request_scheduler(const SchedulerConfig &scheduler_config_) {
         SchedulerEntity_ptr result_ptr_ = nullptr;
         switch (scheduler_config_.scheduler_type) {
-            case SCHEDULER_EULAR_A: {
-                result_ptr_ = new EularAncestralDiscreteScheduler(scheduler_config_);
+            case SCHEDULER_EULER: {
+                result_ptr_ = new EulerDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_EULER_A: {
+                result_ptr_ = new EulerAncestralDiscreteScheduler(scheduler_config_);
                 break;
             }
             case SCHEDULER_LMS: {
