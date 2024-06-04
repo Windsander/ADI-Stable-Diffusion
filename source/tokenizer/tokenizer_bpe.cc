@@ -12,12 +12,28 @@ namespace sd {
 namespace tokenizer {
 
 class BPETokenizer : public TokenizerBase {
+private:
+    typedef std::vector<std::pair<std::string, std::string>> MergePair_map;
+
 protected:
     const std::string bep_vocab_end = ",";
     const std::regex bep_split_reg = std::regex(
         R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
         std::regex::icase
     );
+
+    MergePair_map read_merges(const std::string& merges_file) {
+        MergePair_map merges;
+        std::ifstream file(merges_file);
+        std::string line;
+        while (std::getline(file, line)) {
+            std::istringstream iss(line);
+            std::string first, second;
+            iss >> first >> second;
+            merges.emplace_back(first, second);
+        }
+        return merges;
+    }
 
 protected:
     std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) override {
