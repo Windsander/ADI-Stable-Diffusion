@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/renderer_cmake_colors.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/renderer_cmake_utils.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
 
 PROJECT("onnxruntime-sd")
 SET(ENGINE_NAME "ORT-TensorRT")
@@ -32,21 +33,46 @@ if (WIN32)                          # for Windows x32
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
+    set(CURRENT_PLATFORM win-x86)
 elseif (WIN64)                      # for Windows x64
     SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE ON)
     set(DEFAULT_COREML_STATE OFF)
+    set(CURRENT_PLATFORM win-x64)
 elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
     SET(ONNX_INFERENCE_TARGET osx-arm64)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
+    set(CURRENT_PLATFORM Apple)
 elseif (UNIX AND NOT APPLE)         # for Linux, BSD, Solaris, Minix
     SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
+    set(CURRENT_PLATFORM Linux)
+elseif (ANDROID)                    # for Android
+    SET(ONNX_INFERENCE_TARGET android-arm64-v8a)
+    set(DEFAULT_CUDA_STATE OFF)
+    set(DEFAULT_TRT_STATE OFF)
+    set(DEFAULT_COREML_STATE OFF)
+    set(CURRENT_PLATFORM Android)
+
+    # prepare Android NDK
+    set(CMAKE_SYSTEM_NAME Android)
+    set(CMAKE_SYSTEM_VERSION 27)
+    set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+    if(NOT DEFINED ANDROID_NDK)
+        set(ANDROID_NDK $ENV{ANDROID_NDK})
+    endif()
+
+    if(NOT ANDROID_NDK)
+        message(FATAL_ERROR "Please set ANDROID_NDK to the path of the Android NDK.")
+    endif()
+
+    set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
+    set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
 endif ()
 
 
@@ -83,12 +109,24 @@ if (ORT_ONLINE_COMPILED)
 endif ()
 
 if (ORT_LOCALS_BUILDING)
-    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime)
+    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${CURRENT_PLATFORM})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
-    add_subdirectory(${ONNX_INFERENCE_PATH})
-    # prepare ort local compiling setting
-    add_definitions(-DEXECUTION_PROVIDER_TENSORRT)
-    message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
+    # download from github if ONNXRuntime library is not exists
+    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
+        # do check ORT ./engine/onnxruntime exist
+        auto_check_reference_submodule()
+        auto_build_reference_submodule()
+        message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
+    else ()
+        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}")
+    endif ()
+
+    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
+        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} is not exists!")
+    endif ()
+
+    include_directories(${ONNX_INFERENCE_PATH}/include)
+    link_directories(${ONNX_INFERENCE_PATH}/lib)
 endif ()
 
 # 3. Check Provider Enable State
