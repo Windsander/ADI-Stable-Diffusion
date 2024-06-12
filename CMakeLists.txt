@@ -72,10 +72,18 @@ elseif (ANDROID)                    # for Android
     set(CMAKE_SYSTEM_NAME Android)
     set(CMAKE_SYSTEM_VERSION 27)
     set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+
+    # prepare Android ToolChain
+    if(NOT DEFINED ANDROID_SDK)
+        set(ANDROID_SDK $ENV{ANDROID_SDK})
+    endif()
     if(NOT DEFINED ANDROID_NDK)
         set(ANDROID_NDK $ENV{ANDROID_NDK})
     endif()
 
+    if(NOT ANDROID_SDK)
+        message(FATAL_ERROR "Please set ANDROID_SDK to the path of the Android SDK.")
+    endif()
     if(NOT ANDROID_NDK)
         message(FATAL_ERROR "Please set ANDROID_NDK to the path of the Android NDK.")
     endif()
@@ -98,7 +106,7 @@ option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerat
 
 # 2. Add inference engine to project
 auto_check_reference_submodule()
-include_directories(${ONNX_PATH}/onnxruntime/include)
+auto_include(${ONNX_PATH}/onnxruntime include)
 
 # 3. Prepare inference engine compiled library (from online/local)
 if (ORT_ONLINE_COMPILED)
@@ -126,16 +134,16 @@ if (ORT_LOCALS_BUILDING)
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime/build/${CURRENT_PLATFORM}/${ORT_BUILD_TYPE})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
     # download from github if ONNXRuntime library is not exists
-    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
+    if (NOT EXISTS ${ONNX_INFERENCE_PATH}/libonnxruntime.a)
         # do check ORT ./engine/onnxruntime exist
         auto_build_reference_submodule()
-        message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
+        auto_merge_submodule_compiled()
     else ()
-        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}")
+        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}/libonnxruntime.a")
     endif ()
 
-    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
-        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} is not exists!")
+    if (NOT EXISTS ${ONNX_INFERENCE_PATH}/libonnxruntime.a)
+        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.a not exists!")
     endif ()
 
     link_directories(${ONNX_INFERENCE_PATH}/lib)

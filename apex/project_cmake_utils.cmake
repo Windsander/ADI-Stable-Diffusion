@@ -83,6 +83,24 @@ macro(auto_target_include library path_dir root_dir include_type)
     target_include_directories(${library_name} ${include_type} ${root_dir})
 endmacro()
 
+# 指定库，自动添加关联子文件
+macro(auto_include path_dir root_dir)
+    file(GLOB AUTO_INCLUDE_SUB RELATIVE ${path_dir}/${root_dir} ${path_dir}/${root_dir}/*)
+    foreach (sub ${AUTO_INCLUDE_SUB})
+        if (IS_DIRECTORY ${path_dir}/${root_dir}/${sub}
+                AND NOT (${path_dir}/${root_dir} MATCHES ".*/prebuilt.*")
+                AND NOT (${path_dir}/${root_dir} MATCHES ".*/CMakeFiles.*"))
+            auto_include(${path_dir} ${root_dir}/${sub})
+        elseif (NOT (${path_dir}/${root_dir} MATCHES ".*/test.*")
+                AND NOT (${sub} MATCHES ".DS_Store"))
+            continue()
+        endif ()
+    endforeach ()
+    message(${PROJECT_NAME}=>\ auto_include::\ ${path_dir}/${root_dir})
+    include_directories(${path_dir}/${root_dir})
+
+endmacro()
+
 # 通用列表数据打印
 macro(auto_print_list source_list)
     message("${BoldMagenta}")
