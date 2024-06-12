@@ -27,4 +27,4 @@ sd/sd-embeddings
 sd/sd-dictionary
 sd/sd-base-model
 engine/onnxruntime-*
-engine/onnxruntime/
+engine/onnxruntime/*
