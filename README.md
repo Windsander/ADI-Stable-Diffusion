@@ -110,7 +110,9 @@ And now, you can have a try~ (0w0 )
 ## Development Progress Checklist (latest):
 
 **Basic Pipeline Functionalities (Major):**
-- [x] [SD] Stable-Diffusion (Support for All Versions)
+- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo)
+- [ ] [SD_v2] Stable-Diffusion (v2.0, v2.1)
+- [ ] [SD_v3] Stable-Diffusion (v3.0)
 - [ ] [SDXL] Stable-Diffusion-XL
 - [ ] [SVD] Stable-Video-Diffusion
 

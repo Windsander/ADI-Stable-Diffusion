@@ -26,4 +26,4 @@ sd/sd-control-net
 sd/sd-embeddings
 sd/sd-dictionary
 sd/sd-base-model
-engine
+engine/onnxruntime*

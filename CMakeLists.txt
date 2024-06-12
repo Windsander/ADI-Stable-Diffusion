@@ -34,30 +34,39 @@ if (WIN32)                          # for Windows x32
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM win-x86)
+    set(SD_ORT_ONLINE_AVAIL ON)
 elseif (WIN64)                      # for Windows x64
     SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE ON)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM win-x64)
+    set(SD_ORT_ONLINE_AVAIL ON)
 elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
     SET(ONNX_INFERENCE_TARGET osx-arm64)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
     set(CURRENT_PLATFORM Apple)
-elseif (UNIX AND NOT APPLE)         # for Linux, BSD, Solaris, Minix
+    set(SD_ORT_ONLINE_AVAIL ON)
+elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Linux)
+    set(SD_ORT_ONLINE_AVAIL ON)
 elseif (ANDROID)                    # for Android
     SET(ONNX_INFERENCE_TARGET android-arm64-v8a)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Android)
+    set(SD_ORT_ONLINE_AVAIL OFF)
+
+    # force close Online-compiled for Android currently dont have such things
+    set(ORT_ONLINE_COMPILED OFF)
+    set(ORT_LOCALS_BUILDING ON)
 
     # prepare Android NDK
     set(CMAKE_SYSTEM_NAME Android)
@@ -74,19 +83,24 @@ elseif (ANDROID)                    # for Android
     set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
     set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
 endif ()
+message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
-option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ON)
+option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
 
 # 2. Add inference engine to project
+auto_check_reference_submodule()
+include_directories(${ONNX_PATH}/onnxruntime/include)
+
+# 3. Prepare inference engine compiled library (from online/local)
 if (ORT_ONLINE_COMPILED)
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
@@ -104,17 +118,16 @@ if (ORT_ONLINE_COMPILED)
         message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} is not exists!")
     endif ()
 
-    include_directories(${ONNX_INFERENCE_PATH}/include)
     link_directories(${ONNX_INFERENCE_PATH}/lib)
 endif ()
 
 if (ORT_LOCALS_BUILDING)
-    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${CURRENT_PLATFORM})
+    auto_switch_ort_build_type()
+    set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime/build/${CURRENT_PLATFORM}/${ORT_BUILD_TYPE})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
     # download from github if ONNXRuntime library is not exists
     if (NOT EXISTS ${ONNX_INFERENCE_PATH})
         # do check ORT ./engine/onnxruntime exist
-        auto_check_reference_submodule()
         auto_build_reference_submodule()
         message("[onnx.runtime.sd][W] ${Red}Using local self-build ort, u must define a ort cmake file by u own${ColourReset}")
     else ()
@@ -125,11 +138,10 @@ if (ORT_LOCALS_BUILDING)
         message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} is not exists!")
     endif ()
 
-    include_directories(${ONNX_INFERENCE_PATH}/include)
     link_directories(${ONNX_INFERENCE_PATH}/lib)
 endif ()
 
-# 3. Check Provider Enable State
+# 4. Check Provider Enable State
 if (ORT_ENABLE_TENSOR_RT)
     message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
     add_definitions(-DENABLE_TENSOR_RT)
