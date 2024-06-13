@@ -42,12 +42,6 @@ curl -L -o onnxruntime-osx-arm64-1.18.0.tgz https://github.com/microsoft/onnxrun
 wget -O onnxruntime-osx-arm64-1.18.0.tgz https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-osx-arm64-1.18.0.tgz
 ```
 
-And if prepared by manual, you should also execute script below, to copy ORT from `./engine/[your_ort_file]/include` dir to `./engine` path:
-```bash
-# copy include to engine
-cp -r ./engine/[your_ort_file]/include ./engine/
-```
-After executing this command, you will see a new `include` folder in the `./engine` directory, containing all the contents of the original `include` folder.
 Don't forget to replace `[your_ort_file]` with your ORT version folder, for example: `onnxruntime-osx-universal2-1.18.0`.
 
 - **2. prepare ONNX models of target Stable-Diffusion**
@@ -74,8 +68,25 @@ cd ./sd
 # and, if you not enable certain ORTProvider by [options]], script will choose default ORTProvider by platform
 bash auto_build.sh
 
-# example below showing, build release with CUDA=ON TensorRT=ON
-bash auto_build.sh -DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON
+# Example-MacOS:
+bash ./auto_build.sh --platform macos \
+           --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
+           --ninja /usr/local/bin/ninja \
+           --build-type debug \
+           --jobs 4
+           
+# Example-Android:
+bash ./auto_build.sh --platform android \
+           --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
+           --ninja /usr/local/bin/ninja \
+           --build-type Debug \
+           --jobs 4 \
+           --android-sdk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk \
+           --android-ndk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk/ndk/26.1.10909125 \
+           --android-ver 27
+           
+# Example(with Extra Options) as below, build release with CUDA=ON TensorRT=ON
+bash auto_build.sh [params] -DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON
 ```
 
 currently, this project provide below [Options]:
