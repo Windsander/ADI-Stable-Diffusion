@@ -18,7 +18,7 @@ if(POLICY CMP0144)
     cmake_policy(SET CMP0144 OLD)
 endif()
 if(POLICY CMP0077)
-    cmake_policy(SET CMP0077 OLD)
+    cmake_policy(SET CMP0077 NEW)
 endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -72,37 +72,12 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Android)
     set(SD_ORT_ONLINE_AVAIL ON)
+    set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
     #set(ORT_ONLINE_COMPILED OFF)
     #set(ORT_LOCALS_BUILDING ON)
-
-    # prepare Android NDK
-    set(CMAKE_SYSTEM_NAME Android)
-    set(CMAKE_SYSTEM_VERSION 27)
-    set(CMAKE_SYSTEM_PROCESSOR aarch64)
-    set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
-    set(CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION clang)
-
-    # prepare Android ToolChain
-    if(NOT DEFINED ANDROID_SDK)
-        set(ANDROID_SDK $ENV{ANDROID_SDK})
-    endif()
-    if(NOT DEFINED ANDROID_NDK)
-        set(ANDROID_NDK $ENV{ANDROID_NDK})
-    endif()
-
-    if(NOT ANDROID_SDK)
-        message(FATAL_ERROR "Please set ANDROID_SDK to the path of the Android SDK.")
-    endif()
-    if(NOT ANDROID_NDK)
-        message(FATAL_ERROR "Please set ANDROID_NDK to the path of the Android NDK.")
-    endif()
-
-    set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
-    set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
-    set(CMAKE_C_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang)
-    set(CMAKE_CXX_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++)
+    set(ORT_BUILD_COMMAND_LINE OFF)
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 
@@ -223,6 +198,7 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Done ############
 
 # check command line available
 if (ORT_BUILD_COMMAND_LINE)
+    message("[onnx.runtime.sd][I] build command line tools at ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
     add_subdirectory(clitools)
 endif()
 
