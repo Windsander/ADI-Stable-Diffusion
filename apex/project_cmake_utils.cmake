@@ -20,6 +20,18 @@ macro(auto_link_reference_library target_lib)
     )
 endmacro()
 
+# 资源下载=================================================================================================
+# 下载并解压 Define the download_and_decompress function
+function(download_and_decompress url filename output_dir)
+    file(MAKE_DIRECTORY ${output_dir})
+    file(DOWNLOAD ${url} ${output_dir}/${filename} SHOW_PROGRESS)
+    execute_process(
+            COMMAND tar xzf ${output_dir}/${filename} --strip-components=1
+            WORKING_DIRECTORY ${output_dir}
+    )
+    file(REMOVE ${output_dir}/${filename})
+endfunction()
+
 # 资源遍历=================================================================================================
 # 自动添加库索引关联子文件
 function(auto_include_all_files root_dir)

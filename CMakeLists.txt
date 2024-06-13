@@ -8,10 +8,18 @@ PROJECT("onnxruntime-sd")
 SET(ENGINE_NAME "ORT-TensorRT")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET osx-arm64)
-SET(ONNX_INFERENCE_VERSION "1.17.3" CACHE STRING "ONNXRuntime version" FORCE)
+SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
 
-set(CMAKE_POLICY_DEFAULT_CMP0145 NEW)
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+# do prepare CMake state
+if(POLICY CMP0145)
+    cmake_policy(SET CMP0145 OLD)
+endif()
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 OLD)
+endif()
+if(POLICY CMP0077)
+    cmake_policy(SET CMP0077 OLD)
+endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
@@ -22,13 +30,13 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# do prepare option auto enable, based on paltform
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(SD_STANDALONE ON)
 else()
     set(SD_STANDALONE OFF)
 endif()
 
-# do prepare option auto enable, based on paltform
 if (WIN32)                          # for Windows x32
     SET(ONNX_INFERENCE_TARGET win-x86)
     set(DEFAULT_CUDA_STATE ON)
@@ -58,21 +66,23 @@ elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (ANDROID)                    # for Android
-    SET(ONNX_INFERENCE_TARGET android-arm64-v8a)
+    SET(ONNX_INFERENCE_TARGET linux-aarch64)  # android-arm64-v8a
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Android)
-    set(SD_ORT_ONLINE_AVAIL OFF)
+    set(SD_ORT_ONLINE_AVAIL ON)
 
     # force close Online-compiled for Android currently dont have such things
-    set(ORT_ONLINE_COMPILED OFF)
-    set(ORT_LOCALS_BUILDING ON)
+    #set(ORT_ONLINE_COMPILED OFF)
+    #set(ORT_LOCALS_BUILDING ON)
 
     # prepare Android NDK
     set(CMAKE_SYSTEM_NAME Android)
     set(CMAKE_SYSTEM_VERSION 27)
+    set(CMAKE_SYSTEM_PROCESSOR aarch64)
     set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
+    set(CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION clang)
 
     # prepare Android ToolChain
     if(NOT DEFINED ANDROID_SDK)
@@ -91,9 +101,10 @@ elseif (ANDROID)                    # for Android
 
     set(CMAKE_ANDROID_NDK ${ANDROID_NDK})
     set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
+    set(CMAKE_C_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang)
+    set(CMAKE_CXX_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++)
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
-
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
@@ -116,7 +127,7 @@ if (ORT_ONLINE_COMPILED)
     # download from github if ONNXRuntime library is not exists
     if (NOT EXISTS ${ONNX_INFERENCE_PATH})
         set(ONNXRuntime_Filename "onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION}.tgz")
-        set(ONNXRuntime_Download https://github.com/microsoft/onnxruntime/releases/download/${${ONNX_INFERENCE_VERSION}}/${ONNXRuntime_Filename})
+        set(ONNXRuntime_Download https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_INFERENCE_VERSION}/${ONNXRuntime_Filename})
         message("[onnx.runtime.sd][I] Downloading onnxruntime library: ${ONNXRuntime_Download}")
         download_and_decompress(${ONNXRuntime_Download} ${ONNXRuntime_Filename} ${ONNX_INFERENCE_PATH})
     else ()
