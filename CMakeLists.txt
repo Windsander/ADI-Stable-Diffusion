@@ -52,21 +52,21 @@ elseif (WIN64)                      # for Windows x64
     set(CURRENT_PLATFORM win-x64)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
-    SET(ONNX_INFERENCE_TARGET osx-arm64)
+    SET(ONNX_INFERENCE_TARGET osx-${CMAKE_SYSTEM_PROCESSOR})
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
     set(CURRENT_PLATFORM Apple)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
-    SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
+    SET(ONNX_INFERENCE_TARGET linux-${CMAKE_SYSTEM_PROCESSOR}-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (ANDROID)                    # for Android
-    SET(ONNX_INFERENCE_TARGET linux-aarch64)  # android-arm64-v8a
+    SET(ONNX_INFERENCE_TARGET linux-${CMAKE_SYSTEM_PROCESSOR})  # android-arm64-v8a
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
