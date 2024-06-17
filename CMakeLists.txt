@@ -10,6 +10,9 @@ SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET osx-arm64)
 SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
 
+# Ensure all targets are compiled with -fPIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # do prepare CMake state
 if(POLICY CMP0145)
     cmake_policy(SET CMP0145 OLD)
@@ -66,7 +69,7 @@ elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (ANDROID)                    # for Android
-    SET(ONNX_INFERENCE_TARGET linux-${CMAKE_SYSTEM_PROCESSOR})  # android-arm64-v8a
+    SET(ONNX_INFERENCE_TARGET android-${CMAKE_SYSTEM_PROCESSOR})  # android-arm64-v8a
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
@@ -75,8 +78,8 @@ elseif (ANDROID)                    # for Android
     set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
-    #set(ORT_ONLINE_COMPILED OFF)
-    #set(ORT_LOCALS_BUILDING ON)
+    set(ORT_ONLINE_COMPILED OFF)
+    set(ORT_LOCALS_BUILDING ON)
     set(ORT_BUILD_COMMAND_LINE OFF)
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
