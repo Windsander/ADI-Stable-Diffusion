@@ -25,10 +25,18 @@ endmacro()
 function(download_and_decompress url filename output_dir)
     file(MAKE_DIRECTORY ${output_dir})
     file(DOWNLOAD ${url} ${output_dir}/${filename} SHOW_PROGRESS)
-    execute_process(
-            COMMAND tar xzf ${output_dir}/${filename} --strip-components=1
-            WORKING_DIRECTORY ${output_dir}
-    )
+    if (filename MATCHES ".tgz$" OR filename MATCHES ".tar.gz$")
+        execute_process(
+                COMMAND tar xzf ${output_dir}/${filename} --strip-components=1
+                WORKING_DIRECTORY ${output_dir}
+        )
+    elseif (filename MATCHES ".aar$")
+        execute_process(
+                COMMAND unzip -o ${output_dir}/${filename} -d ${output_dir}
+        )
+    else()
+        message(FATAL_ERROR "Unsupported archive format: ${filename}")
+    endif()
     file(REMOVE ${output_dir}/${filename})
 endfunction()
 

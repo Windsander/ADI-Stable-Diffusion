@@ -3,7 +3,10 @@
 # Default configuration
 DEFAULT_BUILD_TYPE=Debug
 DEFAULT_JOBS=8
-DEFAULT_ANDROID_VER=21
+# shellcheck disable=SC2034
+DEFAULT_ANDROID_VER=21          # env used
+# shellcheck disable=SC2034
+DEFAULT_ANDROID_ABI=arm64-v8a   # env used
 
 # Function: Show help message
 show_help() {
@@ -17,6 +20,7 @@ show_help() {
     echo "  --android-sdk PATH       [android] Path to Android SDK"
     echo "  --android-ndk PATH       [android] Path to Android NDK"
     echo "  --android-ver N          [android] Android system version (default: 21)"
+    echo "  --android-abi N          [android] Android ABI (Application Binary Interface, default: arm64-v8a)"
     echo "  -h, --help               Show this help message"
 }
 
@@ -31,6 +35,7 @@ while [[ "$#" -gt 0 ]]; do
         --android-sdk) ANDROID_SDK="$2"; shift ;;
         --android-ndk) ANDROID_NDK="$2"; shift ;;
         --android-ver) ANDROID_VER="$2"; shift ;;
+        --android-abi) ANDROID_ABI="$2"; shift ;;
         -h|--help) show_help; exit 0 ;;
         *) echo "Unknown parameter passed: $1"; show_help; exit 1 ;;
     esac
@@ -43,6 +48,7 @@ JOBS=${JOBS:-$DEFAULT_JOBS}
 CMAKE=${CMAKE:-cmake}
 NINJA=${NINJA:-ninja}
 ANDROID_VER=${ANDROID_VER:-DEFAULT_ANDROID_VER}
+ANDROID_ABI=${ANDROID_ABI:-$DEFAULT_ANDROID_ABI}
 
 # Detect platform if not specified
 if [ -z "$PLATFORM" ]; then
@@ -79,8 +85,9 @@ case "$PLATFORM" in
         export ANDROID_SDK
         export ANDROID_NDK
         export ANDROID_VER
+        export ANDROID_ABI
 
-        TOOLCHAIN_FILE=./aarch64-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
+        TOOLCHAIN_FILE=./apex-toolchain/android-aarch64-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
         CMAKE_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} -DANDROID_NDK=${ANDROID_NDK}"
         ;;
 

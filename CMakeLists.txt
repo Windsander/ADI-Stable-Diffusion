@@ -69,7 +69,7 @@ elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
 elseif (ANDROID)                    # for Android
-    SET(ONNX_INFERENCE_TARGET android-${CMAKE_SYSTEM_PROCESSOR})  # android-arm64-v8a
+    SET(ONNX_INFERENCE_TARGET android)  # android
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
@@ -78,8 +78,8 @@ elseif (ANDROID)                    # for Android
     set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
-    set(ORT_ONLINE_COMPILED OFF)
-    set(ORT_LOCALS_BUILDING ON)
+#    set(ORT_ONLINE_COMPILED OFF)
+#    set(ORT_LOCALS_BUILDING ON)
     set(ORT_BUILD_COMMAND_LINE OFF)
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
@@ -98,14 +98,20 @@ option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerat
 auto_check_reference_submodule()
 auto_include(${ONNX_PATH}/onnxruntime include)
 
-# 3. Prepare inference engine compiled library (from online/local)
+# 3-0. Prepare inference engine compiled library (from online/local)
 if (ORT_ONLINE_COMPILED)
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
-    # download from github if ONNXRuntime library is not exists
-    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
+
+    if (ANDROID)
+        set(ONNXRuntime_Filename "onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION}.aar")
+        set(ONNXRuntime_Download "https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/${ONNX_INFERENCE_VERSION}/${ONNXRuntime_Filename}")
+    else ()
         set(ONNXRuntime_Filename "onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION}.tgz")
-        set(ONNXRuntime_Download https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_INFERENCE_VERSION}/${ONNXRuntime_Filename})
+        set(ONNXRuntime_Download "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_INFERENCE_VERSION}/${ONNXRuntime_Filename}")
+    endif ()
+
+    if (NOT EXISTS ${ONNX_INFERENCE_PATH})
         message("[onnx.runtime.sd][I] Downloading onnxruntime library: ${ONNXRuntime_Download}")
         download_and_decompress(${ONNXRuntime_Download} ${ONNXRuntime_Filename} ${ONNX_INFERENCE_PATH})
     else ()
@@ -113,12 +119,17 @@ if (ORT_ONLINE_COMPILED)
     endif ()
 
     if (NOT EXISTS ${ONNX_INFERENCE_PATH})
-        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} is not exists!")
+        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH} does not exist!")
     endif ()
 
-    link_directories(${ONNX_INFERENCE_PATH}/lib)
+    if (ANDROID)
+        link_directories(${ONNX_INFERENCE_PATH}/jni/${CMAKE_ANDROID_ARCH_ABI})
+    else ()
+        link_directories(${ONNX_INFERENCE_PATH}/lib)
+    endif ()
 endif ()
 
+# 3-1. Prepare inference engine compiled library (local built)
 if (ORT_LOCALS_BUILDING)
     auto_switch_ort_build_type()
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime/build/${CURRENT_PLATFORM}/${ORT_BUILD_TYPE})

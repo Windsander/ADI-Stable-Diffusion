@@ -20,7 +20,7 @@ CppFast Diffusers Inference (CFDI) is a C++ project. Its purpose is to leverage 
 
 ### Example: 1-step Euler_A img2img latent space visualized
 
-- **1. prepare ORT(ONNXRuntime) environment**
+- **1. prepare ORT(ONNXRuntime) environment (Mark: unnecessary, Step-3 will do auto initialize)**
  
 by simply executing auto_script [auto_prepare_engine_env.sh](engine%2Fauto_prepare_engine_env.sh):
 ```bash
