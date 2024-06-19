@@ -10,7 +10,7 @@ SET(ONNX_INFERENCE_TARGET osx-arm64)
 SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
 
 # Ensure all targets are compiled with -fPIC
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # do prepare CMake state
 if(POLICY CMP0145)
@@ -47,6 +47,7 @@ if (WIN32)                          # for Windows x32
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
+    set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM win-x86)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
@@ -55,6 +56,7 @@ elseif (WIN64)                      # for Windows x64
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE ON)
     set(DEFAULT_COREML_STATE OFF)
+    set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM win-x64)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
@@ -63,6 +65,7 @@ elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
+    set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM Apple)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CoreML")
@@ -71,6 +74,7 @@ elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
+    set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CUDA")
@@ -79,35 +83,38 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
+    set(DEFAULT_NNAPI_STATE ON)
     set(CURRENT_PLATFORM Android)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
-#    set(ORT_ONLINE_COMPILED OFF)
-#    set(ORT_LOCALS_BUILDING ON)
+    set(ORT_ONLINE_COMPILED OFF)
     set(ORT_BUILD_COMMAND_LINE OFF)
-    set(ENGINE_NAME "ORT-CPU")
+    set(ENGINE_NAME "ORT-CPU-NNAPI")
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${ColourReset}")
+
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
-option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ${SD_ORT_ONLINE_AVAIL})
-option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
+option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
+option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 
 # 2. Add inference engine to project
 auto_check_reference_submodule()
 auto_include(${ONNX_PATH}/onnxruntime include)
 
-# 3-0. Prepare inference engine compiled library (from online/local)
+# 3. Prepare inference engine compiled library (from online/local)
 if (ORT_ONLINE_COMPILED)
+    # Enter: from online/local_path
+    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} start")
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
 
@@ -136,28 +143,31 @@ if (ORT_ONLINE_COMPILED)
         set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
     endif ()
     link_directories(${ONNXRUNTIME_LIB_PATH})
-endif ()
-
-# 3-1. Prepare inference engine compiled library (local built)
-if (ORT_LOCALS_BUILDING)
+    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} start")
+else ()
+    # Enter: local built
+    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Local${ColourReset} start")
     auto_switch_ort_build_type()
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime/build/${CURRENT_PLATFORM}/${ORT_BUILD_TYPE})
     message("[onnx.runtime.sd][I] Checking local onnxruntime path: ${ONNX_INFERENCE_PATH}")
     # download from github if ONNXRuntime library is not exists
-    if (NOT EXISTS ${ONNX_INFERENCE_PATH}/libonnxruntime.a)
+    check_library_exists(onnxruntime ${ONNX_INFERENCE_PATH} LIBRARY_FOUND)
+    if (NOT LIBRARY_FOUND)
         # do check ORT ./engine/onnxruntime exist
         auto_build_reference_submodule()
         auto_merge_submodule_compiled()
     else ()
-        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}/libonnxruntime.a")
+        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}/libonnxruntime.so")
     endif ()
 
-    if (NOT EXISTS ${ONNX_INFERENCE_PATH}/libonnxruntime.a)
-        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.a not exists!")
+    check_library_exists(onnxruntime ${ONNX_INFERENCE_PATH} LIBRARY_FOUND)
+    if (NOT LIBRARY_FOUND)
+        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.so not exists!")
     endif ()
 
     set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
     link_directories(${ONNXRUNTIME_LIB_PATH})
+    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Local${ColourReset} done")
 endif ()
 
 # 4. Check Provider Enable State
@@ -172,6 +182,10 @@ endif ()
 if (ORT_ENABLE_COREML)
     message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
     add_definitions(-DENABLE_COREML)
+endif ()
+if (ORT_ENABLE_NNAPI)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}NNAPI Provider${ColourReset}")
+    add_definitions(-DENABLE_NNAPI)
 endif ()
 message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CPU Provider${ColourReset}")
 

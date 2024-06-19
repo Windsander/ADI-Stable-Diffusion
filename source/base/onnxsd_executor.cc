@@ -16,6 +16,9 @@
 #ifdef ENABLE_COREML
 #include "coreml_provider_factory.h"
 #endif
+#ifdef ENABLE_NNAPI
+#include "nnapi_provider_factory.h"
+#endif
 #include "cpu_provider_factory.h"
 
 namespace onnx {
@@ -51,6 +54,9 @@ ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
 #endif
 #ifdef ENABLE_COREML
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(ort_session_config, device_id));
+#endif
+#ifdef ENABLE_NNAPI
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Nnapi(ort_session_config, device_id));
 #endif
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CPU(ort_session_config, device_id));
     ort_session_config.SetGraphOptimizationLevel(ort_config_.onnx_graph_optimize);

@@ -36,6 +36,31 @@ macro(auto_link_reference_library target_lib ref_lib_path)
     message(${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
 endmacro()
 
+#检测生成动态库文件是否存在
+macro(check_library_exists lib_name lib_path result_var)
+    if (WIN32)
+        set(LIBRARY_PATH ${lib_path}/${lib_name}.dll)
+    elseif (WIN64)
+        set(LIBRARY_PATH ${lib_path}/${lib_name}.dll)
+    elseif (APPLE)
+        set(LIBRARY_PATH ${lib_path}/lib${lib_name}.dylib)
+    elseif (LINUX)
+        set(LIBRARY_PATH ${lib_path}/lib${lib_name}.so)
+    elseif (ANDROID)
+        set(LIBRARY_PATH ${lib_path}/arm64-v8a/lib${lib_name}.so)
+    else ()
+        set(LIBRARY_PATH ${lib_path}/lib${lib_name}.so)
+    endif ()
+
+    if (EXISTS ${LIBRARY_PATH})
+        set(${result_var} TRUE)
+        message(STATUS "Found ${lib_name} library: ${LIBRARY_PATH}")
+    else ()
+        set(${result_var} FALSE)
+        message(STATUS "${lib_name} library not found at ${LIBRARY_PATH}")
+    endif ()
+endmacro()
+
 # 资源下载=================================================================================================
 # 下载并解压 Define the download_and_decompress function
 function(download_and_decompress url filename output_dir)
@@ -134,7 +159,6 @@ macro(auto_include path_dir root_dir)
     endforeach ()
     message(${PROJECT_NAME}=>\ auto_include::\ ${path_dir}/${root_dir})
     include_directories(${path_dir}/${root_dir})
-
 endmacro()
 
 # 通用列表数据打印

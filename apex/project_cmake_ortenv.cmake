@@ -111,6 +111,7 @@ macro(auto_build_reference_submodule)
                             --android_abi ${CMAKE_ANDROID_ARCH_ABI}
                             --android_api ${CMAKE_SYSTEM_VERSION}
                             --use_nnapi
+                            --build_shared_lib
                             --parallel
                             --skip_tests
                     WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
