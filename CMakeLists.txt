@@ -5,7 +5,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
 
 PROJECT("onnxruntime-sd")
-SET(ENGINE_NAME "ORT-TensorRT")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET osx-arm64)
 SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
@@ -50,6 +49,7 @@ if (WIN32)                          # for Windows x32
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM win-x86)
     set(SD_ORT_ONLINE_AVAIL ON)
+    set(ENGINE_NAME "ORT-CUDA-TensorRT")
 elseif (WIN64)                      # for Windows x64
     SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
@@ -57,6 +57,7 @@ elseif (WIN64)                      # for Windows x64
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM win-x64)
     set(SD_ORT_ONLINE_AVAIL ON)
+    set(ENGINE_NAME "ORT-CUDA-TensorRT")
 elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
     SET(ONNX_INFERENCE_TARGET osx-${CMAKE_SYSTEM_PROCESSOR})
     set(DEFAULT_CUDA_STATE OFF)
@@ -64,6 +65,7 @@ elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3
     set(DEFAULT_COREML_STATE ON)
     set(CURRENT_PLATFORM Apple)
     set(SD_ORT_ONLINE_AVAIL ON)
+    set(ENGINE_NAME "ORT-CoreML")
 elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     SET(ONNX_INFERENCE_TARGET linux-${CMAKE_SYSTEM_PROCESSOR}-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
@@ -71,6 +73,7 @@ elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     set(DEFAULT_COREML_STATE OFF)
     set(CURRENT_PLATFORM Linux)
     set(SD_ORT_ONLINE_AVAIL ON)
+    set(ENGINE_NAME "ORT-CUDA")
 elseif (ANDROID)                    # for Android
     SET(ONNX_INFERENCE_TARGET android)  # android
     set(DEFAULT_CUDA_STATE OFF)
@@ -84,6 +87,7 @@ elseif (ANDROID)                    # for Android
 #    set(ORT_ONLINE_COMPILED OFF)
 #    set(ORT_LOCALS_BUILDING ON)
     set(ORT_BUILD_COMMAND_LINE OFF)
+    set(ENGINE_NAME "ORT-CPU")
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${ColourReset}")

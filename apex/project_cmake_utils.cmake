@@ -22,7 +22,7 @@ macro(auto_link_reference_library target_lib ref_lib_path)
     if (NOT ONNXRUNTIME_LIB)
         message(FATAL_ERROR "onnxruntime library not found in ${ref_lib_path}")
     else ()
-        message(STATUS "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
+        message(${PROJECT_NAME}=>\ "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
     endif ()
 
     target_include_directories(
