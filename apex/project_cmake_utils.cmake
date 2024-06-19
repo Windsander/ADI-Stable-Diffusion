@@ -9,15 +9,31 @@
 
 # 平台限定=================================================================================================
 #自动连接对应平台关联库
-macro(auto_link_reference_library target_lib)
+macro(auto_link_reference_library target_lib ref_lib_path)
+    message(${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ start)
+
+    # compatible caused by NDK find error
+    if (ANDROID)
+        set(ONNXRUNTIME_LIB ${ref_lib_path}/libonnxruntime.so)
+    else()
+        find_library(ONNXRUNTIME_LIB onnxruntime PATHS ${ref_lib_path})
+    endif ()
+
+    if (NOT ONNXRUNTIME_LIB)
+        message(FATAL_ERROR "onnxruntime library not found in ${ref_lib_path}")
+    else ()
+        message(STATUS "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
+    endif ()
+
     target_include_directories(
             ${target_lib} PUBLIC
             engine/include
     )
     target_link_libraries(
             ${target_lib} PRIVATE
-            onnxruntime
+            ${ONNXRUNTIME_LIB}
     )
+    message(${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
 endmacro()
 
 # 资源下载=================================================================================================

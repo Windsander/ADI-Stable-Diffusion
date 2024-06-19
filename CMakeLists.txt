@@ -23,6 +23,9 @@ endif()
 if(POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
 endif()
+if(POLICY CMP0079)
+    cmake_policy(SET CMP0079 NEW)
+endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
@@ -83,6 +86,7 @@ elseif (ANDROID)                    # for Android
     set(ORT_BUILD_COMMAND_LINE OFF)
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
+message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${ColourReset}")
 
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
@@ -123,10 +127,11 @@ if (ORT_ONLINE_COMPILED)
     endif ()
 
     if (ANDROID)
-        link_directories(${ONNX_INFERENCE_PATH}/jni/${CMAKE_ANDROID_ARCH_ABI})
+        set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/jni/${CMAKE_ANDROID_ARCH_ABI})
     else ()
-        link_directories(${ONNX_INFERENCE_PATH}/lib)
+        set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
     endif ()
+    link_directories(${ONNXRUNTIME_LIB_PATH})
 endif ()
 
 # 3-1. Prepare inference engine compiled library (local built)
@@ -147,7 +152,8 @@ if (ORT_LOCALS_BUILDING)
         message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.a not exists!")
     endif ()
 
-    link_directories(${ONNX_INFERENCE_PATH}/lib)
+    set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
+    link_directories(${ONNXRUNTIME_LIB_PATH})
 endif ()
 
 # 4. Check Provider Enable State
@@ -202,7 +208,7 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} outlet PRIVATE)
 auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 
 #link references
-auto_link_reference_library(${library_name})
+auto_link_reference_library(${library_name} ${ONNXRUNTIME_LIB_PATH})
 
 target_compile_features(${library_name} PUBLIC cxx_std_14)
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
