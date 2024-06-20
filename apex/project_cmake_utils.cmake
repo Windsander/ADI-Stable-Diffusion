@@ -42,8 +42,6 @@ macro(check_library_exists lib_name lib_path result_var)
 
     if (WIN32)
         set(LIBRARY_PATH ${lib_path}/${lib_name}.dll)
-    elseif (WIN64)
-        set(LIBRARY_PATH ${lib_path}/${lib_name}.dll)
     elseif (APPLE)
         set(LIBRARY_PATH ${lib_path}/lib${lib_name}.dylib)
     elseif (LINUX)

@@ -44,7 +44,7 @@ else()
     set(SD_STANDALONE OFF)
 endif()
 
-if (WIN32)                          # for Windows x32
+if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)      # for Windows x32
     SET(ONNX_INFERENCE_TARGET win-x86)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE OFF)
@@ -53,7 +53,7 @@ if (WIN32)                          # for Windows x32
     set(CURRENT_PLATFORM win-x86)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
-elseif (WIN64)                      # for Windows x64
+elseif (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)  # for Windows x64
     SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
     set(DEFAULT_CUDA_STATE ON)
     set(DEFAULT_TRT_STATE ON)
@@ -91,7 +91,7 @@ elseif (ANDROID)                    # for Android
     set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
-    set(ORT_ONLINE_COMPILED OFF)
+#    set(ORT_ONLINE_COMPILED OFF)
     set(ORT_BUILD_COMMAND_LINE OFF)
     set(ENGINE_NAME "ORT-CPU-NNAPI")
     message("[onnx.runtime.sd][I] target arch abi set to ${Red}${CMAKE_SYSTEM_PROCESSOR}:${CMAKE_ANDROID_ARCH_ABI}${ColourReset} minsdk ${Cyan}${CMAKE_SYSTEM_VERSION}${ColourReset}")
@@ -114,7 +114,26 @@ option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate
 auto_check_reference_submodule()
 auto_include(${ONNX_PATH}/onnxruntime include)
 
-# 3. Prepare inference engine compiled library (from online/local)
+# 3. Check Provider Enable State
+if (ORT_ENABLE_TENSOR_RT)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
+    add_definitions(-DENABLE_TENSOR_RT)
+endif ()
+if (ORT_ENABLE_CUDA)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CUDA Provider${ColourReset}")
+    add_definitions(-DENABLE_CUDA)
+endif ()
+if (ORT_ENABLE_COREML)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
+    add_definitions(-DENABLE_COREML)
+endif ()
+if (ORT_ENABLE_NNAPI)
+    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}NNAPI Provider${ColourReset}")
+    add_definitions(-DENABLE_NNAPI)
+endif ()
+message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CPU Provider${ColourReset}")
+
+# 4. Prepare inference engine compiled library (from online/local)
 if (ORT_ONLINE_COMPILED)
     # Enter: from online/local_path
     message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} start")
@@ -146,7 +165,7 @@ if (ORT_ONLINE_COMPILED)
         set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
     endif ()
     link_directories(${ONNXRUNTIME_LIB_PATH})
-    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} start")
+    message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} done")
 else ()
     # Enter: local built
     message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Local${ColourReset} start")
@@ -172,25 +191,6 @@ else ()
     link_directories(${ONNXRUNTIME_LIB_PATH})
     message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Local${ColourReset} done")
 endif ()
-
-# 4. Check Provider Enable State
-if (ORT_ENABLE_TENSOR_RT)
-    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
-    add_definitions(-DENABLE_TENSOR_RT)
-endif ()
-if (ORT_ENABLE_CUDA)
-    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CUDA Provider${ColourReset}")
-    add_definitions(-DENABLE_CUDA)
-endif ()
-if (ORT_ENABLE_COREML)
-    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}TensorRT Provider${ColourReset}")
-    add_definitions(-DENABLE_COREML)
-endif ()
-if (ORT_ENABLE_NNAPI)
-    message("[onnx.runtime.sd][I] onnxruntime enable ${Red}NNAPI Provider${ColourReset}")
-    add_definitions(-DENABLE_NNAPI)
-endif ()
-message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CPU Provider${ColourReset}")
 
 message("[onnx.runtime.sd][I] onnxruntime target ${Blue}version${ColourReset}: ${ONNX_INFERENCE_VERSION}")
 message("[onnx.runtime.sd][I] onnxruntime target ${Blue}platform${ColourReset}: ${ONNX_INFERENCE_TARGET}")

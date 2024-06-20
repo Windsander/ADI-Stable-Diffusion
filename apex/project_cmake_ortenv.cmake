@@ -50,80 +50,82 @@ endmacro()
 macro(auto_build_reference_submodule)
     # 动态检测 ./engine/onnxruntime 是否存在
     if (EXISTS ${ONNX_PATH}/onnxruntime)
-        # do prepare option auto enable, based on paltform
-        if (WIN32)                          # for Windows x32
-            execute_process(
-                    COMMAND ${ONNX_PATH}/onnxruntime/build.bat
-                            --config ${ORT_BUILD_TYPE}
-                            --parallel
-                            --compile_no_warning_as_error
-                    WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
-                    RESULT_VARIABLE ${ONNX_PATH}/result
-            )
-            if (result)
-                message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build WIN32 ONNXRuntime")
+        set(COMMAND_LIST ${ONNX_PATH}/onnxruntime/build)
+        # do prepare option auto enable, based on platform
+        if (WIN32)                      # for Windows x32 & x64
+            string(APPEND COMMAND_LIST .bat)
+            list(APPEND COMMAND_LIST --config ${ORT_BUILD_TYPE})
+            list(APPEND COMMAND_LIST --parallel)
+            list(APPEND COMMAND_LIST --compile_no_warning_as_error)
+            if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+                list(APPEND COMMAND_LIST --arm64)
             endif ()
-        elseif (WIN64)                      # for Windows x64
-            execute_process(
-                    COMMAND ${ONNX_PATH}/onnxruntime/build.bat
-                            -–arm64
-                            --config ${ORT_BUILD_TYPE}
-                            --parallel
-                            --compile_no_warning_as_error
-                    WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
-                    RESULT_VARIABLE ${ONNX_PATH}/result
-            )
-            if (result)
-                message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build WIN64 ONNXRuntime")
+            if (ORT_ENABLE_CUDA)
+                list(APPEND COMMAND_LIST --use_cuda)
+                list(APPEND COMMAND_LIST --cudnn_home ${NVIDIA_CUDNN_PATH})
+                list(APPEND COMMAND_LIST --cuda_home ${NVIDIA_CUDA_PATH})
             endif ()
-        elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
-            execute_process(
-                    COMMAND ${ONNX_PATH}/onnxruntime/build.sh
-                            --config ${ORT_BUILD_TYPE}
-                            --parallel
-                            --compile_no_warning_as_error
-                            --cmake_extra_defines CMAKE_OSX_ARCHITECTURES="x86_64;arm64"
-                    WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
-                    RESULT_VARIABLE ${ONNX_PATH}/result
-            )
-            if (result)
-                message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build iOS/OSX ONNXRuntime")
+            if (ORT_ENABLE_TENSOR_RT)
+                list(APPEND COMMAND_LIST --use_tensorrt)
+                list(APPEND COMMAND_LIST --tensorrt_home ${NVIDIA_TENSORRT_PATH})
             endif ()
-        elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
-            execute_process(
-                    COMMAND ${ONNX_PATH}/onnxruntime/build.sh
-                            --config ${ORT_BUILD_TYPE}
-                            --parallel
-                            --compile_no_warning_as_error
-                    WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
-                    RESULT_VARIABLE ${ONNX_PATH}/result
-            )
-            if (result)
-                message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build Linux ONNXRuntime")
+        elseif (APPLE)                  # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
+            string(APPEND COMMAND_LIST .sh)
+            list(APPEND COMMAND_LIST --config ${ORT_BUILD_TYPE})
+            list(APPEND COMMAND_LIST --parallel)
+            list(APPEND COMMAND_LIST --compile_no_warning_as_error)
+            list(APPEND COMMAND_LIST --cmake_extra_defines CMAKE_OSX_ARCHITECTURES="x86_64;arm64")
+            if (ORT_ENABLE_COREML)
+                list(APPEND COMMAND_LIST --use_coreml)
             endif ()
-        elseif (ANDROID)                    # for Android
-            execute_process(
-                    COMMAND ${ONNX_PATH}/onnxruntime/build.sh
-                            --android
-                            --config ${ORT_BUILD_TYPE}
-                            --android_sdk_path ${ANDROID_SDK}
-                            --android_ndk_path ${ANDROID_NDK}
-                            --android_abi ${CMAKE_ANDROID_ARCH_ABI}
-                            --android_api ${CMAKE_SYSTEM_VERSION}
-                            --use_nnapi
-                            --build_shared_lib
-                            --parallel
-                            --skip_tests
-                    WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
-                    RESULT_VARIABLE ${ONNX_PATH}/result
-            )
-            message(STATUS "[onnx.runtime.sd][I] execute_process Android ONNXRuntime at ${ONNX_PATH}/onnxruntime/build.sh")
-            if (result)
-                message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build Android ONNXRuntime")
+        elseif (LINUX)                  # for Linux, BSD, Solaris, Minix
+            string(APPEND COMMAND_LIST .sh)
+            list(APPEND COMMAND_LIST --config ${ORT_BUILD_TYPE})
+            list(APPEND COMMAND_LIST --parallel)
+            list(APPEND COMMAND_LIST --compile_no_warning_as_error)
+            if (ORT_ENABLE_CUDA)
+                list(APPEND COMMAND_LIST --use_cuda)
+                list(APPEND COMMAND_LIST --cudnn_home ${NVIDIA_CUDNN_PATH})
+                list(APPEND COMMAND_LIST --cuda_home ${NVIDIA_CUDA_PATH})
+            endif ()
+            if (ORT_ENABLE_TENSOR_RT)
+                list(APPEND COMMAND_LIST --use_tensorrt)
+                list(APPEND COMMAND_LIST --tensorrt_home ${NVIDIA_TENSORRT_PATH})
+            endif ()
+        elseif (ANDROID)                # for Android
+            string(APPEND COMMAND_LIST .sh)
+            list(APPEND COMMAND_LIST --config ${ORT_BUILD_TYPE})
+            list(APPEND COMMAND_LIST --parallel)
+            list(APPEND COMMAND_LIST --android)
+            list(APPEND COMMAND_LIST --android_sdk_path ${ANDROID_SDK})
+            list(APPEND COMMAND_LIST --android_ndk_path ${ANDROID_NDK})
+            list(APPEND COMMAND_LIST --android_abi ${CMAKE_ANDROID_ARCH_ABI})
+            list(APPEND COMMAND_LIST --android_api ${CMAKE_SYSTEM_VERSION})
+            list(APPEND COMMAND_LIST --minimal_build extended)
+            list(APPEND COMMAND_LIST --disable_exceptions)
+            list(APPEND COMMAND_LIST --android_cpp_shared)
+            list(APPEND COMMAND_LIST --build_shared_lib)
+            list(APPEND COMMAND_LIST --skip_tests)
+            if (ORT_ENABLE_NNAPI)
+                list(APPEND COMMAND_LIST --use_nnapi)
             endif ()
         endif ()
     else ()
         message(FATAL_ERROR "[onnx.runtime.sd][E] Unfounded onnxruntime submodule. please clone from https://github.com/microsoft/onnxruntime.git first!")
+    endif ()
+    list(APPEND COMMAND_LIST --update)
+    list(APPEND COMMAND_LIST --build)
+
+    # begin ORT build
+    message(STATUS "[onnx.runtime.sd][I] execute_process: ${Cyan}${COMMAND_LIST}${ColourReset}")
+    execute_process(
+            COMMAND ${COMMAND_LIST}
+            WORKING_DIRECTORY ${ONNX_PATH}/onnxruntime
+            RESULT_VARIABLE result
+    )
+    message(STATUS "[onnx.runtime.sd][I] execute_process build ${CMAKE_SYSTEM_NAME} ONNXRuntime done")
+    if (result)
+        message(FATAL_ERROR "[onnx.runtime.sd][E] Failed to build ${CMAKE_SYSTEM_NAME} ONNXRuntime")
     endif ()
 endmacro()
 
