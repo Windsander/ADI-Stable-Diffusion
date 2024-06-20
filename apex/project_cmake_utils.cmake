@@ -10,7 +10,7 @@
 # 平台限定=================================================================================================
 #自动连接对应平台关联库
 macro(auto_link_reference_library target_lib ref_lib_path)
-    message(${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ start)
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ start)
 
     # compatible caused by NDK find error
     if (ANDROID)
@@ -22,7 +22,7 @@ macro(auto_link_reference_library target_lib ref_lib_path)
     if (NOT ONNXRUNTIME_LIB)
         message(FATAL_ERROR "onnxruntime library not found in ${ref_lib_path}")
     else ()
-        message(${PROJECT_NAME}=>\ "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
+        message(\ ${PROJECT_NAME}=>\ "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
     endif ()
 
     target_include_directories(
@@ -33,11 +33,13 @@ macro(auto_link_reference_library target_lib ref_lib_path)
             ${target_lib} PRIVATE
             ${ONNXRUNTIME_LIB}
     )
-    message(${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
 endmacro()
 
 #检测生成动态库文件是否存在
 macro(check_library_exists lib_name lib_path result_var)
+    message(STATUS "Checking library: ${lib_name} in path: ${lib_path}")
+
     if (WIN32)
         set(LIBRARY_PATH ${lib_path}/${lib_name}.dll)
     elseif (WIN64)
@@ -47,10 +49,12 @@ macro(check_library_exists lib_name lib_path result_var)
     elseif (LINUX)
         set(LIBRARY_PATH ${lib_path}/lib${lib_name}.so)
     elseif (ANDROID)
-        set(LIBRARY_PATH ${lib_path}/arm64-v8a/lib${lib_name}.so)
+        set(LIBRARY_PATH ${lib_path}/lib${lib_name}.so)
     else ()
         set(LIBRARY_PATH ${lib_path}/lib${lib_name}.so)
     endif ()
+
+    message(STATUS "Constructed library path: ${LIBRARY_PATH}")
 
     if (EXISTS ${LIBRARY_PATH})
         set(${result_var} TRUE)
@@ -95,7 +99,7 @@ function(auto_include_all_files root_dir)
             continue()
         endif ()
     endforeach ()
-    message(${PROJECT_NAME}=>\ auto_include_all_files::\ ${root_dir})
+    message(\ ${PROJECT_NAME}=>\ auto_include_all_files::\ ${root_dir})
     include_directories(${root_dir})
 endfunction()
 
@@ -121,7 +125,7 @@ macro(auto_target_sources source_list path_dir root_dir)
             auto_target_sources(${source_list} ${path_dir} ${root_dir}/${sub})
         elseif (NOT (${path_dir}/${root_dir} MATCHES ".*/test.*")
                 AND NOT (${sub} MATCHES ".DS_Store"))
-            message(${PROJECT_NAME}\ =>\ auto_target_sources::\ ${sub})
+            message(\ ${PROJECT_NAME}\ =>\ auto_target_sources::\ ${sub})
             list(APPEND ${source_list} ${root_dir}/${sub})
         endif ()
     endforeach ()
@@ -140,7 +144,7 @@ macro(auto_target_include library path_dir root_dir include_type)
             continue()
         endif ()
     endforeach ()
-    message(${PROJECT_NAME}=>\ auto_target_include::\ ${BoldMagenta}${include_type}${ColourReset} \ ${root_dir})
+    message(\ ${PROJECT_NAME}=>\ auto_target_include::\ ${BoldMagenta}${include_type}${ColourReset} \ ${root_dir})
     target_include_directories(${library_name} ${include_type} ${root_dir})
 endmacro()
 
@@ -157,18 +161,18 @@ macro(auto_include path_dir root_dir)
             continue()
         endif ()
     endforeach ()
-    message(${PROJECT_NAME}=>\ auto_include::\ ${path_dir}/${root_dir})
+    message(\ ${PROJECT_NAME}=>\ auto_include::\ ${path_dir}/${root_dir})
     include_directories(${path_dir}/${root_dir})
 endmacro()
 
 # 通用列表数据打印
 macro(auto_print_list source_list)
     message("${BoldMagenta}")
-    message("${PROJECT_NAME}\ =>\ All_Sources::\ ${source_list}")
+    message(\ ${PROJECT_NAME}\ =>\ All_Sources::\ ${source_list})
     foreach (sub ${${source_list}})
-        message("\           =>\ ${sub}")
+        message("\            =>\ ${sub}")
     endforeach ()
-    message("${PROJECT_NAME}\ =>\ All_Sources::\ Done")
+    message(\ ${PROJECT_NAME}\ =>\ All_Sources::\ Done)
     message("${ColourReset}")
 endmacro()
 

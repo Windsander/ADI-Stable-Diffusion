@@ -1,23 +1,14 @@
 cmake_minimum_required(VERSION 3.12)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
-
-PROJECT("onnxruntime-sd")
-SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
-SET(ONNX_INFERENCE_TARGET osx-arm64)
-SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
-
-# Ensure all targets are compiled with -fPIC
-#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# do prepare CMake state
+# do prepare CMake policies & state
+if(POLICY CMP0148)
+    cmake_policy(SET CMP0148 NEW)
+endif()
 if(POLICY CMP0145)
-    cmake_policy(SET CMP0145 OLD)
+    cmake_policy(SET CMP0145 NEW)
 endif()
 if(POLICY CMP0144)
-    cmake_policy(SET CMP0144 OLD)
+    cmake_policy(SET CMP0144 NEW)
 endif()
 if(POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
@@ -25,7 +16,18 @@ endif()
 if(POLICY CMP0079)
     cmake_policy(SET CMP0079 NEW)
 endif()
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)       # generate compile_commands.json information
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)     # Ensure all targets are compiled with -fPIC
+
+# do prepare project header
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
+
+PROJECT("onnxruntime-sd")
+SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+SET(ONNX_INFERENCE_TARGET undefined)
+SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -92,6 +94,7 @@ elseif (ANDROID)                    # for Android
     set(ORT_ONLINE_COMPILED OFF)
     set(ORT_BUILD_COMMAND_LINE OFF)
     set(ENGINE_NAME "ORT-CPU-NNAPI")
+    message("[onnx.runtime.sd][I] target arch abi set to ${Red}${CMAKE_SYSTEM_PROCESSOR}:${CMAKE_ANDROID_ARCH_ABI}${ColourReset} minsdk ${Cyan}${CMAKE_SYSTEM_VERSION}${ColourReset}")
 endif ()
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${ColourReset}")
@@ -165,7 +168,7 @@ else ()
         message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.so not exists!")
     endif ()
 
-    set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH}/lib)
+    set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH})
     link_directories(${ONNXRUNTIME_LIB_PATH})
     message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Local${ColourReset} done")
 endif ()

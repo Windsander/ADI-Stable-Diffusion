@@ -87,7 +87,7 @@ case "$PLATFORM" in
         export ANDROID_VER
         export ANDROID_ABI
 
-        TOOLCHAIN_FILE=./apex-toolchain/android-aarch64-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
+        TOOLCHAIN_FILE=./apex-toolchain/android-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
         CMAKE_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} -DANDROID_NDK=${ANDROID_NDK}"
         ;;
 
