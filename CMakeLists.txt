@@ -18,6 +18,7 @@ if(POLICY CMP0079)
 endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)       # generate compile_commands.json information
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)     # Ensure all targets are compiled with -fPIC
+set(CMAKE_CXX_STANDARD 17)
 
 # do prepare project header
 include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
@@ -103,12 +104,17 @@ message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${
 message("${Cyan}<############################# ${ENGINE_NAME}-Make #############################>${ColourReset}")
 # 1. Option list
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
-option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
+option(ORT_BUILD_SHARED_CFDI         "ort-sd: build CFDI project shared libs" OFF)
+option(ORT_BUILD_SHARED_LIBS         "ort-sd: build ORT in shared libs" OFF)
 option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
 option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
+
+if (NOT ORT_BUILD_SHARED_LIBS)      # ORT-static can only been built by local
+    set(ORT_ONLINE_COMPILED OFF)
+endif ()
 
 # 2. Add inference engine to project
 auto_check_reference_submodule()
@@ -175,16 +181,15 @@ else ()
     # download from github if ONNXRuntime library is not exists
     check_library_exists(onnxruntime ${ONNX_INFERENCE_PATH} LIBRARY_FOUND)
     if (NOT LIBRARY_FOUND)
-        # do check ORT ./engine/onnxruntime exist
         auto_build_reference_submodule()
         auto_merge_submodule_compiled()
     else ()
-        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}/libonnxruntime.so")
+        message("[onnx.runtime.sd][I] Found local onnxruntime library: ${ONNX_INFERENCE_PATH}/libonnxruntime.so|a")
     endif ()
 
     check_library_exists(onnxruntime ${ONNX_INFERENCE_PATH} LIBRARY_FOUND)
     if (NOT LIBRARY_FOUND)
-        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.so not exists!")
+        message(FATAL_ERROR "[onnx.runtime.sd][E] ${ONNX_INFERENCE_PATH}/libonnxruntime.so|a not exists!")
     endif ()
 
     set(ONNXRUNTIME_LIB_PATH ${ONNX_INFERENCE_PATH})
@@ -212,7 +217,7 @@ auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} include)
 auto_print_list(library_data_SOURCES)
 
 # we can get only one share lib
-if(ORT_BUILD_SHARED_LIBS)
+if(ORT_BUILD_SHARED_CFDI)
     message("[onnx.runtime.sd][I] Build library[SHARED]: ${library_name}")
     add_library(${library_name} SHARED)
     target_compile_definitions(${library_name} PRIVATE -DSD_BUILD_DLL)

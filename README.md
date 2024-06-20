@@ -92,12 +92,13 @@ bash auto_build.sh [params] -DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON
 currently, this project provide below [Options]:
 ```cmake
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
-option(ORT_BUILD_SHARED_LIBS         "ort-sd: build shared libs" OFF)
-option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort)" ON)
-option(ORT_LOCALS_BUILDING           "ort-sd: using self-build onnxruntime(ort)" OFF)
+option(ORT_BUILD_SHARED_CFDI         "ort-sd: build CFDI project shared libs" OFF)
+option(ORT_BUILD_SHARED_LIBS         "ort-sd: build ORT in shared libs" OFF)
+option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
+option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 ```
 enable if you need.
 
