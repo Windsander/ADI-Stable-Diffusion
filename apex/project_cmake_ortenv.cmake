@@ -8,6 +8,28 @@
 # - ???What?
 
 # 平台限定=================================================================================================
+#自动检测当前 Apple 平台类型
+function(get_apple_platform result_var)
+    if(APPLE)
+        if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+            if(CMAKE_OSX_SYSROOT MATCHES ".*iPhone.*")
+                set(platform "iOS")
+            elseif(CMAKE_OSX_SYSROOT MATCHES ".*AppleTV.*")
+                set(platform "tvOS")
+            elseif(CMAKE_OSX_SYSROOT MATCHES ".*Watch.*")
+                set(platform "watchOS")
+            else()
+                set(platform "MacOS")
+            endif()
+        else()
+            set(platform "UnknownApplePlatform")
+        endif()
+    else()
+        set(platform "NotApplePlatform")
+    endif()
+    set(${result_var} "${platform}" PARENT_SCOPE)
+endfunction()
+
 #自动检测关联项目 onnxruntime 的编译版本
 macro(auto_switch_ort_build_type)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -77,7 +99,7 @@ macro(auto_build_reference_submodule)
             list(APPEND COMMAND_LIST --config ${ORT_BUILD_TYPE})
             list(APPEND COMMAND_LIST --parallel)
             list(APPEND COMMAND_LIST --compile_no_warning_as_error)
-            # list(APPEND COMMAND_LIST --cmake_extra_defines CMAKE_OSX_ARCHITECTURES="x86_64;arm64")
+            list(APPEND COMMAND_LIST --cmake_extra_defines CMAKE_OSX_ARCHITECTURES=${CMAKE_SYSTEM_PROCESSOR})
             if (ORT_BUILD_SHARED_LIBS)
                 list(APPEND COMMAND_LIST --build_shared_lib)
             endif ()
@@ -144,66 +166,16 @@ macro(auto_merge_submodule_compiled)
     if (ORT_BUILD_SHARED_LIBS)
         message(STATUS "[onnx.runtime.sd][I] no need for ORT.a build: ${ARCHIVER_PATH}")
     elseif (EXISTS ${ONNX_PATH}/onnxruntime)
-        message( "[onnx.runtime.sd][I] auto_merge_submodule_compiled ${ONNX_INFERENCE_PATH}/merge.mri")
-        if (NOT DEFINED ARCHIVER_PATH OR ARCHIVER_PATH STREQUAL "")
-            message(FATAL_ERROR "[onnx.runtime.sd][E] ARCHIVER_PATH is not set. Please set ARCHIVER_PATH to the path of the archiver tool.")
-        endif()
-        if(NOT DEFINED ONNX_INFERENCE_PATH OR ONNX_INFERENCE_PATH STREQUAL "")
-            message(FATAL_ERROR "[onnx.runtime.sd][E] ONNX_INFERENCE_PATH is not set or is empty")
-        endif()
-
-        # 动态生成 merge.mri 文件
-        string(
-                CONCAT merge_mri_content
-                "create libonnxruntime.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_common.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_framework.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_flatbuffers.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_graph.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_mlas.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_optimizer.a\n"
-        )
-        if (ORT_ENABLE_NNAPI)
-            string(
-                    APPEND merge_mri_content
-                    "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_providers_nnapi.a\n"
-            )
-        endif ()
-        string(
-                APPEND merge_mri_content
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_providers.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_session.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnxruntime_util.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnx_proto.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/libonnx.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/lib/libgmock.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/lib/libgtest.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/_deps/google_nsync-build/libnsync_cpp.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/_deps/re2-build/libre2.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/_deps/protobuf-build/libprotobuf-lite.a\n"
-                "addlib ${ONNX_INFERENCE_PATH}/_deps/pytorch_cpuinfo-build/libcpuinfo.a\n"
-                "save\n"
-        )
-        file(WRITE ${ONNX_INFERENCE_PATH}/merge.mri ${merge_mri_content})
-
-        message(STATUS "[onnx.runtime.sd][I] merge.mri input:\n${Cyan}${merge_mri_content}${ColourReset}")
-
-        set(TEMP_SCRIPT "${ONNX_INFERENCE_PATH}/run_ar.sh")
-        file(WRITE ${TEMP_SCRIPT} "#!/bin/sh\n")
-        file(APPEND ${TEMP_SCRIPT} "${ARCHIVER_PATH} -M < ${ONNX_INFERENCE_PATH}/merge.mri\n")
-        if (UNIX)
-            execute_process(COMMAND chmod +x ${TEMP_SCRIPT})
-        endif()
-        execute_process(
-                COMMAND ${TEMP_SCRIPT}
-                WORKING_DIRECTORY ${ONNX_INFERENCE_PATH}
-                RESULT_VARIABLE result
-                ERROR_VARIABLE error
-        )
-        message(STATUS "[onnx.runtime.sd][I] execute_process build ${ARCHIVER_PATH} ONNXRuntime.a done")
-
-        if (result)
-            message(FATAL_ERROR "Failed to execute ar: ${error}")
+        if (WIN32)                      # for Windows x32 & x64
+            merge_static_libs_windows()
+        elseif (APPLE)                  # for MacOS X or iOS, watchOS, tvOS (since 3.10.3)
+            merge_static_libs_macos()
+        elseif (LINUX)                  # for Linux, BSD, Solaris, Minix
+            merge_static_libs_linux()
+        elseif (ANDROID)                # for Android
+            merge_static_libs_android()
+        else()
+            message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
         endif()
     else ()
         message(FATAL_ERROR "[onnx.runtime.sd][E] Unfounded onnxruntime submodule. please clone from https://github.com/microsoft/onnxruntime.git first!")
