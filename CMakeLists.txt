@@ -95,7 +95,7 @@ elseif (ANDROID)                    # for Android
     set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
-#    set(ORT_ONLINE_COMPILED OFF)
+#    set(ORT_COMPILED_ONLINE OFF)
     set(ORT_BUILD_COMMAND_LINE OFF)
     set(ENGINE_NAME "ORT-CPU-NNAPI")
     message("[onnx.runtime.sd][I] target arch abi set to ${Red}${CMAKE_SYSTEM_PROCESSOR}:${CMAKE_ANDROID_ARCH_ABI}${ColourReset} minsdk ${Cyan}${CMAKE_SYSTEM_VERSION}${ColourReset}")
@@ -106,11 +106,12 @@ message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${
 
 message("${Cyan}<############################ ${ENGINE_NAME}-Config ############################>${ColourReset}")
 # 1. Option list
+option(ORT_COMPILED_ONLINE           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
+option(ORT_COMPILED_HEAVY            "ort-sd: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
 option(ORT_BUILD_COMBINE_BASE        "ort-sd: build combine code together to build a single output lib" OFF)
 option(ORT_BUILD_SHARED_CFDI         "ort-sd: build CFDI project shared libs" OFF)
 option(ORT_BUILD_SHARED_LIBS         "ort-sd: build ORT in shared libs" OFF)
-option(ORT_ONLINE_COMPILED           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
@@ -118,26 +119,34 @@ option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate
 
 if (ORT_BUILD_COMBINE_BASE)
     set(ORT_BUILD_SHARED_LIBS OFF)  # in this mode, we will never use ORT_BUILD_SHARED_LIBS option
-    set(ORT_ONLINE_COMPILED OFF)
+    set(ORT_COMPILED_ONLINE OFF)
 endif ()
-if (NOT ARCHIVER_PATH)              # ORT-static can only been built with ar-tool helping
+if (ORT_COMPILED_ONLINE)            # ORT-static can only been built by local
+    message("[onnx.runtime.sd][I] onnxruntime ${Blue}ORT_COMPILED_ONLINE:OFF${ColourReset} ${Red}enable ort.shared lib${ColourReset} ")
+    set(ORT_BUILD_SHARED_LIBS ON)
+endif ()
+if (NOT ORT_BUILD_SHARED_LIBS AND NOT ARCHIVER_PATH)    # ORT-static can only been built with ar-tool helping
     message("[onnx.runtime.sd][I] onnxruntime ${Blue}ARCHIVER_PATH:NaN (Unset)${ColourReset} ${Red}disable ort.static lib${ColourReset} ")
     set(ORT_BUILD_SHARED_LIBS ON)
 endif ()
-if (NOT ORT_BUILD_SHARED_LIBS)      # ORT-static can only been built by local
-    message("[onnx.runtime.sd][I] onnxruntime ${Blue}ORT_BUILD_SHARED_LIBS:OFF${ColourReset} ${Red}disable online compile${ColourReset} ")
-    set(ORT_ONLINE_COMPILED OFF)
-endif ()
 
 set(option_state "option_state {\n")
-set(option_state "${option_state}    ORT_BUILD_COMMAND_LINE: ${Cyan}${ORT_BUILD_COMMAND_LINE}${ColourReset},\n")
-set(option_state "${option_state}    ORT_BUILD_SHARED_CFDI : ${Cyan}${ORT_BUILD_SHARED_CFDI}${ColourReset},\n")
-set(option_state "${option_state}    ORT_BUILD_SHARED_LIBS : ${Cyan}${ORT_BUILD_SHARED_LIBS}${ColourReset},\n")
-set(option_state "${option_state}    ORT_ONLINE_COMPILED   : ${Cyan}${ORT_ONLINE_COMPILED}${ColourReset},\n")
-set(option_state "${option_state}    ORT_ENABLE_TENSOR_RT  : ${Cyan}${ORT_ENABLE_TENSOR_RT}${ColourReset},\n")
-set(option_state "${option_state}    ORT_ENABLE_CUDA       : ${Cyan}${ORT_ENABLE_CUDA}${ColourReset},\n")
-set(option_state "${option_state}    ORT_ENABLE_COREML     : ${Cyan}${ORT_ENABLE_COREML}${ColourReset},\n")
-set(option_state "${option_state}    ORT_ENABLE_NNAPI      : ${Cyan}${ORT_ENABLE_NNAPI}${ColourReset},\n")
+set(option_state "${option_state}    compile  {\n")
+set(option_state "${option_state}        ORT_COMPILED_ONLINE   : ${Cyan}${ORT_COMPILED_ONLINE}${ColourReset},\n")
+set(option_state "${option_state}        ORT_COMPILED_HEAVY    : ${Red}${ORT_COMPILED_HEAVY}${ColourReset} ([W] Only for Debug using),\n")
+set(option_state "${option_state}    }\n")
+set(option_state "${option_state}    building {\n")
+set(option_state "${option_state}        ORT_BUILD_COMMAND_LINE: ${Cyan}${ORT_BUILD_COMMAND_LINE}${ColourReset},\n")
+set(option_state "${option_state}        ORT_BUILD_COMBINE_BASE: ${Cyan}${ORT_BUILD_COMBINE_BASE}${ColourReset},\n")
+set(option_state "${option_state}        ORT_BUILD_SHARED_CFDI : ${Cyan}${ORT_BUILD_SHARED_CFDI}${ColourReset},\n")
+set(option_state "${option_state}        ORT_BUILD_SHARED_LIBS : ${Cyan}${ORT_BUILD_SHARED_LIBS}${ColourReset},\n")
+set(option_state "${option_state}    }\n")
+set(option_state "${option_state}    provider {\n")
+set(option_state "${option_state}        ORT_ENABLE_TENSOR_RT  : ${Cyan}${ORT_ENABLE_TENSOR_RT}${ColourReset},\n")
+set(option_state "${option_state}        ORT_ENABLE_CUDA       : ${Cyan}${ORT_ENABLE_CUDA}${ColourReset},\n")
+set(option_state "${option_state}        ORT_ENABLE_COREML     : ${Cyan}${ORT_ENABLE_COREML}${ColourReset},\n")
+set(option_state "${option_state}        ORT_ENABLE_NNAPI      : ${Cyan}${ORT_ENABLE_NNAPI}${ColourReset},\n")
+set(option_state "${option_state}    }\n")
 set(option_state "${option_state}}")
 message("${option_state}")
 
@@ -145,7 +154,7 @@ message("${Cyan}<############################# ${ENGINE_NAME}-Make #############
 
 # 2. Add inference engine to project
 auto_check_reference_submodule()
-auto_include(${ONNX_PATH}/onnxruntime include)
+#auto_include(${ONNX_PATH}/onnxruntime include) DO NOT USE onnxruntime/include for it's not usable
 
 # 3. Check Provider Enable State
 if (ORT_ENABLE_TENSOR_RT)
@@ -177,7 +186,7 @@ if (ORT_BUILD_COMBINE_BASE)
     set(onnxruntime_USE_COREML ${ORT_ENABLE_COREML})
     set(onnxruntime_USE_NNAPI_BUILTIN ${ORT_ENABLE_NNAPI})
     add_subdirectory(engine/onnxruntime/cmake ${CMAKE_BINARY_DIR}/onnxruntime)
-elseif (ORT_ONLINE_COMPILED)
+elseif (ORT_COMPILED_ONLINE)
     # Enter: from online/local_path
     message("[onnx.runtime.sd][I] ${Blue}onnxruntime build mode:${ColourReset} ${Red}Online${ColourReset} start")
     set(ONNX_INFERENCE_PATH ${ONNX_PATH}/onnxruntime-${ONNX_INFERENCE_TARGET}-${ONNX_INFERENCE_VERSION})
@@ -248,8 +257,10 @@ set(library_data_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/outlet/ort_sd.cc
 )
 
-auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} source)
-auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} outlet)
+if (ORT_COMPILED_HEAVY)
+    auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} source)
+    auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} outlet)
+endif ()
 auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} include)
 auto_print_list(library_data_SOURCES)
 
@@ -271,9 +282,8 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} outlet PRIVATE)
 auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 
 #link references
-auto_link_reference_library(${library_name} ${ONNXRUNTIME_LIB_PATH})
+auto_link_reference_library(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH})
 
-target_compile_features(${library_name} PUBLIC cxx_std_14)
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 
 message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")

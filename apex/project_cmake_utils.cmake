@@ -9,37 +9,49 @@
 
 # 平台限定=================================================================================================
 #自动连接对应平台关联库
-macro(auto_link_reference_library target_lib ref_lib_path)
+macro(auto_link_reference_library target_lib lib_name ref_lib_path)
     message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ start)
 
     # compatible caused by NDK find error
-    if (ANDROID)
+    if (WIN32)
         if (ORT_BUILD_SHARED_LIBS)
-            set(ONNXRUNTIME_LIB ${ref_lib_path}/libonnxruntime.so)
+            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.dll")
         else()
-            set(ONNXRUNTIME_LIB ${ref_lib_path}/libonnxruntime.a)
+            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")
         endif()
+        set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/include)
+    elseif (APPLE)
+        if (ORT_BUILD_SHARED_LIBS)
+            set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.dylib")
+        else()
+            set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.a")
+        endif()
+        set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/include)
+    elseif (LINUX OR ANDROID)
+        if (ORT_BUILD_SHARED_LIBS)
+            set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
+        else()
+            set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.a")
+        endif()
+        set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/headers)
     else()
-        if (ORT_BUILD_SHARED_LIBS)
-            find_library(ONNXRUNTIME_LIB onnxruntime PATHS ${ref_lib_path} NAMES libonnxruntime.so)
-        else()
-            find_library(ONNXRUNTIME_LIB onnxruntime PATHS ${ref_lib_path} NAMES libonnxruntime.a)
-        endif()
+        message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
     endif()
 
-    if (NOT ONNXRUNTIME_LIB)
-        message(FATAL_ERROR "onnxruntime library not found in ${ref_lib_path}")
+    if (NOT LIBRARY_PATH)
+        message(FATAL_ERROR "${lib_name} library not found in ${ref_lib_path}")
     else()
-        message(\ ${PROJECT_NAME}=>\ "Found onnxruntime library: ${ONNXRUNTIME_LIB}")
+        message(\ ${PROJECT_NAME}=>\ "Found ${lib_name} library: ${LIBRARY_PATH}")
+        message(\ ${PROJECT_NAME}=>\ "Found ${lib_name} include: ${INCLUDE_PATH}")
     endif()
 
     target_include_directories(
             ${target_lib} PUBLIC
-            engine/include
+            ${INCLUDE_PATH}
     )
     target_link_libraries(
             ${target_lib} PRIVATE
-            ${ONNXRUNTIME_LIB}
+            ${LIBRARY_PATH}
     )
     message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
 endmacro()
@@ -67,11 +79,7 @@ macro(check_library_exists lib_name lib_path result_var)
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.a")
         endif()
     else()
-        if (ORT_BUILD_SHARED_LIBS)
-            set(LIBRARY_PATH "${lib_path}/lib${lib_name}.so")
-        else()
-            set(LIBRARY_PATH "${lib_path}/lib${lib_name}.a")
-        endif()
+        message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
     endif()
 
     message(STATUS "Constructed library path: ${LIBRARY_PATH}")
@@ -146,7 +154,7 @@ macro(auto_target_sources source_list path_dir root_dir)
         elseif (NOT (${path_dir}/${root_dir} MATCHES ".*/test.*")
                 AND NOT (${sub} MATCHES ".DS_Store"))
             message(\ ${PROJECT_NAME}\ =>\ auto_target_sources::\ ${sub})
-            list(APPEND ${source_list} ${root_dir}/${sub})
+            list(APPEND ${source_list} ${path_dir}/${root_dir}/${sub})
         endif ()
     endforeach ()
 endmacro()
@@ -165,7 +173,7 @@ macro(auto_target_include library path_dir root_dir include_type)
         endif ()
     endforeach ()
     message(\ ${PROJECT_NAME}=>\ auto_target_include::\ ${BoldMagenta}${include_type}${ColourReset} \ ${root_dir})
-    target_include_directories(${library_name} ${include_type} ${root_dir})
+    target_include_directories(${library_name} ${include_type} ${path_dir}/${root_dir})
 endmacro()
 
 # 指定库，自动添加关联子文件
