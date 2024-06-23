@@ -35,7 +35,7 @@ const char* scheduler_alpha_type_str[] = {
 
 // below order match AvailablePredictionType order
 const char* scheduler_prediction_str[] = {
-    "epslion",
+    "epsilon",
     "v_prediction",
     "sample",
 };
