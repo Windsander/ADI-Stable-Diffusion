@@ -82,7 +82,6 @@ OrtSD_Context::~OrtSD_Context(){
     }
     this->ort_remain.embeded_negative.release();
     this->ort_remain.embeded_positive.release();
-    this->ort_config = {};
 }
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {

@@ -56,7 +56,7 @@ namespace ortsd {
 
     ORT_ENTRY void released_context(IOrtSDContext_ptr *ctx_pp_) {
         if (ctx_pp_ && *ctx_pp_) {
-            ((onnx::sd::context::OrtSD_Context *) *ctx_pp_)->~OrtSD_Context();
+            // ((onnx::sd::context::OrtSD_Context *) *ctx_pp_)->~OrtSD_Context();
             delete ((onnx::sd::context::OrtSD_Context *) *ctx_pp_);
             *ctx_pp_ = nullptr;
         }
