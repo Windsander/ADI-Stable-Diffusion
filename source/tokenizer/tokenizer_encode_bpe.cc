@@ -31,7 +31,7 @@ protected:
         while (!(current_pairs_.empty()) &&
                !(minimum_pair.first.empty() && minimum_pair.second.empty())) {
             {
-                std::vector<std::string> new_word(char_list_.size());
+                std::vector<std::string> new_word;
                 for (size_t i = 0; i < char_list_.size(); ++i) {
                     bool need_merge_ = (
                         i < char_list_.size() - 1 &&

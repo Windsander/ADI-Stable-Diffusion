@@ -122,20 +122,20 @@ And now, you can have a try~ (0w0 )
 ## Development Progress Checklist (latest):
 
 **Basic Pipeline Functionalities (Major):**
-- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo)
+- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo) _(after 2024/06/04)_
 - [ ] [SD_v2] Stable-Diffusion (v2.0, v2.1)
 - [ ] [SD_v3] Stable-Diffusion (v3.0)
 - [ ] [SDXL] Stable-Diffusion-XL
 - [ ] [SVD] Stable-Video-Diffusion
 
 **Scheduler Strategy**
-- [x] Discrete/Method Default (discrete)
+- [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
 - [ ] Karras (karras)
 
 **Scheduler Method**
-- [x] Euler (euler)
-- [x] Euler Ancestral (euler_a)
-- [x] Laplacian Pyramid Sampling (lms)
+- [x] Euler (euler) _(after 2024/06/04)_
+- [x] Euler Ancestral (euler_a) _(after 2024/05/24)_
+- [x] Laplacian Pyramid Sampling (lms) _(after 2024/05/24)_
 - [ ] Latent Consistency Models (lcm)
 - [ ] Heun's Predictor-Corrector (heun)
 - [ ] Unified Predictor-Corrector (uni_pc)
@@ -151,6 +151,6 @@ And now, you can have a try~ (0w0 )
 - [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
 
 **Tokenizer Type**
-- [ ] Byte-Pair Encoding (bpe)
-- [x] Word Piece Encoding (wp)
+- [x] Byte-Pair Encoding (bpe) _(after 2024/07/03)_
+- [x] Word Piece Encoding (wp) _(after 2024/05/27)_
 - [ ] Sentence Piece Encoding (sp)  _[if necessary]_
