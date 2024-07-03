@@ -92,6 +92,7 @@ typedef struct IOrtSDConfig {
     struct {
         enum AvailableTokenizerType sd_tokenizer_type;  // Tokenizer: tokenizer type (currently only provide BPE)
         const char* tokenizer_dictionary_at;        // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
+        const char* tokenizer_aggregates_at;        // Tokenizer: merges file <one merge-pair per line, currently only for BPE>
         int32_t avail_token_count;                  // Tokenizer: all available token in vocabulary totally
         int32_t avail_token_size;                   // Tokenizer: max token length (include <start> & <end>, so 75 avail)
         int32_t major_hidden_dim;                   // Tokenizer: out token length

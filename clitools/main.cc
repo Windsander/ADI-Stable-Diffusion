@@ -92,6 +92,7 @@ struct CommandLineInput {
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
+    std::string tokenizer_aggregates_at;                                    // Tokenizer: merges file <one merge-pair per line, currently only for BPE>
     int32_t avail_token_count = 49408;                                      // Tokenizer: all available token in vocabulary totally
     int32_t avail_token_size = 77;                                          // Tokenizer: max token length (include <start> & <end>, so 75 avail)
     int32_t major_hidden_dim = 768;                                         // Tokenizer: out token length
@@ -124,6 +125,7 @@ void print_params(const CommandLineInput& params) {
     printf("    control_net_path:               %s\n", params.onnx_control_net_path.c_str());
     printf("    safty_path:                     %s\n", params.onnx_safty_path.c_str());
     printf("    dictionary_path:                %s\n", params.tokenizer_dictionary_at.c_str());
+    printf("    mergesfile_path:                %s\n", params.tokenizer_aggregates_at.c_str());
 
     printf("  Major  (by User  [necessary]): \n");
     printf("    current OrtSD mode:             %s\n"  , modes_str[params.mode]);
@@ -185,6 +187,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --control-net [CONTROL_PATH]       path to control net\n");
     printf("  --safety [SAFETY_PATH]             path to safe security\n");
     printf("  --dict [DICTIONARY_PATH]           path to vocab dictionary \n");
+    printf("  --merges [MERGES_FILE_PATH]        path to merges file (only for BPE Tokenizer) \n");
 
     printf("  --beta-start <float>               Beta start (default 0.00085f) \n");
     printf("  --beta-end <float>                 Beta end (default 0.012f) \n");
@@ -355,6 +358,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.tokenizer_dictionary_at = argv[i];
+        } else if (arg == "--merges") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.tokenizer_aggregates_at = argv[i];
         } else if (arg == "--beta-start") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -646,6 +655,7 @@ int main(int argc, const char *argv[]) {
             {
                 params.sd_tokenizer_type,
                 params.tokenizer_dictionary_at.c_str(),
+                params.tokenizer_aggregates_at.c_str(),
                 params.avail_token_count,
                 params.avail_token_size,
                 params.major_hidden_dim,

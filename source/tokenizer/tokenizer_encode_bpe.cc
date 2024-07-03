@@ -12,30 +12,57 @@ namespace sd {
 namespace tokenizer {
 
 class BPETokenizer : public TokenizerBase {
-private:
-    typedef std::vector<std::pair<std::string, std::string>> MergePair_map;
-
 protected:
-    const std::string bep_vocab_end = ",";
-    const std::regex bep_split_reg = std::regex(
-        R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
-        std::regex::icase
-    );
+    std::string bep_pair_merge(const std::string &sentence_) {
+        // before split sentence to words, we need do BPE first, that means do Merge First.
+        // but first we need to check if merges.txt exist
+        if (!sd_tokenizer_merge_ready) return sentence_;
 
-    MergePair_map read_merges(const std::string& merges_file) {
-        MergePair_map merges;
-        std::ifstream file(merges_file);
-        std::string line;
-        while (std::getline(file, line)) {
-            std::istringstream iss(line);
-            std::string first, second;
-            iss >> first >> second;
-            merges.emplace_back(first, second);
+        // step.1: cut sentence to chars, careful about space
+        std::vector<std::string> char_list_(sentence_.size());
+        std::transform(sentence_.begin(), sentence_.end(), char_list_.begin(), [](char c) {
+            return std::string(1, c);
+        });
+
+        // step.2: search from bep_ranking_maps, found ranked byte(char)_pair and do merge for new one, update
+        SubwordsPair_vec current_pairs_ = make_words_pair(char_list_);
+        Subwords_pair minimum_pair = find_min_rank(current_pairs_);
+
+        while (!(current_pairs_.empty()) &&
+               !(minimum_pair.first.empty() && minimum_pair.second.empty())) {
+            {
+                std::vector<std::string> new_word(char_list_.size());
+                for (size_t i = 0; i < char_list_.size(); ++i) {
+                    bool need_merge_ = (
+                        i < char_list_.size() - 1 &&
+                        char_list_[i] == minimum_pair.first &&
+                        char_list_[i + 1] == minimum_pair.second
+                    );
+                    if (need_merge_) {  // merge & skip next
+                        new_word.push_back(minimum_pair.first + minimum_pair.second);
+                        ++i;
+                    } else {            // keep steady
+                        new_word.push_back(char_list_[i]);
+                    }
+                }
+                char_list_ = std::move(new_word);
+            }
+            current_pairs_ = make_words_pair(char_list_);
+            minimum_pair = find_min_rank(current_pairs_);
         }
-        return merges;
+
+        // step.3: if no chars can be merged, the return final result.
+        // Mark: if there have unrecognisable words, that means words is not in vocabs, needs retraining add.
+        std::string paired_result_;
+        for (size_t i = 0; i < char_list_.size(); ++i) {
+            paired_result_ += char_list_[i];
+            if (i != char_list_.size() - 1) {
+                paired_result_ += " ";
+            }
+        }
+        return paired_result_;
     }
 
-protected:
     std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) override {
 
         const float token_end_multi_ = get_boundary_factor();
@@ -49,12 +76,15 @@ protected:
         size_t pair_count_ = 1;
         int last_vocab_at_ = -1;
         for (auto concise_: prompt_weight_) {
-            std::vector<std::string> vocab = PromptsHelper::split(
-                PromptsHelper::whitespace(concise_.first),
-                bep_split_reg, false
+
+            std::string bep_paired_ = bep_pair_merge(concise_.first);
+
+            std::vector<std::string> vocab_list_ = PromptsHelper::split(
+                PromptsHelper::whitespace(bep_paired_),
+                def_split_reg, false
             );
-            for (const std::string& character_: vocab) {
-                bool reach_space_mark_ = (character_ == bep_vocab_end);
+            for (const std::string& vocab_: vocab_list_) {
+                bool reach_space_mark_ = (vocab_ == def_vocab_end);
                 bool needs_split_last_ = ((remade_tokens.size() % avail_ == 0) && (last_vocab_at_ != -1) &&
                                           (remade_tokens.size() - last_vocab_at_ <= token_safe_gaps_));
                 if (reach_space_mark_) {
@@ -76,7 +106,7 @@ protected:
                     pair_count_ += 1;
                 }
 
-                remade_tokens.push_back(sd_tokenizer_tok2id[character_ + "</w>"]);
+                remade_tokens.push_back(sd_tokenizer_tok2id[vocab_ + "</w>"]);
                 remade_multis.push_back(concise_.second);
             }
         }
@@ -91,7 +121,21 @@ protected:
 public:
     explicit BPETokenizer(const TokenizerConfig &tokenizer_config_ = {}) : TokenizerBase(tokenizer_config_) {};
     ~BPETokenizer() override = default;
+
+    void init() override;
+    void uninit() override;
 };
+
+void BPETokenizer::init(){
+    // loading vocabulary
+    load_vocab_file(sd_tokenizer_config.tokenizer_dictionary_at);
+    // loading aggregates
+    load_merge_file(sd_tokenizer_config.tokenizer_aggregates_at);
+}
+
+void BPETokenizer::uninit() {
+
+}
 
 } // namespace tokenizer
 } // namespace sd

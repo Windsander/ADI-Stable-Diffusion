@@ -102,6 +102,7 @@ typedef enum TokenizerType {
     {                                                       \
          /*tokenizer_type*/              TOKENIZER_BPE,     \
          /*tokenizer_dictionary_at*/     "",                \
+         /*tokenizer_aggregates_at*/     "",                \
          /*avail_token_count*/           49408,             \
          /*avail_token_size*/            77,                \
          /*major_hidden_dim*/            768,               \
@@ -113,6 +114,7 @@ typedef enum TokenizerType {
 typedef struct TokenizerConfig {
     TokenizerType tokenizer_type;
     std::string tokenizer_dictionary_at;        // vocabulary lib <one vocab per line, row treate as index>
+    std::string tokenizer_aggregates_at;        // merges file <one merge-pair per line, currently only for BPE>
     int32_t avail_token_count;                  // all available token in vocabulary totally
     int32_t avail_token_size;                   // max token length (include <start> & <end>, so 75 avail)
     int32_t major_hidden_dim;                   // out token length

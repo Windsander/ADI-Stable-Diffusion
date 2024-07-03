@@ -37,6 +37,7 @@ namespace ortsd {
                 {
                     onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),
                     ctx_config_.sd_tokenizer_config.tokenizer_dictionary_at,
+                    ctx_config_.sd_tokenizer_config.tokenizer_aggregates_at,
                     ctx_config_.sd_tokenizer_config.avail_token_count,
                     ctx_config_.sd_tokenizer_config.avail_token_size,
                     ctx_config_.sd_tokenizer_config.major_hidden_dim,

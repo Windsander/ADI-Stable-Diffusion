@@ -13,18 +13,11 @@ namespace tokenizer {
 
 class WPTokenizer : public TokenizerBase {
 protected:
-    const std::string bep_vocab_end = ",";
-    const std::regex bep_split_reg = std::regex(
-        R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
-        std::regex::icase
-    );
-
-protected:
     std::tuple<Tokens, Multis, size_t> encode(PromptWeight_map prompt_weight_) override {
 
         const float token_end_multi_ = get_boundary_factor();
         const int token_end_index_ = get_end_token_index();
-        const int token_safe_gaps_ = 20;
+        const int token_safe_gaps_ = 2;
         const int avail_ = get_avail_token_size();      // limit of current token_size 75
 
         Tokens remade_tokens;
@@ -33,12 +26,12 @@ protected:
         size_t pair_count_ = 1;
         int last_vocab_at_ = -1;
         for (auto concise_: prompt_weight_) {
-            std::vector<std::string> vocab = PromptsHelper::split(
+            std::vector<std::string> vocab_list_ = PromptsHelper::split(
                 PromptsHelper::whitespace(concise_.first),
-                bep_split_reg, false
+                def_split_reg, false
             );
-            for (const std::string& character_: vocab) {
-                bool reach_space_mark_ = (character_ == bep_vocab_end);
+            for (const std::string& vocab_: vocab_list_) {
+                bool reach_space_mark_ = (vocab_ == def_vocab_end);
                 bool needs_split_last_ = ((remade_tokens.size() % avail_ == 0) && (last_vocab_at_ != -1) &&
                                           (remade_tokens.size() - last_vocab_at_ <= token_safe_gaps_));
                 if (reach_space_mark_) {
@@ -60,7 +53,7 @@ protected:
                     pair_count_ += 1;
                 }
 
-                remade_tokens.push_back(sd_tokenizer_tok2id[character_ + "</w>"]);
+                remade_tokens.push_back(sd_tokenizer_tok2id[vocab_ + "</w>"]);
                 remade_multis.push_back(concise_.second);
             }
         }
@@ -75,7 +68,19 @@ protected:
 public:
     explicit WPTokenizer(const TokenizerConfig &tokenizer_config_ = {}) : TokenizerBase(tokenizer_config_) {};
     ~WPTokenizer() override = default;
+
+    void init() override;
+    void uninit() override;
 };
+
+void WPTokenizer::init(){
+    // loading vocabulary
+    load_vocab_file(sd_tokenizer_config.tokenizer_dictionary_at);
+}
+
+void WPTokenizer::uninit() {
+    // nothing to do
+}
 
 } // namespace tokenizer
 } // namespace sd

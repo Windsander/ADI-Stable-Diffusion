@@ -28,7 +28,8 @@ find . -name "._*" -type f -delete
  --unet ../../sd/sd-base-model/onnx-sd-v15/unet/model.onnx\
  --vae-encoder ../../sd/sd-base-model/onnx-sd-v15/vae_encoder/model.onnx\
  --vae-decoder ../../sd/sd-base-model/onnx-sd-v15/vae_decoder/model.onnx\
- --dict ../../sd/sd-dictionary/vocab.txt\
+ --merges ../../sd/sd-base-model/onnx-sd-v15/tokenizer/merges.txt\
+ --dict ../../sd/sd-base-model/onnx-sd-v15/tokenizer/vocab.json\
  --beta-start 0.00085\
  --beta-end 0.012\
  --beta linear\

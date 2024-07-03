@@ -24,12 +24,15 @@ using namespace amon;
  */
 class TokenizerBase {
 public:
+    typedef std::pair<std::string, std::string> Subwords_pair;
+    typedef std::vector<std::pair<std::string, std::string>> SubwordsPair_vec;
     typedef std::vector<std::pair<std::string, float>> PromptWeight_map;
     typedef std::vector<std::pair<Tensor, Tensor>> PreparedToken_vec;
     typedef std::vector<std::vector<float>> Embeddings_matrix;
     typedef std::vector<std::vector<float>> Positional_matrix;
 
 protected:
+    typedef std::map<std::pair<std::string, std::string>, int> Merge_Pair_dict;
     typedef std::map<std::string, int> Token_2_ID_dict;
     typedef std::map<int, std::string> ID_2_Token_dict;
     typedef std::vector<int32_t> Tokens;
@@ -39,15 +42,24 @@ protected:
     TokenizerConfig sd_tokenizer_config;
     Token_2_ID_dict sd_tokenizer_tok2id;
     ID_2_Token_dict sd_tokenizer_id2tok;
+    Merge_Pair_dict sd_tokenizer_merges;
     Embeddings_matrix embeddings_matrix;
     Positional_matrix positional_matrix;
 
+    const std::string def_vocab_end = ",";
+    const std::regex def_split_reg = std::regex(
+        R"(<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[a-zA-Z]+|\d|[^ \t\n\r\f\v\w]+)",
+        std::regex::icase
+    );
     const std::regex re_focusing = std::regex(
         R"(\\\(|\\\)|\\\[|\\\]|\\\\|\\|\(|\[|:([+-]?[.\d]+)\)|\)|\]|[^\\()\[\]:]+|:)"
     );
     const std::regex re_breaking = std::regex(
         R"(\s*\bBREAK\b\s*)"
     );
+
+    bool sd_tokenizer_vocab_ready = false;
+    bool sd_tokenizer_merge_ready = false;
 
 protected:
     /**
@@ -238,6 +250,37 @@ protected:
         return prompt_weight_;
     }
 
+protected:      // Subwiords Pairing logic (Common by file structure)
+    SubwordsPair_vec make_words_pair(const std::vector<std::string> &subwords_) {
+        SubwordsPair_vec paired_words_;
+        if (!subwords_.empty() && subwords_.size() > 1) {
+            std::string prev_subword_ = subwords_[0];
+            for (int i = 1; i < subwords_.size(); i++) {
+                std::string cur_subword_ = subwords_[i];
+                std::pair<std::string, std::string> pair(prev_subword_, cur_subword_);
+                paired_words_.emplace_back(pair);
+                prev_subword_ = cur_subword_;
+            }
+        }
+        return paired_words_;
+    }
+
+    Subwords_pair find_min_rank(const SubwordsPair_vec& current_pairs_) {
+        Subwords_pair min_pair = {"", ""};
+        if (!current_pairs_.empty()) {
+            int min_rank = std::numeric_limits<int>::max();
+            for (const auto &pair: current_pairs_) {
+                auto it = sd_tokenizer_merges.find(pair);
+                if (it != sd_tokenizer_merges.end() && it->second < min_rank) {
+                    min_rank = it->second;
+                    min_pair = pair;
+                }
+            }
+        }
+        return min_pair;
+    }
+
+protected:      // Dictionary reading & preparing logic
     void load_vocab_json(const std::string &vocab_path_) {
         std::ifstream vocab_file(vocab_path_);
         if (!vocab_file) {
@@ -274,7 +317,72 @@ protected:
         vocab_file.close();
     }
 
-private:        // WARNING: Test ONLY!
+    void load_merge_json(const std::string &merges_path_) {
+        std::ifstream merge_file(merges_path_);
+        if (!merge_file) {
+            std::cerr << "Failed to open " << merges_path_ << std::endl;
+            exit(1);
+        }
+
+        nlohmann::json json;
+        merge_file >> json;
+
+        for (auto it = json.begin(); it != json.end(); ++it) {
+            std::string str_key = it.key();
+            int int_rank = it.value().get<int>();
+
+            str_key = PromptsHelper::replace(str_key, "\\u0120", " ");  // \u0120 -> space
+            str_key = PromptsHelper::replace(str_key, "\\u010a", "\n"); // \u010a -> new line
+            str_key = PromptsHelper::replace(str_key, "\\\"", "\"");    // \\\"   -> "
+
+            std::istringstream iss(str_key);
+            std::string first, second;
+            iss >> first >> second;
+
+            sd_tokenizer_merges[make_pair(first, second)] = int_rank;
+        }
+    }
+
+    void load_merge_text(const std::string& merges_path_) {
+        std::ifstream merge_file;
+        merge_file.open(merges_path_);
+        std::string line;
+        int rank = 0;   // first line always is "#version: xxx"
+        while (std::getline(merge_file, line)) {
+            std::istringstream iss(line);
+            std::string first, second;
+            iss >> first >> second;
+            sd_tokenizer_merges[make_pair(first, second)] = rank;
+            rank++;
+        }
+        merge_file.close();
+    }
+
+    void load_vocab_file(const std::string& vocab_path_){
+        if (PromptsHelper::has_extension(vocab_path_, ".json")) {
+            load_vocab_json(vocab_path_);
+            sd_tokenizer_vocab_ready = true;
+        } else if (PromptsHelper::has_extension(vocab_path_, ".txt")) {
+            load_vocab_text(vocab_path_);
+            sd_tokenizer_vocab_ready = true;
+        } else {
+            sd_tokenizer_vocab_ready = false;
+        }
+    }
+
+    void load_merge_file(const std::string& merges_path_){
+        if (PromptsHelper::has_extension(merges_path_, ".json")) {
+            load_merge_json(merges_path_);
+            sd_tokenizer_merge_ready = true;
+        } else if (PromptsHelper::has_extension(merges_path_, ".txt")) {
+            load_merge_text(merges_path_);
+            sd_tokenizer_merge_ready = true;
+        } else {
+            sd_tokenizer_merge_ready = false;
+        }
+    }
+
+private:        // WARNING: Test ONLY! Currently abandoned!
     void test_encoder_prepare() {
         // test(simple encoding): prepare token embeddings_matrix
         {
@@ -341,25 +449,15 @@ public:
     virtual ~TokenizerBase() { sd_tokenizer_config.~TokenizerConfig();};
 
     void create();
-    void init();
+    virtual void init() = 0;
     PreparedToken_vec tokenize(const std::string &prompts_);
     Tensor embedding(const Tensor &token_p_,const Tensor &token_n_);
     std::string untokenize(const std::pair<Tensor, Tensor> &tpair_);
-    void uninit();
+    virtual void uninit() = 0;
     void release();
 };
 
 void TokenizerBase::create() {
-}
-
-void TokenizerBase::init(){
-    // loading vocabulary
-    if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".json")) {
-        load_vocab_json(sd_tokenizer_config.tokenizer_dictionary_at);
-    } else if (PromptsHelper::has_extension(sd_tokenizer_config.tokenizer_dictionary_at, ".txt")) {
-        load_vocab_text(sd_tokenizer_config.tokenizer_dictionary_at);
-    }
-    test_encoder_prepare();
 }
 
 TokenizerBase::PreparedToken_vec TokenizerBase::tokenize(const std::string& prompts_) {
@@ -443,10 +541,12 @@ std::string TokenizerBase::untokenize(const  std::pair<Tensor, Tensor>& tpair_) 
     return "";
 }
 
-void TokenizerBase::uninit() {
-}
-
 void TokenizerBase::release() {
+    sd_tokenizer_tok2id.clear();
+    sd_tokenizer_id2tok.clear();
+    sd_tokenizer_merges.clear();
+    embeddings_matrix.clear();
+    positional_matrix.clear();
 }
 
 } // namespace tokenizer
