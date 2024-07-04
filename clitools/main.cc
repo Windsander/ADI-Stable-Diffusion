@@ -553,6 +553,11 @@ static void read_image(const CommandLineInput &params, uint8_t** image_data){
     int width = 0;
     int height = 0;
 
+    // Check if necessary to read
+    if (params.input_path.empty() || params.mode == TXT2IMG) {
+        return;
+    }
+
     (*image_data) = stbi_load(params.input_path.c_str(), &width, &height, &channel, 3);
 
     // Check image_data available
