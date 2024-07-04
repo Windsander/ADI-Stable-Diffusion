@@ -42,14 +42,9 @@ std::vector<float> EulerDiscreteScheduler::execute_method(
     // Euler method:: sigma get
     float sigma_curs = scheduler_sigmas[step_index_];
     float sigma_next = scheduler_sigmas[step_index_ + 1];
-    float sigma_up = 0;
     float sigma_dt = 0;
     {
-        float sigma_curs_pow = sigma_curs * sigma_curs;
-        float sigma_next_pow = sigma_next * sigma_next;
-        float sigma_up_numerator = sigma_next_pow * (sigma_curs_pow - sigma_next_pow);
-        float sigma_down = std::sqrt(sigma_next * sigma_next - sigma_up * sigma_up);
-        sigma_dt = sigma_down - sigma_curs;
+        sigma_dt = sigma_next - sigma_curs;
     }
 
     // Euler method:: current noise decrees

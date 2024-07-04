@@ -94,10 +94,11 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     }
 
     // 4. compute previous sample based on the derivative path
-    std::vector<std::vector<float>> lms_der_products_;
+    std::vector<std::vector<float>> lms_der_products_(lms_coeffs_.size());
     for (int i = 0; i < lms_coeffs_.size(); i++) {
         // history_product_recs = sample + lms_coeffs * target_coeffs_derivative
         const std::vector<float>& derivative_ = lms_derivatives[lms_derivatives.size() - 1 - i];
+        lms_der_products_[i].reserve(derivative_.size());
         for (int j = 0; j < derivative_.size(); j++) {
             lms_der_products_[i][j] = samples_data_[j] + lms_coeffs_[i] * derivative_[j];
         }

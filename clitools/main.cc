@@ -45,6 +45,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "euler",
     "euler_a",
     "lms",
+    "lcm",
 };
 
 // below order match AvailablePredictionType order

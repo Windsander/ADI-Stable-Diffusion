@@ -9,6 +9,7 @@
 #include "scheduler_discrete_euler.cc"
 #include "scheduler_discrete_euler_a.cc"
 #include "scheduler_discrete_lms.cc"
+#include "scheduler_discrete_lcm.cc"
 
 namespace onnx {
 namespace sd {
@@ -34,6 +35,10 @@ public:
             }
             case SCHEDULER_LMS: {
                 result_ptr_ = new LMSDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_LCM: {
+                result_ptr_ = new LCMDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
