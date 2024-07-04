@@ -136,7 +136,7 @@ And now, you can have a try~ (0w0 )
 - [x] Euler (euler) _(after 2024/06/04)_
 - [x] Euler Ancestral (euler_a) _(after 2024/05/24)_
 - [x] Laplacian Pyramid Sampling (lms) _(after 2024/05/24)_
-- [ ] Latent Consistency Models (lcm)
+- [x] Latent Consistency Models (lcm) _(after 2024/07/04)_
 - [ ] Heun's Predictor-Corrector (heun)
 - [ ] Unified Predictor-Corrector (uni_pc)
 - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
