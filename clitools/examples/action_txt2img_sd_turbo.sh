@@ -22,18 +22,18 @@ find . -name "._*" -type f -delete
  -o ../../sd/io-test/output.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
- --dims 768\
- --clip ../../sd/sd-base-model/onnx-sdxl-turbo/text_encoder/model.onnx\
- --unet ../../sd/sd-base-model/onnx-sdxl-turbo/unet/model.onnx\
- --vae-encoder ../../sd/sd-base-model/onnx-sdxl-turbo/vae_encoder/model.onnx\
- --vae-decoder ../../sd/sd-base-model/onnx-sdxl-turbo/vae_decoder/model.onnx\
- --merges ../../sd/sd-base-model/onnx-sdxl-turbo/tokenizer/merges.txt\
- --dict ../../sd/sd-base-model/onnx-sdxl-turbo/tokenizer/vocab.json\
+ --dims 1024\
+ --clip ../../sd/sd-base-model/onnx-sd-turbo/text_encoder/model.onnx\
+ --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx\
+ --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx\
+ --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx\
+ --merges ../../sd/sd-base-model/onnx-sd-turbo/tokenizer/merges.txt\
+ --dict ../../sd/sd-base-model/onnx-sd-turbo/tokenizer/vocab.json\
  --beta-start 0.00085\
  --beta-end 0.012\
- --beta linear\
+ --beta scaled_linear\
  --alpha cos\
- --scheduler euler_a\
+ --scheduler lcm\
  --predictor epsilon\
  --tokenizer bpe\
  --train-steps 1000\
@@ -42,6 +42,6 @@ find . -name "._*" -type f -delete
  --token-border 1.0\
  --gain 1.1\
  --decoding 0.18215\
- --guidance 7.5\
- --steps 3\
+ --guidance 1.0\
+ --steps 4\
  -v

@@ -66,7 +66,7 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     long step_index_,
     long order_
 ) {
-    std::vector<float> scaled_sample_(data_size_);
+    std::vector<float> prev_sample_(data_size_);
 
     // LMS method:: sigma get
     float sigma_curs = scheduler_sigmas[step_index_];
@@ -94,28 +94,20 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     }
 
     // 4. compute previous sample based on the derivative path
-    std::vector<std::vector<float>> lms_der_products_(lms_coeffs_.size());
-    for (int i = 0; i < lms_coeffs_.size(); i++) {
-        // history_product_recs = sample + lms_coeffs * target_coeffs_derivative
-        const std::vector<float>& derivative_ = lms_derivatives[lms_derivatives.size() - 1 - i];
-        lms_der_products_[i].reserve(derivative_.size());
-        for (int j = 0; j < derivative_.size(); j++) {
-            lms_der_products_[i][j] = samples_data_[j] + lms_coeffs_[i] * derivative_[j];
+    for (int j = 0; j < lms_coeffs_.size(); j++) {
+        // sum_history_product = sum(lms_coeffs * target_coeffs_derivative)
+        const std::vector<float>& derivative_ = lms_derivatives[lms_derivatives.size() - 1 - j];
+        for (int i = 0; i < data_size_; i++) {
+            prev_sample_[i] += lms_coeffs_[j] * derivative_[i];
         }
     }
 
-    for (const auto & product_ : lms_der_products_) {
-        // sum_product_tensor = sum(history_product_recs)
-        for (int j = 0; j < product_.size(); j++) {
-            scaled_sample_[j] += product_[j];
-        }
-    }
-    for (int i = 0; i < scaled_sample_.size(); i++) {
-        // output_latent = sample + sum_product_tensor
-        scaled_sample_[i] += samples_data_[i];
+    for (int i = 0; i < data_size_; i++) {
+        // output_latent = sample + sum_history_product
+        prev_sample_[i] += samples_data_[i];
     }
 
-    return scaled_sample_;
+    return prev_sample_;
 }
 
 } // namespace scheduler

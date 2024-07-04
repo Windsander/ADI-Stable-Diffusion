@@ -45,15 +45,12 @@ std::vector<float> LCMDiscreteScheduler::execute_method(
     std::vector<float> scaled_sample_(data_size_);
 
     // LCM method:: sigma get, only next sigma be needed
-    float sigma_curs = scheduler_sigmas[step_index_];
     float sigma_next = scheduler_sigmas[step_index_ + 1]; // sigma_next prev_timestep(caused by inference is a reversed working flow)
-    float betas_next = std::sqrt(1 - sigma_next);
-    float alpha_next = std::sqrt(sigma_next);
 
     // LCM method:: current noise decrees
     for (int i = 0; i < data_size_; i++) {
         if (sigma_next > 0) {
-            scaled_sample_[i] = (predict_data_[i] * alpha_next + lcm_random.next() * betas_next);       // producted_out = predict_sample + random_noise * sigma_next
+            scaled_sample_[i] = (predict_data_[i] + lcm_random.next() * sigma_next);       // producted_out = predict_sample + random_noise * sigma_next
         } else {
             scaled_sample_[i] = (predict_data_[i]);
         }

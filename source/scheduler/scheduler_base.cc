@@ -77,11 +77,12 @@ long SchedulerBase::find_closest_timestep_index(long time_) {
 float SchedulerBase::generate_sigma_at(float timestep_) {
     int low_idx   = static_cast<int>(std::floor(timestep_));
     int high_idx  = static_cast<int>(std::ceil(timestep_));
-    float l_sigma = std::log(alphas_cumprod[low_idx]);
-    float h_sigma = std::log(alphas_cumprod[high_idx]);
+    float l_sigma = alphas_cumprod[low_idx];
+    float h_sigma = alphas_cumprod[high_idx];
     float w       = timestep_ - static_cast<float>(low_idx);      // divide always 1
-    float sigma   = (1.0f - w) * l_sigma + w * h_sigma;
-    return std::exp(sigma);
+    float alpha_prod = (1.0f - w) * l_sigma + w * h_sigma;
+    float sigma = std::powf((1 - alpha_prod) / alpha_prod, 0.5f);
+    return sigma;
 }
 
 void SchedulerBase::create() {
@@ -96,13 +97,12 @@ void SchedulerBase::create() {
             float beta_start_at = linear_start_;
             float beta_end_when = linear_end_;
             float beta_range = beta_end_when - beta_start_at;
-            float product = 1.0f;
+            float alpha_prod = 1.0f;
 
             for (uint32_t i = 0; i < training_steps_; ++i) {
                 float beta_norm = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
-                product *= 1.0f - beta_norm;
-                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod.push_back(comprod_sigma);
+                alpha_prod *= 1.0f - beta_norm;
+                alphas_cumprod.push_back(alpha_prod);
             }
             break;
         }
@@ -110,20 +110,19 @@ void SchedulerBase::create() {
             float beta_start_at = std::sqrtf(linear_start_);
             float beta_end_when = std::sqrtf(linear_end_);
             float beta_range = beta_end_when - beta_start_at;
-            float product = 1.0f;
+            float alpha_prod = 1.0f;
 
             for (uint32_t i = 0; i < training_steps_; ++i) {
                 float beta_dire = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
                 float beta_norm = powf(beta_dire, 2.0f);
-                product *= 1.0f - beta_norm;
-                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod.push_back(comprod_sigma);
+                alpha_prod *= 1.0f - beta_norm;
+                alphas_cumprod.push_back(alpha_prod);
             }
             break;
         }
         case BETA_TYPE_SQUAREDCOS_CAP_V2: {
             float beta_max = 0.999f;
-            float product = 1.0f;
+            float alpha_prod = 1.0f;
 
             auto alpha_bar_fn = [&](float f_step_) -> float {
                 switch (alpha_type) {
@@ -140,9 +139,8 @@ void SchedulerBase::create() {
                 float t1 = float(i) / float(training_steps_);
                 float t2 = float(i + 1) / float(training_steps_);
                 float beta_norm = std::min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), beta_max);
-                product *= 1.0f - beta_norm;
-                float comprod_sigma = std::powf((1 - product) / product, 0.5f);
-                alphas_cumprod.push_back(comprod_sigma);
+                alpha_prod *= 1.0f - beta_norm;
+                alphas_cumprod.push_back(alpha_prod);
             }
             break;
         }
@@ -162,7 +160,7 @@ void SchedulerBase::init(uint32_t inference_steps_) {
 
     // linearspace
     int start_at = 0;
-    int end_when = scheduler_config.scheduler_training_steps - 1;
+    int end_when = int(scheduler_config.scheduler_training_steps - 1);
     float step_gap = (inference_steps_ > 1) ?
                      float(end_when - start_at) / float(inference_steps_ - 1) :
                      float(end_when);
@@ -181,14 +179,14 @@ Tensor SchedulerBase::mask(const TensorShape& mask_shape_){
     return TensorHelper::random<float>(mask_shape_, random_generator, scheduler_max_sigma);
 }
 
-Tensor SchedulerBase::scale(const Tensor& masker_, int step_index_){
+Tensor SchedulerBase::scale(const Tensor& latent_, int step_index_){
     // Get step index of timestep from TimeSteps
     if (step_index_ >= scheduler_timesteps.size()) {
         throw std::runtime_error("from time not found target TimeSteps.");
     }
     float sigma = scheduler_sigmas[step_index_];
     sigma = std::sqrtf(sigma * sigma + 1);
-    return TensorHelper::divide<float>(masker_, sigma);
+    return TensorHelper::divide<float>(latent_, sigma);
 }
 
 Tensor SchedulerBase::time(int step_index_){
@@ -220,23 +218,36 @@ Tensor SchedulerBase::step(
 
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
-    for (int i = 0; i < data_size_; i++) {
+    float c_skip, c_out;
+    {
         switch (scheduler_config.scheduler_predict_type) {
             case PREDICT_TYPE_EPSILON: {
                 // predict_sample = sample - dnoise * sigma
-                predict_data_[i] = sample_data_[i] - dnoise_data_[i] * sigma;
+                c_skip = 1.0f;
+                c_out = -sigma;
                 break;
             }
             case PREDICT_TYPE_V_PREDICTION: {
-                // c_out + input * c_skip
-                predict_data_[i] = (sample_data_[i] / (std::powf(sigma,2) + 1)) + (dnoise_data_[i] * (-sigma / std::sqrt(std::powf(sigma,2) + 1)));
+                // predict_sample = sample / (sigma^2+1) - c_out * sigma / sqrt(sigma^2+1)
+                c_skip = (1.0f / (std::powf(sigma, 2) + 1));
+                c_out = -(sigma / std::sqrt(std::powf(sigma, 2) + 1));
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {
-                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: PREDICT_TYPE_SAMPLE unimplemented"));
+                // predict_sample = dnoise
+                c_skip = 0.0f;
+                c_out = +1.0f;
                 break;
             }
+            default: {
+                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: Unknown prediction type"));
+                return TensorHelper::empty<float>();
+            }
         }
+    }
+    for (int i = 0; i < data_size_; i++) {
+        // predict_sample = sample * c_skip + c_out * dnoise
+        predict_data_[i] = sample_data_[i] * c_skip + dnoise_data_[i] * c_out;
     }
 
     std::vector<float> latent_value_ = execute_method(

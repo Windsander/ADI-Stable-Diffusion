@@ -70,7 +70,7 @@ enum AvailableOrtSDMode {
 struct CommandLineInput {
     AvailableOrtSDMode mode = TXT2IMG;
 
-    std::string input_path = "input.png";
+    std::string input_path;
     std::string output_path = "output.png";
     std::string positive_prompt;
     std::string negative_prompt;
