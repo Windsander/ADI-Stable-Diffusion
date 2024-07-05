@@ -52,9 +52,8 @@ std::vector<float> EulerAncestralDiscreteScheduler::execute_method(
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;
         float sigma_up_numerator = sigma_next_pow * (sigma_curs_pow - sigma_next_pow);
-        float sigma_down = std::sqrt(sigma_next * sigma_next - sigma_up * sigma_up);
         sigma_up = std::min(sigma_next, std::sqrt(sigma_up_numerator / sigma_curs_pow));
-        sigma_dt = sigma_down - sigma_curs;
+        sigma_dt = std::sqrt(sigma_next_pow - sigma_up * sigma_up) - sigma_curs;
     }
 
     // Euler Ancestral method:: current noise decrees
