@@ -6,6 +6,8 @@
  */
 #include <string>
 #include <vector>
+#include <iostream>
+#include <sstream>
 
 #include <cstdio>
 #include <cstring>
@@ -19,6 +21,9 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_image_resize2.h"
+
+#define DEFAULT_LINE_WIDTH 150
+#define DEFAULT_LINE_WRAPS 36
 
 // below order match AvailableBetaType order
 const char* scheduler_beta_type_str[] = {
@@ -46,6 +51,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "euler_a",
     "lms",
     "lcm",
+    "heun",
 };
 
 // below order match AvailablePredictionType order
@@ -111,6 +117,47 @@ struct CommandLineInput {
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
 
+std::string wrap_text(const std::string &text, size_t line_width = 0, size_t line_wraps = 0) {
+    line_width = (line_width <= 0) ? DEFAULT_LINE_WIDTH : line_width;
+    line_wraps = (line_wraps <= 0) ? DEFAULT_LINE_WRAPS : line_wraps;
+
+    std::vector<std::string> words;
+    char delimiter = (text.find(',') != std::string::npos) ? ',' : ' ';
+    std::istringstream tokenStream(text);
+    std::string token;
+    while (std::getline(tokenStream, token, delimiter)) {
+        if (delimiter == ',') {
+            token += ',';   // keep dots
+        }
+        words.push_back(token);
+    }
+
+    std::ostringstream wrapped;
+    size_t current_line_length = 0;
+    std::string indent(line_wraps, ' ');
+    bool is_first_line = true;
+
+    for (const auto &word: words) {
+        std::string trimmed_word = word;
+        if (!trimmed_word.empty() && trimmed_word.front() == ' ') {
+            trimmed_word.erase(trimmed_word.begin());
+        }
+
+        size_t effective_line_width = is_first_line ? line_width - line_wraps : line_width;
+
+        if (current_line_length + trimmed_word.length() + 1 > effective_line_width) {
+            wrapped << "\n" << indent;
+            current_line_length = line_wraps;
+            is_first_line = false;
+        }
+
+        wrapped << trimmed_word << " ";
+        current_line_length += trimmed_word.length() + 1;
+    }
+
+    return wrapped.str();
+}
+
 void print_params(const CommandLineInput& params) {
     printf("Params: \n");
     printf("{\n");
@@ -131,12 +178,12 @@ void print_params(const CommandLineInput& params) {
     printf("  Major  (by User  [necessary]): \n");
     printf("    current OrtSD mode:             %s\n"  , modes_str[params.mode]);
     printf("    current seed:                   %llu\n", params.scheduler_seed);
-    printf("    positive_prompt:                %s\n"  , params.positive_prompt.c_str());
-    printf("    negative_prompt:                %s\n"  , params.negative_prompt.c_str());
+    printf("    positive_prompt:                %s\n"  , wrap_text(params.positive_prompt).c_str());
+    printf("    negative_prompt:                %s\n"  , wrap_text(params.negative_prompt).c_str());
     printf("    scheduler_beta_start:           %.8f\n", params.scheduler_beta_start);
     printf("    scheduler_beta_end:             %.8f\n", params.scheduler_beta_end);
-    printf("    guidance_factor (UNet):         %.4f\n", params.sd_scale_guidance);
-    printf("    decoding_factor (VAE):          %.4f\n", params.sd_decode_scale_strength);
+    printf("    guidance_factor (UNet):         %.6f\n", params.sd_scale_guidance);
+    printf("    decoding_factor (VAE):          %.6f\n", params.sd_decode_scale_strength);
     printf("    inference steps:                %llu\n", params.sd_inference_steps);
 
     printf("  Types  (by User  [default]): \n");
@@ -525,12 +572,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
 static std::string get_image_params(const CommandLineInput &params) {
     std::string parameter_string = " \n";
     if (!params.positive_prompt.empty()) {
-        parameter_string += "Positive prompt: " + params.positive_prompt + "\n";
+        parameter_string += "Positive prompt: " + wrap_text(params.positive_prompt, 0, 17) + "\n";
     }
     if (!params.negative_prompt.empty()) {
-        parameter_string += "Negative prompt: " + params.negative_prompt + "\n";
+        parameter_string += "Negative prompt: " + wrap_text(params.negative_prompt, 0, 17) + "\n";
     }
-    parameter_string += "Guidance: " + std::to_string(params.sd_scale_guidance) + ", ";
+    parameter_string += "Guidance : " + std::to_string(params.sd_scale_guidance) + ", ";
     parameter_string += "Steps: " + std::to_string(params.sd_inference_steps) +
                         "[ Training with " + std::to_string(params.scheduler_training_steps) +
                         "], ";
@@ -538,7 +585,7 @@ static std::string get_image_params(const CommandLineInput &params) {
     parameter_string += "Size: " +
                         std::to_string(params.sd_input_width) + "x" +
                         std::to_string(params.sd_input_height) + ", " + "\n";
-    parameter_string += "Scheduler: " + std::string(scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]) +
+    parameter_string += "Scheduler: " + std::string(scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]) + " " +
                         "[ Beta >> " + std::string(scheduler_beta_type_str[params.scheduler_beta_type - 1]) +
                         "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type - 1]) +
                         "], " + "\n";

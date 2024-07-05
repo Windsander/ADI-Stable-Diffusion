@@ -19,6 +19,9 @@ private:
     RandomGenerator random_generator;
 
 protected:
+    typedef std::tuple<float, float, float> Predictants;
+
+protected:
     SchedulerConfig scheduler_config = DEFAULT_SCHEDULER_CONFIG;
     std::map<long, int64_t> scheduler_timesteps;
     vector<float> scheduler_sigmas;
@@ -26,6 +29,7 @@ protected:
     float scheduler_max_sigma;
 
 protected:
+    Predictants find_predict_params_at(float sigma_) ;
     long find_closest_timestep_index(long time_);
     float generate_sigma_at(float timestep_);
 
@@ -83,6 +87,38 @@ float SchedulerBase::generate_sigma_at(float timestep_) {
     float alpha_prod = (1.0f - w) * l_sigma + w * h_sigma;
     float sigma = std::powf((1 - alpha_prod) / alpha_prod, 0.5f);
     return sigma;
+}
+
+SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
+{
+    float c_skip, c_out;
+    {
+        switch (scheduler_config.scheduler_predict_type) {
+            case PREDICT_TYPE_EPSILON: {
+                // predict_sample = sample - dnoise * sigma
+                c_skip = 1.0f;
+                c_out = -sigma_;
+                break;
+            }
+            case PREDICT_TYPE_V_PREDICTION: {
+                // predict_sample = sample / (sigma^2+1) - c_out * sigma / sqrt(sigma^2+1)
+                c_skip = (1.0f / (std::powf(sigma_, 2) + 1));
+                c_out = -(sigma_ / std::sqrt(std::powf(sigma_, 2) + 1));
+                break;
+            }
+            case PREDICT_TYPE_SAMPLE: {
+                // predict_sample = dnoise
+                c_skip = 0.0f;
+                c_out = +1.0f;
+                break;
+            }
+            default: {
+                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: Unknown prediction type"));
+                return {};
+            }
+        }
+    }
+    return std::make_tuple(c_skip, c_out, 0.0);
 }
 
 void SchedulerBase::create() {
@@ -205,7 +241,7 @@ Tensor SchedulerBase::step(
     int step_index_,
     int order_
 ) {
-    // Get step index of timestep from TimeSteps
+    // Check step index of timestep from TimeSteps
     if (step_index_ >= scheduler_timesteps.size()) {
         throw std::runtime_error("from time not found target TimeSteps.");
     }
@@ -218,33 +254,7 @@ Tensor SchedulerBase::step(
 
     // do common prediction de-noise
     float sigma = scheduler_sigmas[step_index_];
-    float c_skip, c_out;
-    {
-        switch (scheduler_config.scheduler_predict_type) {
-            case PREDICT_TYPE_EPSILON: {
-                // predict_sample = sample - dnoise * sigma
-                c_skip = 1.0f;
-                c_out = -sigma;
-                break;
-            }
-            case PREDICT_TYPE_V_PREDICTION: {
-                // predict_sample = sample / (sigma^2+1) - c_out * sigma / sqrt(sigma^2+1)
-                c_skip = (1.0f / (std::powf(sigma, 2) + 1));
-                c_out = -(sigma / std::sqrt(std::powf(sigma, 2) + 1));
-                break;
-            }
-            case PREDICT_TYPE_SAMPLE: {
-                // predict_sample = dnoise
-                c_skip = 0.0f;
-                c_out = +1.0f;
-                break;
-            }
-            default: {
-                amon_report(class_exception(EXC_LOG_ERR, "ERROR:: Unknown prediction type"));
-                return TensorHelper::empty<float>();
-            }
-        }
-    }
+    auto [c_skip, c_out, c_unused] = find_predict_params_at(sigma);
     for (int i = 0; i < data_size_; i++) {
         // predict_sample = sample * c_skip + c_out * dnoise
         predict_data_[i] = sample_data_[i] * c_skip + dnoise_data_[i] * c_out;

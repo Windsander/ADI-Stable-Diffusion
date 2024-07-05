@@ -1,4 +1,12 @@
-# CppFast Diffusers Inference (CFDI)
+<h1 align="center">CppFast Diffusers Inference (CFDI)</h1>
+
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/badge/Open_Source-❤️-FDA599?"/></a>
+  <a href="/LICENSE"><img src="https://img.shields.io/badge/License-GNU_GPLv3-F4E28D"/></a>
+  <a href="https://github.com/Windsander/CFDI-StableDiffusionONNXFast/issues"><img src="https://img.shields.io/github/issues/Windsander/CFDI-StableDiffusionONNXFast/issues"/></a>
+</p>
+
+<br>
 
 CppFast Diffusers Inference (CFDI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion.
 
@@ -137,7 +145,7 @@ And now, you can have a try~ (0w0 )
 - [x] Euler Ancestral (euler_a) _(after 2024/05/24)_
 - [x] Laplacian Pyramid Sampling (lms) _(after 2024/05/24)_
 - [x] Latent Consistency Models (lcm) _(after 2024/07/04)_
-- [ ] Heun's Predictor-Corrector (heun)
+- [x] Heun's Predictor-Corrector (heun) _(after 2024/07/05)_
 - [ ] Unified Predictor-Corrector (uni_pc)
 - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
 - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)

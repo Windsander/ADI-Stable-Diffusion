@@ -19,7 +19,7 @@ find . -name "._*" -type f -delete
  extra legs, bad legs, many legs, more than two legs, bad feet, extra feet\
  "\
  -m txt2img\
- -o ../../sd/io-test/output.png\
+ -o ../../sd/io-test/comparisons/output-t2i-step4-euler_a.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
  --dims 1024\
@@ -33,7 +33,7 @@ find . -name "._*" -type f -delete
  --beta-end 0.012\
  --beta scaled_linear\
  --alpha cos\
- --scheduler lcm\
+ --scheduler euler_a\
  --predictor epsilon\
  --tokenizer bpe\
  --train-steps 1000\
