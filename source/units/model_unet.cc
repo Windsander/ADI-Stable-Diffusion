@@ -55,11 +55,9 @@ public:
 UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
     sd_unet_config = unet_config_;
     sd_scheduler_p = SchedulerRegister::request_scheduler(unet_config_.sd_scheduler_config);
-    sd_scheduler_p->init(unet_config_.sd_inference_steps);
 }
 
 UNet::~UNet(){
-    sd_scheduler_p->uninit();
     sd_scheduler_p = SchedulerRegister::recycle_scheduler(sd_scheduler_p);
     sd_unet_config.~ModelUNetConfig();
 }
@@ -88,6 +86,7 @@ Tensor UNet::inference(
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
     const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
+    const uint32_t working_steps_ = sd_scheduler_p->init(sd_unet_config.sd_inference_steps);
 
     TensorShape latent_shape_{1, c_, h_, w_};
     std::vector<float> latent_empty_(c_ * h_ * w_, 0.0f);
@@ -97,7 +96,7 @@ Tensor UNet::inference(
     Tensor init_mask_ = sd_scheduler_p->mask(latent_shape_);
     latents_ = TensorHelper::add<float>(latents_, init_mask_, latent_shape_);
 
-    for (int i = 0; i < sd_unet_config.sd_inference_steps; ++i) {
+    for (int i = 0; i < working_steps_; ++i) {
         Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
 
@@ -138,9 +137,10 @@ Tensor UNet::inference(
         // Dnoise & Step
         latents_ = sd_scheduler_p->step(latents_, guided_pred_, i);
 
-        CommonHelper::print_progress_bar(float(i + 1) / float(sd_unet_config.sd_inference_steps));
+        CommonHelper::print_progress_bar(float(i + 1) / float(working_steps_));
     }
 
+    sd_scheduler_p->uninit();
     return latents_;
 }
 
