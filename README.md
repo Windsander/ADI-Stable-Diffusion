@@ -130,7 +130,7 @@ And now, you can have a try~ (0w0 )
 ## Development Progress Checklist (latest):
 
 **Basic Pipeline Functionalities (Major):**
-- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo) _(after 2024/06/04)_
+- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo) <span style="color:green;">_(after 2024/06/04 tested)_</span>
 - [ ] [SD_v2] Stable-Diffusion (v2.0, v2.1)
 - [ ] [SD_v3] Stable-Diffusion (v3.0)
 - [ ] [SDXL] Stable-Diffusion-XL
@@ -141,11 +141,11 @@ And now, you can have a try~ (0w0 )
 - [ ] Karras (karras)
 
 **Scheduler Method**
-- [x] Euler (euler) _(after 2024/06/04)_
-- [x] Euler Ancestral (euler_a) _(after 2024/05/24)_
-- [x] Laplacian Pyramid Sampling (lms) _(after 2024/05/24)_
-- [x] Latent Consistency Models (lcm) _(after 2024/07/04)_
-- [x] Heun's Predictor-Corrector (heun) _(after 2024/07/05)_
+- [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 tested)_</span>
+- [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 tested)_</span>
+- [x] Laplacian Pyramid Sampling (lms) <span style="color:red;">_(after 2024/05/24 untest)_</span>
+- [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 tested)_</span>
+- [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 tested)_</span>
 - [ ] Unified Predictor-Corrector (uni_pc)
 - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
 - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
@@ -159,6 +159,6 @@ And now, you can have a try~ (0w0 )
 - [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
 
 **Tokenizer Type**
-- [x] Byte-Pair Encoding (bpe) _(after 2024/07/03)_
-- [x] Word Piece Encoding (wp) _(after 2024/05/27)_
-- [ ] Sentence Piece Encoding (sp)  _[if necessary]_
+- [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 tested)_</span> 
+- [x] Word Piece Encoding (wp) <span style="color:green;">_(after 2024/05/27 tested)_</span>
+- [ ] Sentence Piece Encoding (sp)  <span style="color:blue;">_[if necessary]_</span>
