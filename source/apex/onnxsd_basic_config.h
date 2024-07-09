@@ -51,6 +51,7 @@ typedef enum SchedulerType {
     SCHEDULER_LMS               = 3,
     SCHEDULER_LCM               = 4,
     SCHEDULER_HEUN              = 5,
+    SCHEDULER_DDPM              = 6,
 } SchedulerType;
 
 typedef enum BetaScheduleType {

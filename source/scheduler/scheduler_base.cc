@@ -88,6 +88,7 @@ float SchedulerBase::generate_sigma_at(float timestep_) {
     float w       = timestep_ - static_cast<float>(low_idx);      // divide always 1
     float alpha_prod = (1.0f - w) * l_sigma + w * h_sigma;
     float sigma = std::powf((1 - alpha_prod) / alpha_prod, 0.5f);
+    // Mark: for safety & efficiency, I'm using [our_sigma^2 = sigma^2/(1-sigma^2)]
     return sigma;
 }
 
@@ -103,7 +104,7 @@ SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
                 break;
             }
             case PREDICT_TYPE_V_PREDICTION: {
-                // predict_sample = sample / (sigma^2+1) - c_out * sigma / sqrt(sigma^2+1)
+                // predict_sample = sample * alpha_prod^2 - c_out * beta_prod^2
                 c_skip = (1.0f / (std::powf(sigma_, 2) + 1));
                 c_out = -(sigma_ / std::sqrt(std::powf(sigma_, 2) + 1));
                 break;

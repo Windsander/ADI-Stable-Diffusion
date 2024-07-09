@@ -170,7 +170,7 @@ And now, you can have a try~ (0w0 )
     - [ ] Diffusion Exponential Integrator Sampler Multistep (deis_m)
     - [ ] Denoising Diffusion Implicit Models Inverse (ddim_i)
     - [ ] Denoising Diffusion Implicit Models (ddim)
-    - [ ] Denoising Diffusion Probabilistic Models (ddpm)
+    - [x] Denoising Diffusion Probabilistic Models (ddpm) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
     - [ ] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde)
     - [ ] Diffusion Probabilistic Models Solver in Multistep Inverse (dpm_mi)
     - [ ] Diffusion Probabilistic Models Solver in Multistep (dpm_m)

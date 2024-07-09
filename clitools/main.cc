@@ -52,6 +52,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "lms",
     "lcm",
     "heun",
+    "ddpm",
 };
 
 // below order match AvailablePredictionType order

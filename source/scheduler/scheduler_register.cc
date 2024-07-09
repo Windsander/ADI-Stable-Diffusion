@@ -11,6 +11,7 @@
 #include "scheduler_discrete_lms.cc"
 #include "scheduler_discrete_lcm.cc"
 #include "scheduler_discrete_heun.cc"
+#include "scheduler_discrete_ddpm.cc"
 
 namespace onnx {
 namespace sd {
@@ -44,6 +45,10 @@ public:
             }
             case SCHEDULER_HEUN: {
                 result_ptr_ = new HeunDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DDPM: {
+                result_ptr_ = new DDPMDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{

@@ -48,6 +48,7 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_LMS         = 0x03,
     AVAILABLE_SCHEDULER_LCM         = 0x04,
     AVAILABLE_SCHEDULER_HEUN        = 0x05,
+    AVAILABLE_SCHEDULER_DDPM        = 0x06,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
