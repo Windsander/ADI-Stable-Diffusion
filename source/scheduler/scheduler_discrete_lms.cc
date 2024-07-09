@@ -35,28 +35,25 @@ public:
 };
 
 //python line 135 of scheduling_lms_discrete.py
-float LMSDiscreteScheduler::get_lms_coefficient(long order, long t, int current_order)
+float LMSDiscreteScheduler::get_lms_coefficient(long history_num_, long t, int h)
 {
     // Compute a linear multistep coefficient.
-
     auto LmsDerivative = [&](float tau)->float {
         float prod = 1.0;
-        for (int k = 0; k < order; k++) {
-            if (current_order == k) {
-                continue;
+        for (int k = 0; k < history_num_; k++) {
+            if (h != k) {
+                prod *= (tau - scheduler_sigmas[t - k]) / (scheduler_sigmas[t - h] - scheduler_sigmas[t - k]);
             }
-            prod *= (tau - scheduler_sigmas[t - k]) / (scheduler_sigmas[t - current_order] - scheduler_sigmas[t - k]);
         }
         return prod;
     };
 
-    float integrated_coeff = std::accumulate(
-        scheduler_sigmas.begin() + t, scheduler_sigmas.begin() + t + 2, 1e-4,
-        [&](float acc, float sigma) -> float {
-            return acc + LmsDerivative(sigma);
-        }
+    // Calculate integration with encapsulated IntegralHelper
+    int pieces_ = 1000;
+    auto integration_ = IntegralHelper::trapezoidal_integral<float>(
+        LmsDerivative , scheduler_sigmas[t] , scheduler_sigmas[t + 1], pieces_
     );
-    return integrated_coeff;
+    return integration_;
 }
 
 std::vector<float> LMSDiscreteScheduler::execute_method(
@@ -66,9 +63,10 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     long step_index_,
     long order_
 ) {
-    std::vector<float> prev_sample_(data_size_);
+    std::vector<float> scaled_sample_(data_size_);
 
     // LMS method:: sigma get
+    long history_num = std::min(step_index_ + 1, order_);
     float sigma_curs = scheduler_sigmas[step_index_];
 
     // LMS method:: current noise decrees
@@ -81,33 +79,27 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
 
     // 2. Record ODE derivative in history (reverse recs)
     lms_derivatives.insert(lms_derivatives.begin(), cur_derivative_);
-    if (lms_derivatives.size()>order_){
+    if (lms_derivatives.size() > order_) {
         lms_derivatives.pop_back();
     }
 
     // 3. compute linear multistep coefficients
-    long remark_order_ = std::min(step_index_ + 1, order_);
-    std::vector<float> lms_coeffs_(remark_order_);
-    for (int cur_order = 0; cur_order < remark_order_; cur_order++) {
+    std::vector<float> lms_coeffs_(history_num);
+    for (int cur_order_ = 0; cur_order_ < history_num; cur_order_++) {
         // target_coeffs_derivative = lms_method(...)
-        lms_coeffs_[cur_order] = get_lms_coefficient(remark_order_, step_index_, cur_order);
+        lms_coeffs_[cur_order_] = get_lms_coefficient(history_num, step_index_, cur_order_);
     }
 
     // 4. compute previous sample based on the derivative path
-    for (int j = 0; j < lms_coeffs_.size(); j++) {
-        // sum_history_product = sum(lms_coeffs * target_coeffs_derivative)
-        const std::vector<float>& derivative_ = lms_derivatives[lms_derivatives.size() - 1 - j];
-        for (int i = 0; i < data_size_; i++) {
-            prev_sample_[i] += lms_coeffs_[j] * derivative_[i];
+    for (int i = 0; i < data_size_; i++) {
+        // output_latent = sample + sum(lms_coeffs * target_coeffs_derivative)
+        scaled_sample_[i] = samples_data_[i];
+        for (int j = 0; j < history_num; j++) {
+            scaled_sample_[i] += lms_coeffs_[j] * lms_derivatives[j][i];
         }
     }
 
-    for (int i = 0; i < data_size_; i++) {
-        // output_latent = sample + sum_history_product
-        prev_sample_[i] += samples_data_[i];
-    }
-
-    return prev_sample_;
+    return scaled_sample_;
 }
 
 } // namespace scheduler

@@ -141,11 +141,11 @@ And now, you can have a try~ (0w0 )
 - [ ] Karras (karras)
 
 **Scheduler Method**
-- [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 tested)_</span>
-- [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 tested)_</span>
-- [x] Laplacian Pyramid Sampling (lms) <span style="color:red;">_(after 2024/05/24 untest)_</span>
-- [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 tested)_</span>
-- [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 tested)_</span>
+- [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span>
+- [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 ✅tested)_</span>
+- [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
+- [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
+- [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
 - [ ] Unified Predictor-Corrector (uni_pc)
 - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
 - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
@@ -159,6 +159,6 @@ And now, you can have a try~ (0w0 )
 - [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
 
 **Tokenizer Type**
-- [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 tested)_</span> 
-- [x] Word Piece Encoding (wp) <span style="color:green;">_(after 2024/05/27 tested)_</span>
+- [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 ✅tested)_</span> 
+- [x] Word Piece Encoding (wp) <span style="color:green;">_(after 2024/05/27 ✅tested)_</span>
 - [ ] Sentence Piece Encoding (sp)  <span style="color:blue;">_[if necessary]_</span>

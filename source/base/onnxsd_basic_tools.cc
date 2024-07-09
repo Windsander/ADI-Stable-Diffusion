@@ -49,6 +49,32 @@ public:
     }
 };
 
+class IntegralHelper {
+public:
+    template<class T>
+    static T simpson_integral(std::function<T(T)> f, T a, T b, int n = 1000) {
+        T h = (b - a) / n;
+        T sum = f(a) + f(b);
+        for (int i = 1; i < n; i += 2) {
+            sum += 4 * f(a + i * h);
+        }
+        for (int i = 2; i < n - 1; i += 2) {
+            sum += 2 * f(a + i * h);
+        }
+        return sum * h / 3.0;
+    }
+
+    template<class T>
+    static T trapezoidal_integral(std::function<T(T)> f, T a, T b, int n = 1000) {
+        T h = (b - a) / n;
+        T sum = 0.5 * (f(a) + f(b));
+        for (int i = 1; i < n; ++i) {
+            sum += f(a + i * h);
+        }
+        return sum * h;
+    }
+};
+
 class TensorHelper {
 
 #define GET_TENSOR_DATA_SIZE(tensor_shape_, shape_size_) \
