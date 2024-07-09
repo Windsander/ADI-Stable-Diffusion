@@ -1,14 +1,14 @@
-<h1 align="center">CppFast Diffusers Inference (CFDI)</h1>
+<h1 align="center">Agile Diffusers Inference (ADI) </h1>
 
 <p align="center">
   <a href="#"><img src="https://img.shields.io/badge/Open_Source-❤️-FDA599?"/></a>
   <a href="/LICENSE"><img src="https://img.shields.io/badge/License-GNU_GPLv3-F4E28D"/></a>
-  <a href="https://github.com/Windsander/CFDI-StableDiffusionONNXFast/issues"><img src="https://img.shields.io/github/issues/Windsander/CFDI-StableDiffusionONNXFast/issues"/></a>
+  <a href="https://onnxruntime.ai"><img src="https://img.shields.io/badge/Powered%20by-ONNXRuntime-blue"/></a>
 </p>
 
 <br>
 
-CppFast Diffusers Inference (CFDI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion.
+Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion.
 
 ## Why choose ONNXRuntime as our Inference Engine?
 
