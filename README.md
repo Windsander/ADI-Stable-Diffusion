@@ -129,34 +129,52 @@ And now, you can have a try~ (0w0 )
 
 ## Development Progress Checklist (latest):
 
-**Basic Pipeline Functionalities (Major):**
-- [x] [SD_v1] Stable-Diffusion (v1.0, v1.5, turbo) <span style="color:green;">_(after 2024/06/04 tested)_</span>
-- [ ] [SD_v2] Stable-Diffusion (v2.0, v2.1)
-- [ ] [SD_v3] Stable-Diffusion (v3.0)
-- [ ] [SDXL] Stable-Diffusion-XL
-- [ ] [SVD] Stable-Video-Diffusion
+**Basic Pipeline Functionalities (Major)**
+- [x] **[SD_v1] Stable-Diffusion (v1.0 ~ v1.5, turbo)** <span style="color:green;">_(after 2024/06/04 tested)_</span>
+    - **v1.0** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion): Initial version ✅
+    - **v1.1** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-1): Improved image quality and generation speed ✅
+    - **v1.2** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-2): Further optimized generation effects ✅
+    - **v1.3** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-3): Added more training data ✅
+    - **v1.4** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-4): Enhanced image generation diversity ✅
+    - **v1.5** [(HuggingFace)](https://huggingface.co/runwayml/stable-diffusion-v1-5): Final optimized version ✅
+    - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, improved generation speed and efficiency ✅
 
-**Scheduler Strategy**
-- [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
-- [ ] Karras (karras)
+- [ ] **[SD_v2] Stable-Diffusion (v2.0, v2.1)**
+    - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency
+    - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects
 
-**Scheduler Method**
-- [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span>
-- [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 ✅tested)_</span>
-- [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
-- [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
-- [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
-- [ ] Unified Predictor-Corrector (uni_pc)
-- [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
-- [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
-- [ ] Diffusion Exponential Integrator Sampler Multistep (deis_m)
-- [ ] Denoising Diffusion Implicit Models Inverse (ddim_i)
-- [ ] Denoising Diffusion Implicit Models (ddim)
-- [ ] Denoising Diffusion Probabilistic Models (ddpm)
-- [ ] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde)
-- [ ] Diffusion Probabilistic Models Solver in Multistep Inverse (dpm_mi)
-- [ ] Diffusion Probabilistic Models Solver in Multistep (dpm_m)
-- [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
+- [ ] **[SD_v3] Stable-Diffusion (v3.0)**
+    - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3): Anticipated next-generation version with more improvements and new features
+
+- [ ] **[SDXL] Stable-Diffusion-XL**
+    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version exploring larger-scale models and higher-resolution image generation
+    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, improved generation speed and efficiency
+
+- [ ] **[SVD] Stable-Video-Diffusion**
+    - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion): Version specifically for video generation and editing
+
+**Scheduler Abilities**
+- [ ] **Strategy**
+    - [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
+    - [ ] Karras (karras)
+
+- [ ] **Sampling Methods**
+    - [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span> 
+    - [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 ✅tested)_</span>
+    - [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
+    - [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
+    - [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
+    - [ ] Unified Predictor-Corrector (uni_pc)
+    - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
+    - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
+    - [ ] Diffusion Exponential Integrator Sampler Multistep (deis_m)
+    - [ ] Denoising Diffusion Implicit Models Inverse (ddim_i)
+    - [ ] Denoising Diffusion Implicit Models (ddim)
+    - [ ] Denoising Diffusion Probabilistic Models (ddpm)
+    - [ ] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde)
+    - [ ] Diffusion Probabilistic Models Solver in Multistep Inverse (dpm_mi)
+    - [ ] Diffusion Probabilistic Models Solver in Multistep (dpm_m)
+    - [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
 
 **Tokenizer Type**
 - [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 ✅tested)_</span> 
