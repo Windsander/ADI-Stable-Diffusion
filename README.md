@@ -137,7 +137,7 @@ And now, you can have a try~ (0w0 )
     - **v1.3** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-3): Added more training data ✅
     - **v1.4** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-4): Enhanced image generation diversity ✅
     - **v1.5** [(HuggingFace)](https://huggingface.co/runwayml/stable-diffusion-v1-5): Final optimized version ✅
-    - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, improved generation speed and efficiency ✅
+    - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, faster and efficiency ✅
 
 - [ ] **[SD_v2] Stable-Diffusion (v2.0, v2.1)**
     - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency
@@ -147,8 +147,8 @@ And now, you can have a try~ (0w0 )
     - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3): Anticipated next-generation version with more improvements and new features
 
 - [ ] **[SDXL] Stable-Diffusion-XL**
-    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version exploring larger-scale models and higher-resolution image generation
-    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, improved generation speed and efficiency
+    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version for larger-scale models and higher-resolution image
+    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency
 
 - [ ] **[SVD] Stable-Video-Diffusion**
     - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion): Version specifically for video generation and editing
