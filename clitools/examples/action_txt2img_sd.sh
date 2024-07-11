@@ -1,8 +1,16 @@
-# for Mac temp files cleaning
+#!/bin/bash
+
+# 默认路径
+DEFAULT_MODEL_PATH="../../sd/sd-base-model/onnx-sd-turbo"
+
+# 如果提供了参数，则使用参数中的路径，否则使用默认路径
+MODEL_PATH=${1:-$DEFAULT_MODEL_PATH}
+
+# 清理Mac临时文件
 find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
-# executing Stable Diffusion with params below
+# 执行Stable Diffusion
 ../../cmake-build-debug/bin/ort-sd-clitools\
  -p "\
  best quality, extremely detailed,\
@@ -19,21 +27,21 @@ find . -name "._*" -type f -delete
  extra legs, bad legs, many legs, more than two legs, bad feet, extra feet\
  "\
  -m txt2img\
- -o ../../sd/io-test/output.png\
+ -o ../../sd/io-test/comparisons/output-t2i-step4-ddim.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
- --dims 768\
- --clip ../../sd/sd-base-model/onnx-sd-v15/text_encoder/model.onnx\
- --unet ../../sd/sd-base-model/onnx-sd-v15/unet/model.onnx\
- --vae-encoder ../../sd/sd-base-model/onnx-sd-v15/vae_encoder/model.onnx\
- --vae-decoder ../../sd/sd-base-model/onnx-sd-v15/vae_decoder/model.onnx\
- --merges ../../sd/sd-base-model/onnx-sd-v15/tokenizer/merges.txt\
- --dict ../../sd/sd-base-model/onnx-sd-v15/tokenizer/vocab.json\
+ --dims 1024\
+ --clip $MODEL_PATH/text_encoder/model.onnx\
+ --unet $MODEL_PATH/unet/model.onnx\
+ --vae-encoder $MODEL_PATH/vae_encoder/model.onnx\
+ --vae-decoder $MODEL_PATH/vae_decoder/model.onnx\
+ --merges $MODEL_PATH/tokenizer/merges.txt\
+ --dict $MODEL_PATH/tokenizer/vocab.json\
  --beta-start 0.00085\
  --beta-end 0.012\
- --beta linear\
+ --beta scaled_linear\
  --alpha cos\
- --scheduler euler_a\
+ --scheduler ddim\
  --predictor epsilon\
  --tokenizer bpe\
  --train-steps 1000\
@@ -42,6 +50,7 @@ find . -name "._*" -type f -delete
  --token-border 1.0\
  --gain 1.1\
  --decoding 0.18215\
- --guidance 1.5\
- --steps 10\
+ --guidance 1.0\
+ --strength 1.0\
+ --steps 4\
  -v

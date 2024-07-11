@@ -37,7 +37,7 @@ protected:
     virtual uint32_t correction_steps(uint32_t inference_steps_) { return inference_steps_; };
     virtual std::vector<float> execute_method(
         const float *predict_data_, const float* samples_data_,
-        long data_size_, long step_index_, long order_) = 0;
+        long data_size_, long step_index_, float random_intensity_) = 0;
 
 public:
     explicit SchedulerBase(const SchedulerConfig &scheduler_config_ = DEFAULT_SCHEDULER_CONFIG);
@@ -48,7 +48,7 @@ public:
     Tensor mask(const TensorShape& mask_shape_);
     Tensor scale(const Tensor& masker_, int step_index_);
     Tensor time(int step_index_);
-    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, int order_ = 4);
+    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, float random_intensity_ = 1.0f);
     void uninit();
     void release();
 };
@@ -243,7 +243,7 @@ Tensor SchedulerBase::step(
     const Tensor& sample_,
     const Tensor& dnoise_,
     int step_index_,
-    int order_
+    float random_intensity_
 ) {
     // Check step index of timestep from TimeSteps
     if (step_index_ >= scheduler_timesteps.size()) {
@@ -265,7 +265,7 @@ Tensor SchedulerBase::step(
     }
 
     std::vector<float> latent_value_ = execute_method(
-        predict_data_.data(), sample_data_, data_size_, step_index_, order_
+        predict_data_.data(), sample_data_, data_size_, step_index_, random_intensity_
     );
     Tensor result_latent = TensorHelper::create(output_shape_, latent_value_);
 

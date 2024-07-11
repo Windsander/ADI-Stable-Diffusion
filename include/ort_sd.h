@@ -49,6 +49,7 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_LCM         = 0x04,
     AVAILABLE_SCHEDULER_HEUN        = 0x05,
     AVAILABLE_SCHEDULER_DDPM        = 0x06,
+    AVAILABLE_SCHEDULER_DDIM        = 0x07,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -82,8 +83,9 @@ typedef struct IOrtSDConfig {
     } sd_modelpath_config;
 
     struct {
-        enum AvailableSchedulerType sd_scheduler_type;  // Scheduler: scheduler type (Euler_A, LMS)
+        enum AvailableSchedulerType sd_scheduler_type;  // Scheduler: scheduler type (Euler_A, LMS, ... etc.)
         uint64_t scheduler_training_steps;              // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
+        uint64_t scheduler_maintain_cache;              // Scheduler: scheduler maintain history records count (only when scheduler type using, control by self )
         float scheduler_beta_start;                     // Scheduler: Beta start (recommend 0.00085f)
         float scheduler_beta_end;                       // Scheduler: Beta end (recommend 0.012f)
         int64_t scheduler_seed;                         // Scheduler: seed for random (config if u need certain output)
@@ -109,6 +111,7 @@ typedef struct IOrtSDConfig {
     uint64_t sd_input_height;               // Infer_Major: IO image height (match SD-model training sets, Constant)
     uint64_t sd_input_channel;              // Infer_Major: IO image channel (match SD-model training sets, Constant)
     float sd_scale_guidance;                // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
+    float sd_random_intensity;              // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength;         // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
 } IOrtSDConfig;
 

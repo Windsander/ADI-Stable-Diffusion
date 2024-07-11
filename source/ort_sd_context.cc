@@ -34,6 +34,7 @@ typedef struct OrtSD_Config {
     uint64_t sd_input_height           ; //= 512;
     uint64_t sd_input_channel          ; //= 4;
     float sd_scale_guidance            ; //= 0.9f;
+    float sd_random_intensity          ; //= 1.0f;
     float sd_decode_scale_strength     ; //= 0.18215f;
 } OrtSD_Config;
 
@@ -158,7 +159,8 @@ void OrtSD_Context::init() {
             ort_config.sd_input_width / 8,
             ort_config.sd_input_height / 8,
             4,
-            ort_config.sd_scale_guidance
+            ort_config.sd_scale_guidance,
+            ort_config.sd_random_intensity
         }
     );
 

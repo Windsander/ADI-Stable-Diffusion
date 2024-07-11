@@ -25,7 +25,8 @@ using namespace detail;
         /*sd_input_width*/      512,                                 \
         /*sd_input_height*/     512,                                 \
         /*sd_input_channel*/    4,                                   \
-        /*sd_scale_guidance*/   7.5f                                 \
+        /*sd_scale_guidance*/   7.5f,                                \
+        /*sd_random_intensity*/ 1.0f                                 \
     }                                                                \
 
 typedef struct ModelUNetConfig {
@@ -35,6 +36,7 @@ typedef struct ModelUNetConfig {
     uint64_t sd_input_height;
     uint64_t sd_input_channel;
     float sd_scale_guidance;
+    float sd_random_intensity;
 } ModelUNetConfig;
 
 class UNet : public ModelBase {
@@ -135,7 +137,7 @@ Tensor UNet::inference(
         );
 
         // Dnoise & Step
-        latents_ = sd_scheduler_p->step(latents_, guided_pred_, i);
+        latents_ = sd_scheduler_p->step(latents_, guided_pred_, i, sd_unet_config.sd_random_intensity);
 
         CommonHelper::print_progress_bar(float(i + 1) / float(working_steps_));
     }

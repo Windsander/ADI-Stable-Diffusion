@@ -21,7 +21,7 @@ protected:
         const float *samples_data_,
         long data_size_,
         long step_index_,
-        long order_
+        float random_intensity_
     ) override;
 
 public:
@@ -38,9 +38,9 @@ std::vector<float> LCMDiscreteScheduler::execute_method(
     const float* samples_data_,
     long data_size_,
     long step_index_,
-    long order_
+    float random_intensity_
 ) {
-    SD_UNUSED(order_);
+    SD_UNUSED(random_intensity_);
 
     std::vector<float> scaled_sample_(data_size_);
 

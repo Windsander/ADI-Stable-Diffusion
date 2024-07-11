@@ -27,6 +27,7 @@ namespace ortsd {
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
                     ctx_config_.sd_scheduler_config.scheduler_training_steps,
+                    ctx_config_.sd_scheduler_config.scheduler_maintain_cache,
                     ctx_config_.sd_scheduler_config.scheduler_beta_start,
                     ctx_config_.sd_scheduler_config.scheduler_beta_end,
                     ctx_config_.sd_scheduler_config.scheduler_seed,
@@ -50,6 +51,7 @@ namespace ortsd {
                 ctx_config_.sd_input_height,
                 ctx_config_.sd_input_channel,
                 ctx_config_.sd_scale_guidance,
+                ctx_config_.sd_random_intensity,
                 ctx_config_.sd_decode_scale_strength
             }
         );

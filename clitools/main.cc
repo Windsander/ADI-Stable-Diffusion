@@ -53,6 +53,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "lcm",
     "heun",
     "ddpm",
+    "ddim",
 };
 
 // below order match AvailablePredictionType order
@@ -91,6 +92,7 @@ struct CommandLineInput {
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
+    uint64_t scheduler_maintain_cache = 4;                                  // Scheduler: scheduler maintain history records count (only when scheduler type using, control by self )
     float scheduler_beta_start = 0.00085f;                                  // Scheduler: Beta start (recommend 0.00085f)
     float scheduler_beta_end = 0.012f;                                      // Scheduler: Beta end (recommend 0.012f)
     int64_t scheduler_seed = -1;                                            // Scheduler: seed for random (config if u need certain output)
@@ -113,6 +115,7 @@ struct CommandLineInput {
     uint64_t sd_input_height = 512;                                         // Infer_Major: IO image height (match SD-model training sets, Constant)
     uint64_t sd_input_channel = 3;                                          // Infer_Major: IO image channel (match SD-model training sets, Constant)
     float sd_scale_guidance = 7.5f;                                         // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
+    float sd_random_intensity = 1.0f;                                       // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
 
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
@@ -176,7 +179,7 @@ void print_params(const CommandLineInput& params) {
     printf("    dictionary_path:                %s\n", params.tokenizer_dictionary_at.c_str());
     printf("    mergesfile_path:                %s\n", params.tokenizer_aggregates_at.c_str());
 
-    printf("  Major  (by User  [necessary]): \n");
+    printf("  Major  (by User   [necessary]): \n");
     printf("    current OrtSD mode:             %s\n"  , modes_str[params.mode]);
     printf("    current seed:                   %llu\n", params.scheduler_seed);
     printf("    positive_prompt:                %s\n"  , wrap_text(params.positive_prompt).c_str());
@@ -185,9 +188,10 @@ void print_params(const CommandLineInput& params) {
     printf("    scheduler_beta_end:             %.8f\n", params.scheduler_beta_end);
     printf("    guidance_factor (UNet):         %.6f\n", params.sd_scale_guidance);
     printf("    decoding_factor (VAE):          %.6f\n", params.sd_decode_scale_strength);
+    printf("    strength_factor (Hyper):        %.6f\n", params.sd_random_intensity);
     printf("    inference steps:                %llu\n", params.sd_inference_steps);
 
-    printf("  Types  (by User  [default]): \n");
+    printf("  Types  (by User   [maintain]): \n");
     printf("    scheduler_sample_method:        %s\n", scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]);
     printf("    scheduler_beta_type:            %s\n", scheduler_beta_type_str[params.scheduler_beta_type - 1]);
     printf("    scheduler_alpha_type:           %s\n", scheduler_alpha_type_str[params.scheduler_alpha_type - 1]);
@@ -196,6 +200,7 @@ void print_params(const CommandLineInput& params) {
 
     printf("  Static (by Models [const]): \n");
     printf("    training steps:                 %llu\n", params.scheduler_training_steps);
+    printf("    maintain cache:                 %llu\n", params.scheduler_maintain_cache);
     printf("    SD Const width:                 %llu\n", params.sd_input_width);
     printf("    SD Const height:                %llu\n", params.sd_input_height);
     printf("    SD Const channel:               %llu\n", params.sd_input_channel);
@@ -242,6 +247,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --beta-end <float>                 Beta end (default 0.012f) \n");
     printf("  --guidance <float>                 Scale for classifier-free guidance, immersion rate for [value * (Positive - Negative)] residual (default 7.5f) \n");
     printf("  --decoding <float>                 for VAE Decoding result merged (default 0.18215f) \n");
+    printf("  --strength <float>                 set random intensity to control noise adding each step in [0.0, 1.0] (default 1.0f) \n");
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
@@ -251,6 +257,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
     printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe] (currently only provide BPE) \n");
 
+    printf("  --cache <uint>                     scheduler maintain history count, only avail when used by method (default 4) \n");
     printf("  --train-steps <uint>               scheduler steps when at model training stage (default 1000) \n");
     printf("  --token-idx-num <uint>             all available token in vocabulary totally (default 49408) \n");
     printf("                                     (WARN: mostly is 49408, but if using custom vocab or lager one, \n");
@@ -437,6 +444,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_decode_scale_strength = std::stof(argv[i]);
+        }  else if (arg == "--strength") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_random_intensity = std::stof(argv[i]);
         } else if (arg == "--steps") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -478,7 +491,13 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_tokenizer_type = (AvailableTokenizerType) tokenizer_found;
-        } else if (arg == "--train-steps") {
+        } else if (arg == "--cache") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_maintain_cache = std::stoi(argv[i]);
+        }  else if (arg == "--train-steps") {
             if (++i >= argc) {
                 invalid_arg = true;
                 break;
@@ -699,6 +718,7 @@ int main(int argc, const char *argv[]) {
             {
                 params.sd_scheduler_type,
                 params.scheduler_training_steps,
+                params.scheduler_maintain_cache,
                 params.scheduler_beta_start,
                 params.scheduler_beta_end,
                 params.scheduler_seed,
@@ -722,6 +742,7 @@ int main(int argc, const char *argv[]) {
             params.sd_input_height,
             params.sd_input_channel,
             params.sd_scale_guidance,
+            params.sd_random_intensity,
             params.sd_decode_scale_strength
         }
     );

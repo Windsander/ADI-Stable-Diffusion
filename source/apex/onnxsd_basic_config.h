@@ -52,6 +52,7 @@ typedef enum SchedulerType {
     SCHEDULER_LCM               = 4,
     SCHEDULER_HEUN              = 5,
     SCHEDULER_DDPM              = 6,
+    SCHEDULER_DDIM              = 7,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
@@ -75,6 +76,7 @@ typedef enum PredictionType {
     {                                                        \
         /*scheduler_type*/              SCHEDULER_EULER_A,   \
         /*scheduler_training_steps*/    1000,                \
+        /*scheduler_maintain_cache*/    4,                   \
         /*scheduler_beta_start*/        0.00085f,            \
         /*scheduler_beta_end*/          0.012f,              \
         /*scheduler_seed*/              42,                  \
@@ -86,6 +88,7 @@ typedef enum PredictionType {
 typedef struct SchedulerConfig {
     SchedulerType scheduler_type;
     uint64_t scheduler_training_steps;
+    uint64_t scheduler_maintain_cache;
     float scheduler_beta_start;
     float scheduler_beta_end;
     int64_t scheduler_seed;

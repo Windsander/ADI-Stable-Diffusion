@@ -24,7 +24,7 @@ protected:
         const float* samples_data_,
         long data_size_,
         long step_index_,
-        long order_
+        float random_intensity_
     ) override;
 
 public:
@@ -61,12 +61,13 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     const float* samples_data_,
     long data_size_,
     long step_index_,
-    long order_
+    float random_intensity_
 ) {
     std::vector<float> scaled_sample_(data_size_);
+    long maintain_order_ = long(scheduler_config.scheduler_maintain_cache);
 
     // LMS method:: sigma get
-    long history_num = std::min(step_index_ + 1, order_);
+    long history_num = std::min(step_index_ + 1, maintain_order_);
     float sigma_curs = scheduler_sigmas[step_index_];
 
     // LMS method:: current noise decrees
@@ -79,7 +80,7 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
 
     // 2. Record ODE derivative in history (reverse recs)
     lms_derivatives.insert(lms_derivatives.begin(), cur_derivative_);
-    if (lms_derivatives.size() > order_) {
+    if (lms_derivatives.size() > maintain_order_) {
         lms_derivatives.pop_back();
     }
 
