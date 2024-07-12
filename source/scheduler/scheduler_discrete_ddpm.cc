@@ -34,9 +34,14 @@ public:
     ~DDPMDiscreteScheduler() override = default;
 };
 
-// from https://arxiv.org/pdf/2006.11239.pdf
-// The engineering-enhanced version with partial parameter merging in accordance
-// with the original formulas from the paper.
+/**
+ * from https://arxiv.org/pdf/2006.11239.pdf
+ * The engineering-enhanced version with partial parameter merging in accordance
+ *   with the original formulas from the paper.
+ *   actually in here we use DDIM|eta=1.0f method, which degrade to DDPM
+ *   for the true DDPM Markov property made it cast full inference steps
+ *   to get result, as steps in inference needs to be equaled to training
+ */
 std::vector<float> DDPMDiscreteScheduler::execute_method(
     const float* predict_data_,
     const float* samples_data_,
@@ -57,16 +62,18 @@ std::vector<float> DDPMDiscreteScheduler::execute_method(
     {
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;
-        variance = std::sqrt(sigma_next_pow / sigma_curs_pow * (sigma_curs_pow - sigma_next_pow) / (sigma_next_pow + 1));
-        factor_a = (sigma_next_pow / sigma_curs_pow) * std::sqrt((sigma_curs_pow + 1) / (sigma_next_pow + 1));
-        factor_b = (sigma_curs_pow - sigma_next_pow) / (sigma_curs_pow * std::sqrt(sigma_next_pow + 1));
+        variance = std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
+                             (sigma_curs_pow * (sigma_next_pow + 1.0f)));
+        factor_a = (sigma_next_pow * std::sqrt(sigma_curs_pow + 1.0f)) /
+                   (sigma_curs_pow * std::sqrt(sigma_next_pow + 1.0f));
+        factor_b = (sigma_curs_pow - sigma_next_pow) / (sigma_curs_pow * std::sqrt(sigma_next_pow + 1.0f));
     }
 
     // DDPM:: current noise decrees
     for (int i = 0; i < data_size_; i++) {
         scaled_sample_[i] = samples_data_[i] * factor_a + predict_data_[i] * factor_b;         // derivative_out = (sample - predict_sample) / sigma
         if (sigma_next > 0) {
-            scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance;
+            scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance * random_intensity_;
         }
     }
 
