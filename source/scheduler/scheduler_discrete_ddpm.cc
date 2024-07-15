@@ -54,12 +54,12 @@ std::vector<float> DDPMDiscreteScheduler::execute_method(
     std::vector<float> scaled_sample_(data_size_);
 
     // DDPM method:: sigma get
+    float eta = random_intensity_;
     float sigma_curs = scheduler_sigmas[step_index_];
     float sigma_next = scheduler_sigmas[step_index_ + 1];
     float variance = 0;
     float factor_a = 0;
     float factor_b = 0;
-    float eta = random_intensity_;
     {
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;

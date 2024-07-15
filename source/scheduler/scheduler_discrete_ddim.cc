@@ -75,53 +75,21 @@ std::vector<float> DDIMDiscreteScheduler::execute_method(
     std::vector<float> scaled_sample_(data_size_);
 
     // DDIM:: sigma get
+    float eta = random_intensity_;      // DDIM use η=0, and when η=1, DDIM degrade to DDPM
     float sigma_curs = scheduler_sigmas[step_index_];
-    float sigma_next = scheduler_sigmas[step_index_ + 1];
+    float sigma_next = scheduler_sigmas[step_index_ + 1]; //generate_sigma_at(float(scheduler_timesteps[step_index_ + 1]) + 2.0f - eta);
     float variance = 0;
     float factor_a = 0;
     float factor_b = 0;
     float revert_a = 0;
-    float eta = random_intensity_;      // DDIM use η=0, and when η=1, DDIM degrade to DDPM
-
-    // combine calculated make wrong output below, only η=1 is available, by params.
-    // The cancellation of hyperparameters during below computation process ensures
-    // that DDIM with eta = 1 correctly reduces to DDPM during inference.
-    // although it's the wrong params at first, so when η<1, the error occurs
-    // { Why do the transformed hyperparameters of Sigma cause issues? Because DDPM relies
-    //   on a Markov chain, whereas DDIM changes the Markov property that DDPM depends on to
-    //   rely on the consistency of the Gaussian distribution through Gaussian distribution
-    //   features. In our use of hyperparameters, we exceeded the original distribution mean,
-    //   breaking the consistency and causing the noise to remain unresolved.}
-    /* <Deprecated>
-     * {
-     *     float sigma_curs_pow = sigma_curs * sigma_curs;
-     *     float sigma_next_pow = sigma_next * sigma_next;
-     *     variance = (eta <= 0) ? 0.0f :
-     *                (eta * std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
-     *                                 (sigma_curs_pow * (sigma_next_pow + 1.0f))));
-     *     factor_a = std::sqrt(sigma_next_pow + 1.0f);
-     *     factor_b = std::sqrt(sigma_next_pow / (sigma_next_pow + 1.0f) - variance * variance);
-     * }
-     * //
-     * // DDIM:: current noise decrees
-     * for (int i = 0; i < data_size_; i++) {
-     *     scaled_sample_[i] = (predict_data_[i] - samples_data_[i]) / sigma_curs;      // get dnoised_data
-     *     scaled_sample_[i] = predict_data_[i] * factor_a + scaled_sample_[i] * factor_b;
-     *     if (sigma_next > 0 & eta > 0) { // η=1, DDIM should degrade to DDPM
-     *         // so when η=1, factor_b = (sigma_next_pow - sigma_curs_pow) / (sigma_curs * std::sqrt(sigma_next_pow + 1));
-     *         scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance;
-     *     }
-     * }
-     * </Deprecated>
-     */
     {
         float sigma_curs_pow = sigma_curs * sigma_curs;
-        float sigma_next_pow = sigma_next * sigma_next;
+        float sigma_next_pow = (sigma_next == 0) ? 1E-12f : sigma_next * sigma_next;
         float scale_back = std::sqrt(sigma_curs_pow + 1);   // caused by scheduler model_latent scaling
         variance = (eta <= 0) ? 0.0f :
                    (eta * std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
                                     (sigma_curs_pow * (sigma_next_pow + 1.0f))));
-        revert_a = (sigma_next / sigma_curs_pow * std::sqrt((1.0f - eta) * sigma_curs_pow + eta * sigma_next_pow));
+        revert_a = (sigma_next / sigma_curs_pow * std::sqrt((1.0f - eta) * sigma_next_pow + eta * sigma_next_pow));
         factor_a = (1.0f / std::sqrt(sigma_next_pow + 1)) * revert_a * scale_back;
         factor_b = (1.0f / std::sqrt(sigma_next_pow + 1)) * (1.0f - revert_a);
     }
@@ -138,6 +106,38 @@ std::vector<float> DDIMDiscreteScheduler::execute_method(
     return scaled_sample_;
 }
 
+/*
+ * <Deprecated>
+ * combine calculated make wrong output below, only η=1 is available, by params.
+ * The cancellation of hyperparameters during below computation process ensures
+ * that DDIM with eta = 1 correctly reduces to DDPM during inference.
+ * although it's the wrong params at first, so when η<1, the error occurs
+ * { Why do the transformed hyperparameters of Sigma cause issues? Because DDPM relies
+ *   on a Markov chain, whereas DDIM changes the Markov property that DDPM depends on to
+ *   rely on the consistency of the Gaussian distribution through Gaussian distribution
+ *   features. In our use of hyperparameters, we exceeded the original distribution mean,
+ *   breaking the consistency and causing the noise to remain unresolved.}
+ * {
+ *     float sigma_curs_pow = sigma_curs * sigma_curs;
+ *     float sigma_next_pow = sigma_next * sigma_next;
+ *     variance = (eta <= 0) ? 0.0f :
+ *                (eta * std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
+ *                                 (sigma_curs_pow * (sigma_next_pow + 1.0f))));
+ *     factor_a = std::sqrt(sigma_next_pow + 1.0f);
+ *     factor_b = std::sqrt(sigma_next_pow / (sigma_next_pow + 1.0f) - variance * variance);
+ * }
+ * //
+ * // DDIM:: current noise decrees
+ * for (int i = 0; i < data_size_; i++) {
+ *     scaled_sample_[i] = (predict_data_[i] - samples_data_[i]) / sigma_curs;      // get dnoised_data
+ *     scaled_sample_[i] = predict_data_[i] * factor_a + scaled_sample_[i] * factor_b;
+ *     if (sigma_next > 0 & eta > 0) { // η=1, DDIM should degrade to DDPM
+ *         // so when η=1, factor_b = (sigma_next_pow - sigma_curs_pow) / (sigma_curs * std::sqrt(sigma_next_pow + 1));
+ *         scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance;
+ *     }
+ * }
+ * </Deprecated>
+ */
 } // namespace scheduler
 } // namespace sd
 } // namespace onnx
