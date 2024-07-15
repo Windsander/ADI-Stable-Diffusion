@@ -59,11 +59,13 @@ std::vector<float> DDPMDiscreteScheduler::execute_method(
     float variance = 0;
     float factor_a = 0;
     float factor_b = 0;
+    float eta = random_intensity_;
     {
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;
-        variance = std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
-                             (sigma_curs_pow * (sigma_next_pow + 1.0f)));
+        variance = (eta <= 0) ? 0.0f :
+                   (eta * std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
+                                    (sigma_curs_pow * (sigma_next_pow + 1.0f))));
         factor_a = (sigma_next_pow * std::sqrt(sigma_curs_pow + 1.0f)) /
                    (sigma_curs_pow * std::sqrt(sigma_next_pow + 1.0f));
         factor_b = (sigma_curs_pow - sigma_next_pow) / (sigma_curs_pow * std::sqrt(sigma_next_pow + 1.0f));
@@ -72,8 +74,8 @@ std::vector<float> DDPMDiscreteScheduler::execute_method(
     // DDPM:: current noise decrees
     for (int i = 0; i < data_size_; i++) {
         scaled_sample_[i] = samples_data_[i] * factor_a + predict_data_[i] * factor_b;         // derivative_out = (sample - predict_sample) / sigma
-        if (sigma_next > 0) {
-            scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance * random_intensity_;
+        if (variance > 0) {
+            scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance;
         }
     }
 

@@ -34,10 +34,21 @@ public:
     ~DDIMDiscreteScheduler() override = default;
 };
 
-// from https://arxiv.org/pdf/2010.02502.pdf
-// The engineering-enhanced version with partial parameter merging in accordance
-// with the original formulas from the paper.
 /**
+ * @details from https://arxiv.org/pdf/2010.02502.pdf
+ *          The engineering-enhanced version with partial parameter merging in accordance
+ *          with the original formulas from the paper.
+ *          MARK: This DDIM is a strict DDIM. For better compatibility and fine-tuning, please use DDPM
+ *                scheduler_discrete_ddpm.cc (not the original pure DDPM, but our implementation,
+ *                which is a downgraded version of DDIM with eta = 1, without strict request).
+ * @attention If you want to make DDIM truly useful, you need involved Model(UNet) trained by DDPM/DDIM
+ * @attention To use DDIM skip-step inference, you need to train a UNet model that conforms to the DDPM
+ *              Markov chain. Although DDIM replaces the probabilistic model with a Gaussian distribution fit,
+ *              a sufficient but not necessary condition for its validity is that the model converges when eta = 1.
+ *              A simple verification method is to check if the model converges after more than 20 (generally) steps
+ *              of inference using strict DDPM. If it does not, then the conditions for eta!=1 DDIM inference
+ *              are not met.
+ * @paragraph
  * x_{t-1} = sqrt(alpha_{t-1}) * ( (x_t - sqrt(1 - alpha_t) * epsilon_theta(x_t)) / sqrt(alpha_t) )
  *           + sqrt(1 - alpha_{t-1} - sigma_t^2) * epsilon_theta(x_t)
  *           + sigma_t * epsilon_t
@@ -106,18 +117,19 @@ std::vector<float> DDIMDiscreteScheduler::execute_method(
     {
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;
-        float sigma_mark_pow = sigma_next * generate_sigma_at(float(scheduler_timesteps[step_index_ + 1]) + eta);
-        variance = (eta <= 0) ? 0 : eta * std::sqrt(sigma_next_pow / sigma_curs_pow * (sigma_curs_pow - sigma_next_pow) / (sigma_next_pow + 1));
-        factor_a = (sigma_mark_pow * std::sqrt(sigma_curs_pow + 1.0f)) /
-                   (sigma_curs_pow * std::sqrt(sigma_next_pow + 1.0f));
-        factor_b = (sigma_curs_pow - sigma_mark_pow) / (sigma_curs_pow * std::sqrt(sigma_next_pow + 1));
+        float scale_back = std::sqrt(sigma_curs_pow + 1);   // caused by scheduler model_latent scaling
+        variance = (eta <= 0) ? 0.0f :
+                   (eta * std::sqrt((sigma_next_pow * (sigma_curs_pow - sigma_next_pow)) /
+                                    (sigma_curs_pow * (sigma_next_pow + 1.0f))));
+        revert_a = (sigma_next / sigma_curs_pow * std::sqrt((1.0f - eta) * sigma_curs_pow + eta * sigma_next_pow));
+        factor_a = (1.0f / std::sqrt(sigma_next_pow + 1)) * revert_a * scale_back;
+        factor_b = (1.0f / std::sqrt(sigma_next_pow + 1)) * (1.0f - revert_a);
     }
 
     // DDIM:: current noise decrees
-    auto [c_skip, c_out, c_unused] = find_predict_params_at(sigma_curs);
     for (int i = 0; i < data_size_; i++) {
         scaled_sample_[i] = samples_data_[i] * factor_a + predict_data_[i] * factor_b;
-        if (sigma_next > 0 & eta > 0) { // η=1, DDIM should degrade to DDPM
+        if (variance > 0) { // η=1, DDIM should degrade to DDPM
             // so when η=1, factor_b = (sigma_next_pow - sigma_curs_pow) / (sigma_curs * std::sqrt(sigma_next_pow + 1));
             scaled_sample_[i] = scaled_sample_[i] + ddpm_random.next() * variance;
         }

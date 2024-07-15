@@ -623,6 +623,32 @@ public:
     }
 };
 
+class SimpleMathematicsHelper {
+public:
+    template<class T>
+    static T quantile(const std::vector<T>& data, T q) {
+        if (data.empty()) {
+            throw std::invalid_argument("Input data is empty.");
+        }
+        if (q < 0.0 || q > 1.0) {
+            throw std::invalid_argument("Quantile value must be between 0 and 1.");
+        }
+
+        std::vector<T> sorted_data = data;
+        std::sort(sorted_data.begin(), sorted_data.end());
+
+        T pos = q * (sorted_data.size() - 1);
+        size_t idx = static_cast<size_t>(std::floor(pos));
+        T frac = pos - idx;
+
+        if (idx + 1 < sorted_data.size()) {
+            return sorted_data[idx] * (1.0 - frac) + sorted_data[idx + 1] * frac;
+        } else {
+            return sorted_data[idx];
+        }
+    }
+};
+
 class CommonHelper {
 public:
     static void print_progress_bar(float progress_) {
