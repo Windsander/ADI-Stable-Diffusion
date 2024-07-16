@@ -623,10 +623,15 @@ public:
     }
 };
 
+template<class T>
 class SimpleMathematicsHelper {
 public:
-    template<class T>
-    static T quantile(const std::vector<T>& data, T q) {
+    using Data1D = std::vector<T>;
+    using Data2D = std::vector<std::vector<T>>;
+    using Data3D = std::vector<std::vector<std::vector<T>>>;
+
+public:
+    static T quantile(const Data1D &data, T q) {
         if (data.empty()) {
             throw std::invalid_argument("Input data is empty.");
         }
@@ -634,11 +639,11 @@ public:
             throw std::invalid_argument("Quantile value must be between 0 and 1.");
         }
 
-        std::vector<T> sorted_data = data;
+        Data1D sorted_data = data;
         std::sort(sorted_data.begin(), sorted_data.end());
 
         T pos = q * (sorted_data.size() - 1);
-        size_t idx = static_cast<size_t>(std::floor(pos));
+        auto idx = static_cast<size_t>(std::floor(pos));
         T frac = pos - idx;
 
         if (idx + 1 < sorted_data.size()) {
@@ -646,6 +651,30 @@ public:
         } else {
             return sorted_data[idx];
         }
+    }
+
+    /**
+     * calculate:: "k,bkc...->bc..."
+     * @param a 1-dim Tensor with shape = [kernel]
+     * @param b 3-dims Tensor with shape = [batch, kernel, count]
+     * @return 2-dims Tensor with shape = [batch, count]
+     */
+    Data2D einsum_contract(const Data1D &a, const Data3D &b) {
+        size_t b_dim = b.size();
+        size_t k_dim = a.size();
+        size_t c_dim = b[0][0].size();
+
+        Data2D result(b_dim, std::vector<float>(c_dim, 0.0f));
+
+        for (size_t i = 0; i < b_dim; ++i) {
+            for (size_t j = 0; j < k_dim; ++j) {
+                for (size_t k = 0; k < c_dim; ++k) {
+                    result[i][k] += a[j] * b[i][j][k];
+                }
+            }
+        }
+
+        return result;
     }
 };
 

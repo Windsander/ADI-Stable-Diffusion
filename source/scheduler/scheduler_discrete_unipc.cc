@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2018-2050 SD_Scheduler
- * Created by Arikan.Li on 2024/07/09.
+ * Created by Arikan.Li on 2024/07/16.
  *
- * Denoising Diffusion Implicit Models
+ * Unified Predictor-Corrector Method
  */
 #ifndef SCHEDULER_DISCRETE_UNIPC
 #define SCHEDULER_DISCRETE_UNIPC
@@ -20,7 +20,7 @@ private:
     UniData last_samples_;
 
 private:
-    float get_unipc_beta_snr(float sigma_);
+    //float get_unipc_beta_snr(float sigma_);
     long get_unified_history_count(long step_index_);
     UniData get_unified_correction(UniData curs_samples_, UniData curs_dnoised_, long prev_index_);
     UniData get_unified_prediction(UniData cors_samples_, UniData curs_dnoised_, long curs_index_);
@@ -41,6 +41,7 @@ public:
     ~UniPCDiscreteScheduler() override = default;
 };
 
+/* Assistant Operations ===================================================*/
 
 long UniPCDiscreteScheduler::get_unified_history_count(long step_index_){
     long maintain_order_ = long(scheduler_config.scheduler_maintain_cache);
@@ -59,6 +60,7 @@ UniPCDiscreteScheduler::UniData UniPCDiscreteScheduler::get_unified_prediction(
     long curs_order_ = get_unified_history_count(curs_index_);
 }
 
+/* Essential Operations ===================================================*/
 /**
  * base on: https://arxiv.org/pdf/2302.04867
  */
