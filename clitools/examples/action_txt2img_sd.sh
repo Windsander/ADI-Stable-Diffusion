@@ -51,6 +51,6 @@ find . -name "._*" -type f -delete
  --gain 1.1\
  --decoding 0.18215\
  --guidance 1.0\
- --strength 0.0\
+ --strength 1.0\
  --steps 4\
  -v

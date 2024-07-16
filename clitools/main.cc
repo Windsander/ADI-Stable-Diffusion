@@ -54,6 +54,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "heun",
     "ddpm",
     "ddim",
+    "unipc",
 };
 
 // below order match AvailablePredictionType order

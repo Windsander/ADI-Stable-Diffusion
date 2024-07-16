@@ -13,6 +13,7 @@
 #include "scheduler_discrete_heun.cc"
 #include "scheduler_discrete_ddpm.cc"
 #include "scheduler_discrete_ddim.cc"
+#include "scheduler_discrete_unipc.cc"
 
 namespace onnx {
 namespace sd {
@@ -54,6 +55,10 @@ public:
             }
             case SCHEDULER_DDIM: {
                 result_ptr_ = new DDIMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_UNIPC: {
+                result_ptr_ = new UniPCDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
