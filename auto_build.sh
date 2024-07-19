@@ -17,6 +17,7 @@ show_help() {
     echo "  --cmake PATH             Path to CMake executable"
     echo "  --ninja PATH             Path to Ninja executable"
     echo "  --jobs N                 Number of parallel jobs"
+    echo "  --options OPTIONS        Extra CMake options, see README.md"
     echo "  --android-sdk PATH       [android] Path to Android SDK"
     echo "  --android-ndk PATH       [android] Path to Android NDK"
     echo "  --android-ver N          [android] Android system version (default: 21)"
@@ -32,6 +33,7 @@ while [[ "$#" -gt 0 ]]; do
         --cmake) CMAKE="$2"; shift ;;
         --ninja) NINJA="$2"; shift ;;
         --jobs) JOBS="$2"; shift ;;
+        --options) CMAKE_OPTIONS="$2"; shift ;;
         --android-sdk) ANDROID_SDK="$2"; shift ;;
         --android-ndk) ANDROID_NDK="$2"; shift ;;
         --android-ver) ANDROID_VER="$2"; shift ;;
@@ -49,6 +51,7 @@ CMAKE=${CMAKE:-cmake}
 NINJA=${NINJA:-ninja}
 ANDROID_VER=${ANDROID_VER:-DEFAULT_ANDROID_VER}
 ANDROID_ABI=${ANDROID_ABI:-$DEFAULT_ANDROID_ABI}
+CMAKE_OPTIONS=${CMAKE_OPTIONS:-}
 
 # Detect platform if not specified
 if [ -z "$PLATFORM" ]; then
@@ -88,19 +91,19 @@ case "$PLATFORM" in
         export ANDROID_ABI
 
         TOOLCHAIN_FILE=./apex-toolchain/android-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
-        CMAKE_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} -DANDROID_NDK=${ANDROID_NDK}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} -DANDROID_NDK=${ANDROID_NDK}"
         ;;
 
     linux)
-        CMAKE_OPTIONS=""
+        CMAKE_OPTIONS="${CMAKE_OPTIONS}"
         ;;
 
     macos)
-        CMAKE_OPTIONS=""
+        CMAKE_OPTIONS="${CMAKE_OPTIONS}"
         ;;
 
     windows)
-        CMAKE_OPTIONS=""
+        CMAKE_OPTIONS="${CMAKE_OPTIONS}"
         ;;
 
     *)
