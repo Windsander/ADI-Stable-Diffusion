@@ -56,6 +56,9 @@ auto_convert_sd() {
   optimum-cli export onnx --model runwayml/stable-diffusion-v1-5 onnx-sd-v15/
   optimum-cli export onnx --model stabilityai/sd-turbo onnx-sd-turbo/
   echo "===========================Auto converting done.==========================="
+}
+
+auto_download_sd() {
   echo "========================Auto cloning official start========================"
   git clone https://huggingface.co/runwayml/stable-diffusion-v1-5 -b onnx onnx-official-sd-v15/
   git clone https://huggingface.co/Windsander/onnx-sd-turbo onnx-sd-turbo/
@@ -68,5 +71,5 @@ if confirm; then
   auto_convert_sd
 else
   env_skipped
-  auto_convert_sd
+  auto_download_sd
 fi
