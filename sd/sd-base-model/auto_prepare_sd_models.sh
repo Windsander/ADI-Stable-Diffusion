@@ -58,6 +58,7 @@ auto_convert_sd() {
   echo "===========================Auto converting done.==========================="
   echo "========================Auto cloning official start========================"
   git clone https://huggingface.co/runwayml/stable-diffusion-v1-5 -b onnx onnx-official-sd-v15/
+  git clone https://huggingface.co/Windsander/onnx-sd-turbo onnx-sd-turbo/
   echo "========================Auto cloning official done.========================"
 }
 
