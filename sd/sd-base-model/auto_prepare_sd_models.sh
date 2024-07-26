@@ -51,6 +51,7 @@ env_prepare() {
   echo "Installed..."
 }
 
+# Function: Auto convert Stable Diffusion models
 auto_convert_sd() {
   echo "===========================Auto converting start==========================="
   optimum-cli export onnx --model runwayml/stable-diffusion-v1-5 onnx-sd-v15/
@@ -58,10 +59,24 @@ auto_convert_sd() {
   echo "===========================Auto converting done.==========================="
 }
 
+# Function: Auto download Stable Diffusion models
 auto_download_sd() {
   echo "========================Auto cloning official start========================"
-  git clone https://huggingface.co/runwayml/stable-diffusion-v1-5 -b onnx onnx-official-sd-v15/
-  git clone https://huggingface.co/Windsander/onnx-sd-turbo onnx-sd-turbo/
+
+  # Check if the onnx-official-sd-v15 directory exists
+  if [ -d "onnx-official-sd-v15" ]; then
+    echo "Directory onnx-official-sd-v15 already exists. Skipping clone."
+  else
+    git clone https://huggingface.co/runwayml/stable-diffusion-v1-5 -b onnx onnx-official-sd-v15/
+  fi
+
+  # Check if the onnx-sd-turbo directory exists
+  if [ -d "onnx-sd-turbo" ]; then
+    echo "Directory onnx-sd-turbo already exists. Skipping clone."
+  else
+    git clone https://huggingface.co/Windsander/onnx-sd-turbo onnx-sd-turbo/
+  fi
+
   echo "========================Auto cloning official done.========================"
 }
 
