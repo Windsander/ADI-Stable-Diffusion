@@ -48,9 +48,11 @@ else()
     set(SD_STANDALONE OFF)
 endif()
 
+# Warning: Cuda & TensorRT can only available in local-build mode
+#          Caused by online-official doesn't provide target provider.h
 if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)      # for Windows x32
     SET(ONNX_INFERENCE_TARGET win-x86)
-    set(DEFAULT_CUDA_STATE ON)
+    set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
@@ -59,8 +61,8 @@ if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)      # for Windows x32
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
 elseif (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)  # for Windows x64
     SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
-    set(DEFAULT_CUDA_STATE ON)
-    set(DEFAULT_TRT_STATE ON)
+    set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
+    set(DEFAULT_TRT_STATE OFF)      # can be ON when local-build
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM win-x64)
@@ -77,7 +79,7 @@ elseif (APPLE)                      # for MacOS X or iOS, watchOS, tvOS (since 3
     set(ENGINE_NAME "ORT-CoreML")
 elseif (LINUX)                      # for Linux, BSD, Solaris, Minix
     SET(ONNX_INFERENCE_TARGET linux-${CMAKE_SYSTEM_PROCESSOR}-gpu-cuda12)
-    set(DEFAULT_CUDA_STATE ON)
+    set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
