@@ -110,7 +110,17 @@ endmacro()
 # 下载并解压 Define the download_and_decompress function
 function(download_and_decompress url filename output_dir)
     file(MAKE_DIRECTORY ${output_dir})
-    file(DOWNLOAD ${url} ${output_dir}/${filename} SHOW_PROGRESS)
+
+    # Check if the platform is Linux and filename contains x86_64
+    if (LINUX AND filename MATCHES "x86_64")
+        string(REPLACE "x86_64" "x64" modified_filename ${filename})
+        string(REPLACE ${filename} ${modified_filename} download_url ${url})
+        message(STATUS "Downloading ${download_url} as ${filename}")
+        file(DOWNLOAD ${download_url} ${output_dir}/${filename} SHOW_PROGRESS)
+    else()
+        file(DOWNLOAD ${url} ${output_dir}/${filename} SHOW_PROGRESS)
+    endif()
+
     if (filename MATCHES ".tgz$" OR filename MATCHES ".tar.gz$")
         execute_process(
                 COMMAND tar xzf ${output_dir}/${filename} --strip-components=1
@@ -128,7 +138,7 @@ function(download_and_decompress url filename output_dir)
         message(FATAL_ERROR "Unsupported archive format: ${filename}")
     endif()
 
-     # Rename the directory if necessary
+    # Rename the directory if necessary
     if (filename MATCHES "cuda12")
         file(GLOB extracted_dirs LIST_DIRECTORIES true "${output_dir}/*")
         foreach(dir ${extracted_dirs})
