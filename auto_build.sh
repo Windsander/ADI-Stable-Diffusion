@@ -3,10 +3,9 @@
 # Default configuration
 DEFAULT_BUILD_TYPE=Debug
 DEFAULT_JOBS=8
-# shellcheck disable=SC2034
 DEFAULT_ANDROID_VER=21          # env used
-# shellcheck disable=SC2034
 DEFAULT_ANDROID_ABI=arm64-v8a   # env used
+DEFAULT_CONFIRM_OPTION="-n"     # Default confirmation option
 
 # Function: Show help message
 show_help() {
@@ -22,10 +21,12 @@ show_help() {
     echo "  --android-ndk PATH       [android] Path to Android NDK"
     echo "  --android-ver N          [android] Android system version (default: 21)"
     echo "  --android-abi N          [android] Android ABI (Application Binary Interface, default: arm64-v8a)"
+    echo "  -y/n/c                   Setting 'yes/no/cancel' to auto prepare sd-models"
     echo "  -h, --help               Show this help message"
 }
 
 # Parse command line arguments
+CONFIRM_OPTION=""
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --platform) PLATFORM="$2"; shift ;;
@@ -38,6 +39,9 @@ while [[ "$#" -gt 0 ]]; do
         --android-ndk) ANDROID_NDK="$2"; shift ;;
         --android-ver) ANDROID_VER="$2"; shift ;;
         --android-abi) ANDROID_ABI="$2"; shift ;;
+        -n) CONFIRM_OPTION="-n" ;;
+        -y) CONFIRM_OPTION="-y" ;;
+        -c) CONFIRM_OPTION="-c" ;;
         -h|--help) show_help; exit 0 ;;
         *) echo "Unknown parameter passed: $1"; show_help; exit 1 ;;
     esac
@@ -49,9 +53,10 @@ BUILD_TYPE=${BUILD_TYPE:-$DEFAULT_BUILD_TYPE}
 JOBS=${JOBS:-$DEFAULT_JOBS}
 CMAKE=${CMAKE:-cmake}
 NINJA=${NINJA:-ninja}
-ANDROID_VER=${ANDROID_VER:-DEFAULT_ANDROID_VER}
+ANDROID_VER=${ANDROID_VER:-$DEFAULT_ANDROID_VER}
 ANDROID_ABI=${ANDROID_ABI:-$DEFAULT_ANDROID_ABI}
 CMAKE_OPTIONS=${CMAKE_OPTIONS:-}
+CONFIRM_OPTION=${CONFIRM_OPTION:-$DEFAULT_CONFIRM_OPTION}
 
 # Detect platform if not specified
 if [ -z "$PLATFORM" ]; then
@@ -164,8 +169,8 @@ change_directory "sd/sd-base-model/"
 
 # Check if the directory change was successful
 if [ $? -eq 0 ]; then
-    # Execute the auto_prepare_sd_models.sh script
-    bash ./auto_prepare_sd_models.sh -n
+    # Execute the auto_prepare_sd_models.sh script with the confirmation option
+    bash ./auto_prepare_sd_models.sh $CONFIRM_OPTION
 else
     echo "Failed to change directory. Exiting."
     exit 1
@@ -173,5 +178,4 @@ fi
 
 echo "clitool is under $BUILD_DIR/bin/"
 
-# 继续执行其他命令
 echo "All Finished! ready to maneuver, sir！"

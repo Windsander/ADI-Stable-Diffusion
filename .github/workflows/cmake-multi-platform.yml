@@ -17,23 +17,23 @@ jobs:
         build_type: [Release, Debug]
         c_compiler: [gcc, clang, cl]
         include:
-          - os: windows-latest
+          - os: windows-latest      # Platform: Windows-MSVC
             c_compiler: cl
             cpp_compiler: cl
             platform: windows
-          - os: ubuntu-latest
+          - os: ubuntu-latest       # Platform: Linux-GCC
             c_compiler: gcc
             cpp_compiler: g++
             platform: linux
-          - os: ubuntu-latest
+          - os: ubuntu-latest       # Platform: Linux-Clang
             c_compiler: clang
             cpp_compiler: clang++
             platform: linux
-          - os: macos-latest
+          - os: macos-latest        # Platform: MacOS-Clang
             c_compiler: clang
             cpp_compiler: clang++
             platform: macos
-          - os: ubuntu-latest
+          - os: ubuntu-latest       # Platform: Android-GCC
             c_compiler: gcc
             cpp_compiler: g++
             platform: android
@@ -89,13 +89,15 @@ jobs:
                                --jobs 4 \
                                --android-sdk $ANDROID_SDK_ROOT \
                                --android-ndk $ANDROID_NDK_HOME \
-                               --android-ver 27
+                               --android-ver 27 \
+                               -c
         else
           bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                --cmake $(which cmake) \
                                --ninja $(which ninja) \
                                --build-type ${{ matrix.build_type }} \
-                               --jobs 4
+                               --jobs 4 \
+                               -c
         fi
 
 #    - name: Test
