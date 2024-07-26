@@ -127,6 +127,20 @@ function(download_and_decompress url filename output_dir)
     else()
         message(FATAL_ERROR "Unsupported archive format: ${filename}")
     endif()
+
+     # Rename the directory if necessary
+    if (filename MATCHES "cuda12")
+        file(GLOB extracted_dirs LIST_DIRECTORIES true "${output_dir}/*")
+        foreach(dir ${extracted_dirs})
+            if (IS_DIRECTORY ${dir} AND NOT dir MATCHES "cuda12")
+                # Extract the base name and version
+                get_filename_component(dir_name ${dir} NAME)
+                string(REGEX REPLACE "(.*)-([0-9]+\\.[0-9]+\\.[0-9]+)" "\\1-cuda12-\\2" new_dir_name ${dir_name})
+                file(RENAME ${dir} "${output_dir}/${new_dir_name}")
+            endif()
+        endforeach()
+    endif()
+
     file(REMOVE ${output_dir}/${filename})
 endfunction()
 
