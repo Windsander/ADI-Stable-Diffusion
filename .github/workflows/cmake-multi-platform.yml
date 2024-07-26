@@ -83,8 +83,8 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
             bash ./auto_build.sh --platform android \
-                                 --cmake "$(which cmake)" \
-                                 --ninja "$(which ninja)" \
+                                 --cmake "cmake" \
+                                 --ninja "ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --jobs 4 \
                                  --android-sdk "$ANDROID_SDK_ROOT" \
@@ -93,8 +93,8 @@ jobs:
                                  -c
           else
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
-                                 --cmake "$(which cmake)" \
-                                 --ninja "$(which ninja)" \
+                                 --cmake "cmake" \
+                                 --ninja "ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --jobs 4 \
                                  -c
