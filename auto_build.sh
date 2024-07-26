@@ -131,7 +131,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run build
-${CMAKE} --build ${BUILD_DIR} -- -j${JOBS}
+${CMAKE} --build ${BUILD_DIR} --parallel ${JOBS}
 
 # Check if build succeeded
 if [ $? -ne 0 ]; then
