@@ -91,14 +91,6 @@ jobs:
                                  --android-ndk "$ANDROID_NDK_HOME" \
                                  --android-ver 27 \
                                  -c
-          elif [ "${{ matrix.platform }}" == "linux" ]; then
-            bash ./auto_build.sh --platform linux \
-                                 --cmake "cmake" \
-                                 --ninja "ninja" \
-                                 --build-type ${{ matrix.build_type }} \
-                                 --jobs 4 \
-                                 --options "-DCMAKE_SYSTEM_PROCESSOR=x64" \
-                                 -c
           else
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                  --cmake "cmake" \
