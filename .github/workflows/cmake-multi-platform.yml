@@ -13,9 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        build_type: [Release, Debug]
-        c_compiler: [gcc, clang, cl]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        build_type: [ Release, Debug ]
+        c_compiler: [ gcc, clang, cl ]
         include:
           - os: windows-latest      # Platform: Windows-MSVC
             c_compiler: cl
@@ -50,56 +50,56 @@ jobs:
             c_compiler: cl
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set reusable strings
-      id: strings
-      shell: bash
-      run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies on Linux
-      if: runner.os == 'Linux'
-      run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install dependencies on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
 
-    - name: Install dependencies on macOS
-      if: runner.os == 'macOS'
-      run: brew install ninja
+      - name: Install dependencies on macOS
+        if: runner.os == 'macOS'
+        run: brew install ninja
 
-    - name: Install dependencies on Windows
-      if: runner.os == 'Windows'
-      run: choco install ninja
+      - name: Install dependencies on Windows
+        if: runner.os == 'Windows'
+        run: choco install ninja
 
-    - name: Set up Android SDK and NDK
-      if: matrix.platform == 'android'
-      uses: android-actions/setup-android@v2
-      with:
-        api-level: 27
-        ndk-version: 26.1.10909125
-        cmake-version: 3.29.5
+      - name: Set up Android SDK and NDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 27
+          ndk-version: 26.1.10909125
+          cmake-version: 3.29.5
 
-    - name: Run auto_build.sh
-      shell: bash
-      run: |
-        if [ "${{ matrix.platform }}" == "android" ]; then
-          bash ./auto_build.sh --platform android \
-                               --cmake $(which cmake) \
-                               --ninja $(which ninja) \
-                               --build-type ${{ matrix.build_type }} \
-                               --jobs 4 \
-                               --android-sdk $ANDROID_SDK_ROOT \
-                               --android-ndk $ANDROID_NDK_HOME \
-                               --android-ver 27 \
-                               -c
-        else
-          bash ./auto_build.sh --platform ${{ matrix.platform }} \
-                               --cmake $(which cmake) \
-                               --ninja $(which ninja) \
-                               --build-type ${{ matrix.build_type }} \
-                               --jobs 4 \
-                               -c
-        fi
+      - name: Run auto_build.sh
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" == "android" ]; then
+            bash ./auto_build.sh --platform android \
+                                 --cmake "$(which cmake)" \
+                                 --ninja "$(which ninja)" \
+                                 --build-type ${{ matrix.build_type }} \
+                                 --jobs 4 \
+                                 --android-sdk "$ANDROID_SDK_ROOT" \
+                                 --android-ndk "$ANDROID_NDK_HOME" \
+                                 --android-ver 27 \
+                                 -c
+          else
+            bash ./auto_build.sh --platform ${{ matrix.platform }} \
+                                 --cmake "$(which cmake)" \
+                                 --ninja "$(which ninja)" \
+                                 --build-type ${{ matrix.build_type }} \
+                                 --jobs 4 \
+                                 -c
+          fi
 
-#    - name: Test
-#      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-#      run: ctest --build-config ${{ matrix.build_type }}
+#      - name: Test
+#        working-directory: ${{ steps.strings.outputs.build-output-dir }}
+#        run: ctest --build-config ${{ matrix.build_type }}
