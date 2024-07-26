@@ -120,6 +120,10 @@ function(download_and_decompress url filename output_dir)
         execute_process(
                 COMMAND unzip -o ${output_dir}/${filename} -d ${output_dir}
         )
+    elseif (filename MATCHES ".zip$")
+        execute_process(
+                COMMAND unzip -o ${output_dir}/${filename} -d ${output_dir}
+        )
     else()
         message(FATAL_ERROR "Unsupported archive format: ${filename}")
     endif()
