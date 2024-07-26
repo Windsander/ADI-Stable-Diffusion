@@ -87,7 +87,7 @@ float SchedulerBase::generate_sigma_at(float timestep_) {
     float h_sigma = alphas_cumprod[high_idx];
     float w       = timestep_ - static_cast<float>(low_idx);      // divide always 1
     float alpha_prod = (1.0f - w) * l_sigma + w * h_sigma;
-    float sigma = std::powf((1 - alpha_prod) / alpha_prod, 0.5f);
+    float sigma = std::pow((1 - alpha_prod) / alpha_prod, 0.5f);
     // Mark: for safety & efficiency, I'm using [our_sigma^2 = sigma^2/(1-sigma^2)]
     return sigma;
 }
@@ -105,8 +105,8 @@ SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
             }
             case PREDICT_TYPE_V_PREDICTION: {
                 // predict_sample = sample * alpha_prod^2 - c_out * beta_prod^2
-                c_skip = (1.0f / (std::powf(sigma_, 2) + 1));
-                c_out = -(sigma_ / std::sqrt(std::powf(sigma_, 2) + 1));
+                c_skip = (1.0f / (std::pow(sigma_, 2) + 1));
+                c_out = -(sigma_ / std::sqrt(std::pow(sigma_, 2) + 1));
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {
@@ -146,14 +146,14 @@ void SchedulerBase::create() {
             break;
         }
         case BETA_TYPE_SCALED_LINEAR: {
-            float beta_start_at = std::sqrtf(linear_start_);
-            float beta_end_when = std::sqrtf(linear_end_);
+            float beta_start_at = std::sqrt(linear_start_);
+            float beta_end_when = std::sqrt(linear_end_);
             float beta_range = beta_end_when - beta_start_at;
             float alpha_prod = 1.0f;
 
             for (uint32_t i = 0; i < training_steps_; ++i) {
                 float beta_dire = beta_start_at + beta_range * ((float) i / float(training_steps_ - 1));
-                float beta_norm = powf(beta_dire, 2.0f);
+                float beta_norm = pow(beta_dire, 2.0f);
                 alpha_prod *= 1.0f - beta_norm;
                 alphas_cumprod.push_back(alpha_prod);
             }
@@ -225,7 +225,7 @@ Tensor SchedulerBase::scale(const Tensor& latent_, int step_index_){
         throw std::runtime_error("from time not found target TimeSteps.");
     }
     float sigma = scheduler_sigmas[step_index_];
-    sigma = std::sqrtf(sigma * sigma + 1);
+    sigma = std::sqrt(sigma * sigma + 1);
     return TensorHelper::divide<float>(latent_, sigma);
 }
 

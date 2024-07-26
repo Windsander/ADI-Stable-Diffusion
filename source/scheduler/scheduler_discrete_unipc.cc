@@ -52,12 +52,14 @@ UniPCDiscreteScheduler::UniData UniPCDiscreteScheduler::get_unified_correction(
     UniData curs_samples_, UniData curs_dnoised_, long prev_index_
 ){
     long last_order_ = get_unified_history_count(prev_index_);
+    return {};
 }
 
 UniPCDiscreteScheduler::UniData UniPCDiscreteScheduler::get_unified_prediction(
     UniData cors_samples_, UniData curs_dnoised_, long curs_index_
 ){
     long curs_order_ = get_unified_history_count(curs_index_);
+    return {};
 }
 
 /* Essential Operations ===================================================*/
