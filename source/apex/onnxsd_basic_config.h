@@ -32,13 +32,25 @@ typedef std::vector<int64_t> TensorShape;
 typedef Ort::Session* OrtSession;
 typedef Ort::SessionOptions  OrtOptionConfig;
 
+/* Executor Type */
+typedef enum ExecutionType {
+    EXECUTOR_CPU               = 1,
+    EXECUTOR_GPU_AUTO          = 2,
+    EXECUTOR_GPU_COREML        = 3,
+    EXECUTOR_GPU_TENSORRT      = 4,
+    EXECUTOR_GPU_CUDA          = 5,
+    EXECUTOR_GPU_NNAPI         = 6,
+} ExecutionType;
+
 #define DEFAULT_EXECUTOR_CONFIG                                         \
     {                                                                   \
+        /*onnx_execution_type*/ ExecutionType::EXECUTOR_CPU,            \
         /*onnx_execution_mode*/ ExecutionMode::ORT_PARALLEL,            \
         /*onnx_graph_optimize*/ GraphOptimizationLevel::ORT_ENABLE_ALL  \
     }
 
 typedef struct ORTBasicsConfig {
+    ExecutionType          onnx_execution_type;
     ExecutionMode          onnx_execution_mode;
     GraphOptimizationLevel onnx_graph_optimize;
 } ORTBasicsConfig;

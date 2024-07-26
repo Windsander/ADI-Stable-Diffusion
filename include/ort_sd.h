@@ -16,6 +16,19 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+/* Inference Execution Settings ===========================================*/
+
+/* Executor Type */
+enum AvailableExecutionType {
+    EXECUTOR_CPU               = 0x01,
+    EXECUTOR_GPU_AUTO          = 0x02,
+    EXECUTOR_GPU_COREML        = 0x03,
+    EXECUTOR_GPU_TENSORRT      = 0x04,
+    EXECUTOR_GPU_CUDA          = 0x05,
+    EXECUTOR_GPU_NNAPI         = 0x06,
+    AVAILABLE_EXECUTOR_COUNT,
+};
+
 /* Diffusion Abilities Settings ===========================================*/
 
 /* Scheduler Beta Provide */
@@ -74,6 +87,7 @@ typedef struct IO_IMAGE {
  * @example see DEFAULT_SDXL_CONFIG
  */
 typedef struct IOrtSDConfig {
+    enum AvailableExecutionType sd_executor_type;   // Base: choose inference executor (default: CPU)
     struct {
         const char* onnx_clip_path;                 // Model: CLIP Path (also known as text_encoder)
         const char* onnx_unet_path;                 // Model: UNet Path

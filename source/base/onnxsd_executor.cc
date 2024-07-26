@@ -35,6 +35,58 @@ private:
     int device_id = 0;
     Ort::Env ort_env;
 
+private:
+    void choose_executor(ExecutionType type_){
+        switch (type_) {
+            case EXECUTOR_CPU: {
+                break;
+            }
+            case EXECUTOR_GPU_AUTO: {
+#ifdef ENABLE_TENSOR_RT
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
+#endif
+#ifdef ENABLE_CUDA
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(ort_session_config, device_id));
+#endif
+#ifdef ENABLE_COREML
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(ort_session_config, device_id));
+#endif
+#ifdef ENABLE_NNAPI
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Nnapi(ort_session_config, device_id));
+#endif
+                break;
+            }
+            case EXECUTOR_GPU_COREML: {
+#ifdef ENABLE_COREML
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(ort_session_config, device_id));
+#endif
+                break;
+            }
+            case EXECUTOR_GPU_TENSORRT: {
+#ifdef ENABLE_TENSOR_RT
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
+#endif
+                break;
+            }
+            case EXECUTOR_GPU_CUDA: {
+#ifdef ENABLE_CUDA
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(ort_session_config, device_id));
+#endif
+                break;
+            }
+            case EXECUTOR_GPU_NNAPI: {
+#ifdef ENABLE_NNAPI
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Nnapi(ort_session_config, device_id));
+#endif
+                break;
+            }
+            default:
+                break;
+        }
+        // always provide CPU as backup
+        Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CPU(ort_session_config, device_id));
+    }
+
 public:
     explicit ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_ = DEFAULT_EXECUTOR_CONFIG);
     virtual ~ONNXRuntimeExecutor();
@@ -46,21 +98,10 @@ public:
 ONNXRuntimeExecutor::ONNXRuntimeExecutor(const ORTBasicsConfig &ort_config_) {
     ort_commons_config = ort_config_;
     ort_env = Ort::Env{ORT_LOGGING_LEVEL_WARNING, DEFAULT_ORT_ENGINE_NAME};
-#ifdef ENABLE_TENSOR_RT
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Tensorrt(ort_session_config, device_id));
-#endif
-#ifdef ENABLE_CUDA
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(ort_session_config, device_id));
-#endif
-#ifdef ENABLE_COREML
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(ort_session_config, device_id));
-#endif
-#ifdef ENABLE_NNAPI
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_Nnapi(ort_session_config, device_id));
-#endif
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CPU(ort_session_config, device_id));
     ort_session_config.SetGraphOptimizationLevel(ort_config_.onnx_graph_optimize);
     ort_session_config.SetExecutionMode(ort_config_.onnx_execution_mode);
+
+    choose_executor(ort_config_.onnx_execution_type);
 }
 
 ONNXRuntimeExecutor::~ONNXRuntimeExecutor() {

@@ -15,7 +15,11 @@ namespace ortsd {
         if (ctx_pp_ && *ctx_pp_) return;
         *ctx_pp_ = new onnx::sd::context::OrtSD_Context(
             onnx::sd::context::OrtSD_Config{
-                DEFAULT_EXECUTOR_CONFIG,
+                {
+                    onnx::sd::base::ExecutionType(ctx_config_.sd_executor_type),
+                    ExecutionMode::ORT_PARALLEL,
+                    GraphOptimizationLevel::ORT_ENABLE_ALL
+                },
                 {
                     std::string(ctx_config_.sd_modelpath_config.onnx_clip_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_unet_path),

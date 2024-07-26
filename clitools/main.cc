@@ -63,6 +63,16 @@ const char* tokenizer_series_str[] = {
     "word_piece",
 };
 
+// below order match AvailableExecutionType order
+const char* type_str[] = {
+    "cpu",
+    "gpu",
+    "core_ml",
+    "tensor_rt",
+    "cuda",
+    "nnapi",
+};
+
 const char* modes_str[] = {
     "txt2img",
     "img2img",
@@ -78,6 +88,7 @@ enum AvailableOrtSDMode {
 
 struct CommandLineInput {
     AvailableOrtSDMode mode = TXT2IMG;
+    AvailableExecutionType type = EXECUTOR_CPU;
 
     std::string input_path;
     std::string output_path = "output.png";
@@ -166,6 +177,9 @@ std::string wrap_text(const std::string &text, size_t line_width = 0, size_t lin
 void print_params(const CommandLineInput& params) {
     printf("Params: \n");
     printf("{\n");
+    printf("  Engine: \n");
+    printf("    execution_at:                   %s\n", type_str[params.type - 1]);
+
     printf("  IO: \n");
     printf("    input_path:                     %s\n", params.input_path.c_str());
     printf("    input_path:                     %s\n", params.output_path.c_str());
@@ -220,6 +234,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("\n");
     printf("arguments (necessary):\n");
     printf("  --help                             show this help message and exit\n");
+    printf("  -t, --type [TYPE]                  execution type (default cpu) [cpu / gpu (core_ml/tensor_rt/cuda/nnapi)]\n");
     printf("  -m, --mode [MODE]                  run mode [txt2img / img2img]\n");
     printf("  -i, --input [IMAGE]                path to the input image (default input.png) [img2img]\n");
     printf("  -o, --output [IMAGE]               path to the input image (default output.png)\n");
@@ -319,6 +334,13 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 exit(1);
             }
             params.mode = (AvailableOrtSDMode)mode_found;
+        } else if (arg == "-t" || arg == "--type") {
+            int type_found = GET_TYPE_FROM_STR(type_str, AVAILABLE_EXECUTOR_COUNT);
+            if (type_found == -1) {
+                invalid_arg = true;
+                break;
+            }
+            params.type = (AvailableExecutionType) type_found;
         } else if (arg == "-i" || arg == "--input") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -708,6 +730,7 @@ int main(int argc, const char *argv[]) {
     ortsd::generate_context(
         &ort_sd_context_,
         {
+            params.type,
             {
                 params.onnx_clip_path.c_str(),
                 params.onnx_unet_path.c_str(),
