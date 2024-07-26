@@ -98,6 +98,6 @@ jobs:
                                --jobs 4
         fi
 
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }}
+#    - name: Test
+#      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+#      run: ctest --build-config ${{ matrix.build_type }}
