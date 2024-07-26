@@ -27,6 +27,7 @@ find . -name "._*" -type f -delete
  extra legs, bad legs, many legs, more than two legs, bad feet, extra feet\
  "\
  -m txt2img\
+ -t cpu\
  -o ../../sd/io-test/comparisons/output-t2i-step4-ddim.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
