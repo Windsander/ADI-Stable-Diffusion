@@ -4,22 +4,55 @@
 find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
+# Default values for command line options
+auto_confirm=""
+
+# Parse command line options
+while getopts ":nyc" opt; do
+  case $opt in
+    n)
+      auto_confirm="no"
+      ;;
+    y)
+      auto_confirm="yes"
+      ;;
+    c)
+      auto_confirm="cancel"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
 # Function to display the confirmation prompt
 confirm() {
+  echo "Parsing input params..."
+  if [ "$auto_confirm" == "yes" ]; then
+    return 0
+  elif [ "$auto_confirm" == "no" ]; then
+    return 1
+  elif [ "$auto_confirm" == "cancel" ]; then
+    echo "CANCELED..."
+    exit
+  fi
+
   echo "WARNING: to prepare safetensors_2_onnx converter env,
                  this cli-tool needs to force reinstalling all necessary pack,
                  from conda to current-conda-env's pip state."
   echo "IT'S A High-Risk Operation! be careful you choose."
+
   while true; do
     read -r -p "Ops: yes no [y/n] or cancel [c] ?" yn
     case $yn in
-    [Yy]*) return 0 ;;
-    [Nn]*) return 1 ;;
-    [Cc]*)
-      echo "CANCELED..."
-      exit
-      ;;
-    *) echo "Please answer YES, NO, or CANCEL." ;;
+      [Yy]*) return 0 ;;
+      [Nn]*) return 1 ;;
+      [Cc]*)
+        echo "CANCELED..."
+        exit
+        ;;
+      *) echo "Please answer YES, NO, or CANCEL." ;;
     esac
   done
 }

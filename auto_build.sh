@@ -165,13 +165,13 @@ change_directory "sd/sd-base-model/"
 # Check if the directory change was successful
 if [ $? -eq 0 ]; then
     # Execute the auto_prepare_sd_models.sh script
-    ./auto_prepare_sd_models.sh -n
+    bash ./auto_prepare_sd_models.sh -n
 else
     echo "Failed to change directory. Exiting."
     exit 1
 fi
 
-change_directory "BUILD_DIR"
+echo "clitool is under $BUILD_DIR/bin/"
 
 # 继续执行其他命令
 echo "All Finished! ready to maneuver, sir！"
