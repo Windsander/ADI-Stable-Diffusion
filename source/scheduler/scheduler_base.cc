@@ -105,8 +105,8 @@ SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
             }
             case PREDICT_TYPE_V_PREDICTION: {
                 // predict_sample = sample * alpha_prod^2 - c_out * beta_prod^2
-                c_skip = (1.0f / (std::pow(sigma_, 2) + 1));
-                c_out = -(sigma_ / std::sqrt(std::pow(sigma_, 2) + 1));
+                c_skip = float(1.0f / (std::pow(sigma_, 2) + 1));
+                c_out = -float(sigma_ / std::sqrt(std::pow(sigma_, 2) + 1));
                 break;
             }
             case PREDICT_TYPE_SAMPLE: {

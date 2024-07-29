@@ -34,7 +34,7 @@ public:
         if (seed_ == -1) {
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
+            std::uniform_int_distribution<> dis(0, (std::numeric_limits<int>::max)());
             seed_ = dis(gen);
         }
         this->random_generator.seed(seed_);

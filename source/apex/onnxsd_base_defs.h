@@ -29,6 +29,10 @@
 #include <tuple>
 #include <unordered_map>
 
+#ifdef _WIN32
+    #include "windows.h"    // Only Windows should include windows.h
+#endif
+
 #include "onnxruntime_cxx_api.h"
 
 #endif
