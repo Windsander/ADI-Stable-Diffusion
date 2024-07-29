@@ -134,6 +134,17 @@ function(download_and_decompress url filename output_dir)
         execute_process(
                 COMMAND unzip -o ${output_dir}/${filename} -d ${output_dir}
         )
+        # Move extracted files to the output directory
+        file(GLOB extracted_dirs LIST_DIRECTORIES true "${output_dir}/*")
+        foreach(dir ${extracted_dirs})
+            if (IS_DIRECTORY ${dir} AND NOT dir STREQUAL ${output_dir})
+                file(GLOB extracted_files "${dir}/*")
+                foreach(file ${extracted_files})
+                    file(INSTALL DESTINATION ${output_dir} TYPE FILE FILES ${file})
+                endforeach()
+                file(REMOVE_RECURSE ${dir})
+            endif()
+        endforeach()
     else()
         message(FATAL_ERROR "Unsupported archive format: ${filename}")
     endif()
