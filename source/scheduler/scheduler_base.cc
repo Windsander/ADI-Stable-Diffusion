@@ -44,7 +44,7 @@ public:
     virtual ~SchedulerBase();
 
     void create();
-    uint64_t init(uint32_t inference_steps_) ;
+    uint64_t init(uint64_t inference_steps_) ;
     Tensor mask(const TensorShape& mask_shape_);
     Tensor scale(const Tensor& masker_, int step_index_);
     Tensor time(int step_index_);
@@ -190,7 +190,7 @@ void SchedulerBase::create() {
     }
 }
 
-uint64_t SchedulerBase::init(uint32_t inference_steps_) {
+uint64_t SchedulerBase::init(uint64_t inference_steps_) {
     std::vector<float> result;
     if (inference_steps_ == 0) {
         amon_report(class_exception(EXC_LOG_ERR, "ERROR:: inference_steps_ setting with 0!"));

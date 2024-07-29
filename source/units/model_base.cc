@@ -85,9 +85,15 @@ void ModelBase::print_model_detail(const Ort::AllocatorWithDefaultOptions& alloc
 }
 
 void ModelBase::init(ONNXRuntimeExecutor &ort_executor_) {
-    if (model_path.empty()) amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model path is NaN"));
+    if (model_path.empty()) {
+        amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model path is NaN"));
+        return;
+    }
     model_session = ort_executor_.request_model(model_path);
-    if (!model_session) amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model create failed"));
+    if (!model_session) {
+        amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model create failed"));
+        return;
+    }
 
     size_t input_count = model_session->GetInputCount();
     size_t output_count = model_session->GetOutputCount();
