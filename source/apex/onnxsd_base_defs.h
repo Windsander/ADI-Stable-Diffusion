@@ -30,6 +30,7 @@
 #include <unordered_map>
 
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
     #include "windows.h"    // Only Windows should include windows.h
 #endif
 
