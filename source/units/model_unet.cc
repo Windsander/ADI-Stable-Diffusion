@@ -88,7 +88,7 @@ Tensor UNet::inference(
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
     const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
-    const uint32_t working_steps_ = sd_scheduler_p->init(sd_unet_config.sd_inference_steps);
+    const uint64_t working_steps_ = sd_scheduler_p->init(sd_unet_config.sd_inference_steps);
 
     TensorShape latent_shape_{1, c_, h_, w_};
     std::vector<float> latent_empty_(c_ * h_ * w_, 0.0f);

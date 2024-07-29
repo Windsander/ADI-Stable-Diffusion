@@ -111,7 +111,12 @@ ONNXRuntimeExecutor::~ONNXRuntimeExecutor() {
 }
 
 Ort::Session* ONNXRuntimeExecutor::request_model(const std::string& model_path_){
+#ifdef _WIN32
+    std::wstring w_model_path = std::wstring(model_path_.begin(), model_path_.end());
+    return new Ort::Session(ort_env, w_model_path.c_str(), ort_session_config);
+#else
     return new Ort::Session(ort_env, model_path_.c_str(), ort_session_config);
+#endif
 }
 
 Ort::Session* ONNXRuntimeExecutor::release_model(Ort::Session* model_ptr_){

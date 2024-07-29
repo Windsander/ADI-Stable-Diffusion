@@ -34,7 +34,7 @@ protected:
     float generate_sigma_at(float timestep_);
 
 protected:
-    virtual uint32_t correction_steps(uint32_t inference_steps_) { return inference_steps_; };
+    virtual uint64_t correction_steps(uint32_t inference_steps_) { return inference_steps_; };
     virtual std::vector<float> execute_method(
         const float *predict_data_, const float* samples_data_,
         long data_size_, long step_index_, float random_intensity_) = 0;
@@ -44,7 +44,7 @@ public:
     virtual ~SchedulerBase();
 
     void create();
-    uint32_t init(uint32_t inference_steps_) ;
+    uint64_t init(uint32_t inference_steps_) ;
     Tensor mask(const TensorShape& mask_shape_);
     Tensor scale(const Tensor& masker_, int step_index_);
     Tensor time(int step_index_);
@@ -190,7 +190,7 @@ void SchedulerBase::create() {
     }
 }
 
-uint32_t SchedulerBase::init(uint32_t inference_steps_) {
+uint64_t SchedulerBase::init(uint32_t inference_steps_) {
     std::vector<float> result;
     if (inference_steps_ == 0) {
         amon_report(class_exception(EXC_LOG_ERR, "ERROR:: inference_steps_ setting with 0!"));

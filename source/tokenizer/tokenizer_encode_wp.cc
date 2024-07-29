@@ -35,7 +35,7 @@ protected:
                 bool needs_split_last_ = ((remade_tokens.size() % avail_ == 0) && (last_vocab_at_ != -1) &&
                                           (remade_tokens.size() - last_vocab_at_ <= token_safe_gaps_));
                 if (reach_space_mark_) {
-                    last_vocab_at_ = remade_tokens.size();
+                    last_vocab_at_ = int(remade_tokens.size());
                 } else if (needs_split_last_) {
                     last_vocab_at_ += 1;
                     Tokens tokens_cache_(remade_tokens.begin() + last_vocab_at_, remade_tokens.end());
@@ -44,7 +44,7 @@ protected:
                     // do split token with last reach max length
                     remade_tokens.resize(last_vocab_at_);
                     remade_multis.resize(last_vocab_at_);
-                    int token_end_ = ceil(float(remade_tokens.size()) / float(avail_)) * avail_ - remade_tokens.size();
+                    int token_end_ = int(ceil(float(remade_tokens.size()) / float(avail_)) * avail_ - remade_tokens.size());
                     remade_tokens.insert(remade_tokens.end(), token_end_, token_end_index_);
                     remade_multis.insert(remade_multis.end(), token_end_, token_end_multi_);
 
@@ -58,7 +58,7 @@ protected:
             }
         }
 
-        int finish_at_ = ceil(remade_tokens.size() / float(avail_)) * avail_ - remade_tokens.size();
+        int finish_at_ = int(ceil(remade_tokens.size() / float(avail_)) * avail_ - remade_tokens.size());
         remade_tokens.insert(remade_tokens.end(), finish_at_, token_end_index_);
         remade_multis.insert(remade_multis.end(), finish_at_, token_end_multi_);
 
