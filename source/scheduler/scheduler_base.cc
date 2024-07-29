@@ -125,7 +125,7 @@ SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
 }
 
 void SchedulerBase::create() {
-    int training_steps_  = scheduler_config.scheduler_training_steps;
+    uint64_t training_steps_  = scheduler_config.scheduler_training_steps;
     float linear_start_  = scheduler_config.scheduler_beta_start;
     float linear_end_    = scheduler_config.scheduler_beta_end;
     BetaType beta_type_  = scheduler_config.scheduler_beta_type;

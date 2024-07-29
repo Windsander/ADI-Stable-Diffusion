@@ -37,7 +37,7 @@ public:
             std::uniform_int_distribution<> dis(0, (std::numeric_limits<int>::max)());
             seed_ = dis(gen);
         }
-        this->random_generator.seed(seed_);
+        this->random_generator.seed(int(seed_));
     }
 
     float next() {
@@ -685,7 +685,7 @@ public:
     static void print_progress_bar(float progress_) {
         int bar_width_ = 70;
         std::cout << "[";
-        int pos = bar_width_ * progress_;
+        int pos = int(bar_width_ * progress_);
         for (int i = 0; i < bar_width_; ++i) {
             if (i < pos) std::cout << "=";
             else if (i == pos) std::cout << ">";

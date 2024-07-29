@@ -268,7 +268,7 @@ protected:      // Subwiords Pairing logic (Common by file structure)
     Subwords_pair find_min_rank(const SubwordsPair_vec& current_pairs_) {
         Subwords_pair min_pair = {"", ""};
         if (!current_pairs_.empty()) {
-            int min_rank = std::numeric_limits<int>::max();
+            int min_rank = (std::numeric_limits<int>::max)();
             for (const auto &pair: current_pairs_) {
                 auto it = sd_tokenizer_merges.find(pair);
                 if (it != sd_tokenizer_merges.end() && it->second < min_rank) {

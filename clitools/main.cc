@@ -608,7 +608,7 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
     if (params.scheduler_seed < 0) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
+        std::uniform_int_distribution<> dis(0, (std::numeric_limits<int>::max)());
         params.scheduler_seed = dis(gen);
     }
 }
