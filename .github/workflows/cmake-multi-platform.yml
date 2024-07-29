@@ -91,7 +91,7 @@ jobs:
                                  --android-ndk "$ANDROID_NDK_HOME" \
                                  --android-ver 27 \
                                  -c
-          elseif [ "${{ matrix.platform }}" == "windows" ]; then
+          elseif [ "${{ matrix.platform }}" == "windows" ];
             bash ./auto_build.sh --platform windows \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
