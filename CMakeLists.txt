@@ -123,13 +123,13 @@ if (ORT_BUILD_COMBINE_BASE)
     set(ORT_BUILD_SHARED_LIBS OFF)  # in this mode, we will never use ORT_BUILD_SHARED_LIBS option
     set(ORT_COMPILED_ONLINE OFF)
 endif ()
+if (ORT_COMPILED_ONLINE)            # ORT-static can only been built by local
+    message("[onnx.runtime.sd][I] onnxruntime ${Blue}ORT_COMPILED_ONLINE:OFF${ColourReset} ${Red}enable ort.shared lib${ColourReset} ")
+    set(ORT_BUILD_SHARED_LIBS ON)
+endif ()
 if (NOT ORT_BUILD_SHARED_LIBS AND NOT ARCHIVER_PATH)    # ORT-static can only been built with ar-tool helping
     message("[onnx.runtime.sd][I] onnxruntime ${Blue}ARCHIVER_PATH:NaN (Unset)${ColourReset} ${Red}disable ort.static lib${ColourReset} ")
     set(ORT_BUILD_SHARED_LIBS ON)
-endif ()
-if (ORT_COMPILED_ONLINE AND ORT_BUILD_COMMAND_LINE)     # ORT-static can only been built by local
-    message("[onnx.runtime.sd][I] onnxruntime ${Blue}ORT_COMPILED_ONLINE:OFF${ColourReset} ${Red}enable ort.shared lib${ColourReset} ")
-    set(ORT_BUILD_SHARED_LIBS OFF)
 endif ()
 
 set(option_state "option_state {\n")
