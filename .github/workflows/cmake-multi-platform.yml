@@ -21,7 +21,7 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             platform: windows
-            build_type: [ MinSizeRel, Debug ]
+            build_type: Debug
           - os: ubuntu-latest       # Platform: Linux-GCC
             c_compiler: gcc
             cpp_compiler: g++
