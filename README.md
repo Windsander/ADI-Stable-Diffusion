@@ -32,30 +32,32 @@ Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the
 
 by simply executing script [auto_build.sh](auto_build.sh):
 ```bash
-cd ./sd
 # if you do not pass the BUILD_TYPE parameter, the script will use the default Debug build type.
 # and, if you not enable certain ORTProvider by [options]], script will choose default ORTProvider by platform
 bash auto_build.sh
 
 # Example-MacOS:
-bash ./auto_build.sh --platform macos \
-           --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
-           --ninja /usr/local/bin/ninja \
-           --build-type debug \
-           --jobs 4
+bash auto_build.sh --platform macos --build-type debug
+           
+# Example-Windows:
+bash auto_build.sh --platform windows --build-type debug
+                    
+# Example-Linux(Ubuntu):
+bash auto_build.sh --platform linux --build-type debug
            
 # Example-Android:
-bash ./auto_build.sh --platform android \
-           --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
-           --ninja /usr/local/bin/ninja \
+bash auto_build.sh --platform android \
            --build-type Debug \
-           --jobs 4 \
            --android-sdk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk \
            --android-ndk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk/ndk/26.1.10909125 \
            --android-ver 27
            
-# Example(with Extra Options) as below, build release with CUDA=ON TensorRT=ON
-bash auto_build.sh [params] --options "-DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON"
+# Example(with Extra Options) as below, build release with CUDA=ON TensorRT=ON, and custom compiler configs
+bash auto_build.sh [params] \
+           --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
+           --ninja /usr/local/bin/ninja \
+           --jobs 8 \
+           --options "-DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON"
 ```
 
 currently, this project provide below [Options]:

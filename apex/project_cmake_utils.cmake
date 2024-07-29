@@ -15,7 +15,7 @@ macro(auto_link_reference_library target_lib lib_name ref_lib_path)
     # compatible caused by NDK find error
     if (WIN32)
         if (ORT_BUILD_SHARED_LIBS)
-            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.dll")
+            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")     # dll:: linking should be .lib
         else()
             set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")
         endif()

@@ -2,7 +2,9 @@
 
 # Default configuration
 DEFAULT_BUILD_TYPE=Debug
-DEFAULT_JOBS=8
+DEFAULT_CMAKE="cmake"
+DEFAULT_NINJA="ninja"
+DEFAULT_JOBS=4
 DEFAULT_ANDROID_VER=21          # env used
 DEFAULT_ANDROID_ABI=arm64-v8a   # env used
 DEFAULT_CONFIRM_OPTION="-n"     # Default confirmation option
@@ -51,8 +53,8 @@ done
 # Set default values
 BUILD_TYPE=${BUILD_TYPE:-$DEFAULT_BUILD_TYPE}
 JOBS=${JOBS:-$DEFAULT_JOBS}
-CMAKE=${CMAKE:-cmake}
-NINJA=${NINJA:-ninja}
+CMAKE=${CMAKE:-$DEFAULT_CMAKE}
+NINJA=${NINJA:-$DEFAULT_NINJA}
 ANDROID_VER=${ANDROID_VER:-$DEFAULT_ANDROID_VER}
 ANDROID_ABI=${ANDROID_ABI:-$DEFAULT_ANDROID_ABI}
 CMAKE_OPTIONS=${CMAKE_OPTIONS:-}
@@ -165,7 +167,7 @@ change_directory() {
     return 0
 }
 
-change_directory "sd/sd-base-model/"
+change_directory "sd/"
 
 # Check if the directory change was successful
 if [ $? -eq 0 ]; then
