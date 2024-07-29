@@ -285,7 +285,7 @@ public:
                         int64_t var_at_ = (((i * max_c_ + (c + out_c_)) * max_h_ + h) * max_w_ + w) ;
                         float mean_ = input_data_[cur_at_];
                         float logvar_ = input_data_[var_at_];
-                        logvar_ = std::max(-30.0f, std::min(logvar_, 20.0f));
+                        logvar_ = max(-30.0f, min(logvar_, 20.0f));
                         result_data_[i] = mean_ + std::exp(0.5f * logvar_) * random_.next();
                         result_data_[i] *= factor_;
                     }
@@ -310,7 +310,7 @@ public:
         for (int i = 0; i < input_size_; i++) {
             result_data_[i] = (
                 normalize_ ?
-                std::min(std::max((input_data_[i] / denominator_ + offset_), 0.0f), 1.0f) :
+                min(max((input_data_[i] / denominator_ + offset_), 0.0f), 1.0f) :
                 (input_data_[i] / denominator_ + offset_)
             );
         }

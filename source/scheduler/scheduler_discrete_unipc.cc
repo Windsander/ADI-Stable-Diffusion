@@ -45,7 +45,7 @@ public:
 
 long UniPCDiscreteScheduler::get_unified_history_count(long step_index_){
     long maintain_order_ = long(scheduler_config.scheduler_maintain_cache);
-    return std::min(maintain_order_, step_index_);
+    return min(maintain_order_, step_index_);
 }
 
 UniPCDiscreteScheduler::UniData UniPCDiscreteScheduler::get_unified_correction(

@@ -67,7 +67,7 @@ std::vector<float> LMSDiscreteScheduler::execute_method(
     long maintain_order_ = long(scheduler_config.scheduler_maintain_cache);
 
     // LMS method:: sigma get
-    long history_num = std::min(step_index_ + 1, maintain_order_);
+    long history_num = min(step_index_ + 1, maintain_order_);
     float sigma_curs = scheduler_sigmas[step_index_];
 
     // LMS method:: current noise decrees

@@ -52,7 +52,7 @@ std::vector<float> EulerAncestralDiscreteScheduler::execute_method(
         float sigma_curs_pow = sigma_curs * sigma_curs;
         float sigma_next_pow = sigma_next * sigma_next;
         float sigma_up_numerator = sigma_next_pow * (sigma_curs_pow - sigma_next_pow);
-        sigma_up = std::min(sigma_next, std::sqrt(sigma_up_numerator / sigma_curs_pow));
+        sigma_up = min(sigma_next, std::sqrt(sigma_up_numerator / sigma_curs_pow));
         sigma_dt = std::sqrt(sigma_next_pow - sigma_up * sigma_up) - sigma_curs;
     }
 

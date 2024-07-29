@@ -177,7 +177,7 @@ void SchedulerBase::create() {
             for (uint32_t i = 0; i < training_steps_; ++i) {
                 float t1 = float(i) / float(training_steps_);
                 float t2 = float(i + 1) / float(training_steps_);
-                float beta_norm = std::min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), beta_max);
+                float beta_norm = min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), beta_max);
                 alpha_prod *= 1.0f - beta_norm;
                 alphas_cumprod.push_back(alpha_prod);
             }
@@ -209,7 +209,7 @@ uint32_t SchedulerBase::init(uint32_t inference_steps_) {
         float sigma = generate_sigma_at(t);
         scheduler_timesteps.insert(make_pair(i, t));
         scheduler_sigmas.push_back(sigma);
-        scheduler_max_sigma = std::max(scheduler_max_sigma, sigma);
+        scheduler_max_sigma = max(scheduler_max_sigma, sigma);
     }
     scheduler_sigmas.push_back(0);
     return correction_steps(inference_steps_);

@@ -134,7 +134,7 @@ IMAGE_DATA OrtSD_Context::convert_result(const onnx::sd::base::Tensor &tensor_) 
                 int tensor_at_ = (c * height + h) * width + w;
                 int cur_pixel_ = (h * width + w) * channels + c;
                 image_data_[cur_pixel_] = static_cast<IMAGE_BYTE>(std::round(
-                    std::min(std::max(tensor_data_[tensor_at_], 0.0f), 1.0f) * 255
+                    min(max(tensor_data_[tensor_at_], 0.0f), 1.0f) * 255
                 ));
             }
         }
