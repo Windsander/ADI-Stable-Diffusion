@@ -104,6 +104,13 @@ auto_download_sd() {
   fi
 
   # Check if the onnx-sd-turbo directory exists
+  if [ -d "sd-base-model/onnx-sd-v15" ]; then
+    echo "Directory onnx-sd-v15 already exists. Skipping clone."
+  else
+    git clone https://huggingface.co/Windsander/onnx-sd-v15 sd-base-model/onnx-sd-v15/
+  fi
+
+  # Check if the onnx-sd-turbo directory exists
   if [ -d "sd-base-model/onnx-sd-turbo" ]; then
     echo "Directory onnx-sd-turbo already exists. Skipping clone."
   else
