@@ -86,7 +86,7 @@ jobs:
             bash ./auto_build.sh --platform android \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
-                                 --build-type ${{ matrix.build_type }} \
+                                 --build-type ${{ matrix. }} \
                                  --jobs 4 \
                                  --android-sdk "$ANDROID_SDK_ROOT" \
                                  --android-ndk "$ANDROID_NDK_HOME" \
