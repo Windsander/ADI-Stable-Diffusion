@@ -8,6 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <random>
 
 #include <cstdio>
 #include <cstring>
@@ -605,8 +606,10 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
 
     // seed random check
     if (params.scheduler_seed < 0) {
-        srandom((int)time(nullptr));
-        params.scheduler_seed = random();
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
+        params.scheduler_seed = dis(gen);
     }
 }
 

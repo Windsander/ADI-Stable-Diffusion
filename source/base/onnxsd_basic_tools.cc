@@ -32,8 +32,10 @@ public:
     void seed(int64_t seed_) {
         if (seed_ == 0) return;
         if (seed_ == -1) {
-            srandom((int) time(nullptr));
-            seed_ = random();
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
+            seed_ = dis(gen);
         }
         this->random_generator.seed(seed_);
     }
