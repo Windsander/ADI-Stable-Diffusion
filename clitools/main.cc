@@ -179,7 +179,7 @@ void print_params(const CommandLineInput& params) {
     printf("Params: \n");
     printf("{\n");
     printf("  Engine: \n");
-    printf("    execution_at:                   %s\n", type_str[params.type - 1]);
+    printf("    execution_at:                   %s\n", type_str[params.type]);
 
     printf("  IO: \n");
     printf("    input_path:                     %s\n", params.input_path.c_str());
@@ -208,11 +208,11 @@ void print_params(const CommandLineInput& params) {
     printf("    inference steps:                %llu\n", params.sd_inference_steps);
 
     printf("  Types  (by User   [maintain]): \n");
-    printf("    scheduler_sample_method:        %s\n", scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]);
-    printf("    scheduler_beta_type:            %s\n", scheduler_beta_type_str[params.scheduler_beta_type - 1]);
-    printf("    scheduler_alpha_type:           %s\n", scheduler_alpha_type_str[params.scheduler_alpha_type - 1]);
-    printf("    scheduler_prediction:           %s\n", scheduler_prediction_str[params.scheduler_predict_type - 1]);
-    printf("    tokenizer_series:               %s\n", tokenizer_series_str[params.sd_tokenizer_type - 1]);
+    printf("    scheduler_sample_method:        %s\n", scheduler_sampler_fuc_str[params.sd_scheduler_type]);
+    printf("    scheduler_beta_type:            %s\n", scheduler_beta_type_str[params.scheduler_beta_type]);
+    printf("    scheduler_alpha_type:           %s\n", scheduler_alpha_type_str[params.scheduler_alpha_type]);
+    printf("    scheduler_prediction:           %s\n", scheduler_prediction_str[params.scheduler_predict_type]);
+    printf("    tokenizer_series:               %s\n", tokenizer_series_str[params.sd_tokenizer_type]);
 
     printf("  Static (by Models [const]): \n");
     printf("    training steps:                 %llu\n", params.scheduler_training_steps);
@@ -307,7 +307,7 @@ void print_usage(int argc, const char* argv[]) {
             invalid_arg = true;                      \
             return -1;                               \
         }                                            \
-        return (found + 1);                          \
+        return found;                                \
     }()
 
 void parse_args(int argc, const char** argv, CommandLineInput& params) {
@@ -634,12 +634,12 @@ static std::string get_image_params(const CommandLineInput &params) {
     parameter_string += "Size: " +
                         std::to_string(params.sd_input_width) + "x" +
                         std::to_string(params.sd_input_height) + ", " + "\n";
-    parameter_string += "Scheduler: " + std::string(scheduler_sampler_fuc_str[params.sd_scheduler_type - 1]) + " " +
-                        "[ Beta >> " + std::string(scheduler_beta_type_str[params.scheduler_beta_type - 1]) +
-                        "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type - 1]) +
+    parameter_string += "Scheduler: " + std::string(scheduler_sampler_fuc_str[params.sd_scheduler_type]) + " " +
+                        "[ Beta >> " + std::string(scheduler_beta_type_str[params.scheduler_beta_type]) +
+                        "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type]) +
                         "], " + "\n";
-    parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type - 1]) + ", " + "\n";
-    parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type - 1]) + ", " + "\n";
+    parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type]) + ", " + "\n";
+    parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type]) + ", " + "\n";
     parameter_string += "Version: ONNXRuntime-Stable-Diffusion";
     return parameter_string;
 }

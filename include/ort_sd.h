@@ -20,12 +20,12 @@ extern "C" {
 
 /* Executor Type */
 enum AvailableExecutionType {
-    EXECUTOR_CPU               = 0x01,
-    EXECUTOR_GPU_AUTO          = 0x02,
-    EXECUTOR_GPU_COREML        = 0x03,
-    EXECUTOR_GPU_TENSORRT      = 0x04,
-    EXECUTOR_GPU_CUDA          = 0x05,
-    EXECUTOR_GPU_NNAPI         = 0x06,
+    EXECUTOR_CPU               = 0x00,
+    EXECUTOR_GPU_AUTO          = 0x01,
+    EXECUTOR_GPU_COREML        = 0x02,
+    EXECUTOR_GPU_TENSORRT      = 0x03,
+    EXECUTOR_GPU_CUDA          = 0x04,
+    EXECUTOR_GPU_NNAPI         = 0x05,
     AVAILABLE_EXECUTOR_COUNT,
 };
 
@@ -33,43 +33,43 @@ enum AvailableExecutionType {
 
 /* Scheduler Beta Provide */
 enum AvailableBetaType {
-    BETA_TYPE_LINEAR            = 0x01,
-    BETA_TYPE_SCALED_LINEAR     = 0x02,
-    BETA_TYPE_SQUAREDCOS_CAP_V2 = 0x03,
+    BETA_TYPE_LINEAR            = 0x00,
+    BETA_TYPE_SCALED_LINEAR     = 0x01,
+    BETA_TYPE_SQUAREDCOS_CAP_V2 = 0x02,
     BETA_COUNT,
 };
 
 /* Scheduler Alpha Provide */
 enum AvailableAlphaType {
-    ALPHA_TYPE_COSINE           = 0x01,
-    ALPHA_TYPE_EXP              = 0x02,
+    ALPHA_TYPE_COSINE           = 0x00,
+    ALPHA_TYPE_EXP              = 0x01,
     ALPHA_COUNT,
 };
 
 /* Scheduler Prediction Provide */
 enum AvailablePredictionType {
-    PREDICT_TYPE_EPSILON        = 0x01,
-    PREDICT_TYPE_V_PREDICTION   = 0x02,
-    PREDICT_TYPE_SAMPLE         = 0x03,
+    PREDICT_TYPE_EPSILON        = 0x00,
+    PREDICT_TYPE_V_PREDICTION   = 0x01,
+    PREDICT_TYPE_SAMPLE         = 0x02,
     AVAILABLE_PREDICTOR_COUNT,
 };
 
 /* Scheduler Type Provide */
 enum AvailableSchedulerType {
-    AVAILABLE_SCHEDULER_EULER       = 0x01,
-    AVAILABLE_SCHEDULER_EULER_A     = 0x02,
-    AVAILABLE_SCHEDULER_LMS         = 0x03,
-    AVAILABLE_SCHEDULER_LCM         = 0x04,
-    AVAILABLE_SCHEDULER_HEUN        = 0x05,
-    AVAILABLE_SCHEDULER_DDPM        = 0x06,
-    AVAILABLE_SCHEDULER_DDIM        = 0x07,
-    AVAILABLE_SCHEDULER_UNIPC       = 0x08,
+    AVAILABLE_SCHEDULER_EULER       = 0x00,
+    AVAILABLE_SCHEDULER_EULER_A     = 0x01,
+    AVAILABLE_SCHEDULER_LMS         = 0x02,
+    AVAILABLE_SCHEDULER_LCM         = 0x03,
+    AVAILABLE_SCHEDULER_HEUN        = 0x04,
+    AVAILABLE_SCHEDULER_DDPM        = 0x05,
+    AVAILABLE_SCHEDULER_DDIM        = 0x06,
+    AVAILABLE_SCHEDULER_UNIPC       = 0x07,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
 /* Tokenizer Type Provide */
 enum AvailableTokenizerType {
-    AVAILABLE_TOKENIZER_BPE         = 0x01,
+    AVAILABLE_TOKENIZER_BPE         = 0x00,
     /*AVAILABLE_TOKENIZER_WORD_PIECE  = 0x02,*/
     AVAILABLE_TOKENIZER_COUNT,
 };

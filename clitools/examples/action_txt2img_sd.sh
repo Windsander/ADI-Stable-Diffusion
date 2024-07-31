@@ -1,17 +1,46 @@
 #!/bin/bash
 
 # 默认路径
-DEFAULT_MODEL_PATH="../../sd/sd-base-model/onnx-sd-turbo"
+DEFAULT_MODEL_FILE_PATH="../../sd/sd-base-model/onnx-sd-turbo"
+DEFAULT_EXECUTABLE_PATH="../../cmake-build-debug/bin/ort-sd-clitools"
 
-# 如果提供了参数，则使用参数中的路径，否则使用默认路径
-MODEL_PATH=${1:-$DEFAULT_MODEL_PATH}
+# 初始化路径
+MODEL_FILE_PATH=$DEFAULT_MODEL_FILE_PATH
+EXECUTABLE_PATH=$DEFAULT_EXECUTABLE_PATH
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -m|--model-file)
+            if [[ -n "$2" ]]; then
+                MODEL_FILE_PATH="$2"
+                shift 2
+            else
+                echo "Error: --model-file requires a non-empty option argument."
+                exit 1
+            fi
+            ;;
+        -e|--executable)
+            if [[ -n "$2" ]]; then
+                EXECUTABLE_PATH="$2"
+                shift 2
+            else
+                echo "Error: --executable requires a non-empty option argument."
+                exit 1
+            fi
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # 清理Mac临时文件
 find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
 # 执行Stable Diffusion
-../../cmake-build-debug/bin/ort-sd-clitools\
+"$EXECUTABLE_PATH" \
  -p "\
  best quality, extremely detailed,\
  (keep main character),\
@@ -28,16 +57,16 @@ find . -name "._*" -type f -delete
  "\
  -m txt2img\
  -t cpu\
- -o ../../sd/io-test/comparisons/output-t2i-step4-ddim.png\
+ -o ../../sd/io-test/output-t2i-step4-ddim.png\
  -w 512 -h 512 -c 3\
  --seed 15.0\
  --dims 1024\
- --clip $MODEL_PATH/text_encoder/model.onnx\
- --unet $MODEL_PATH/unet/model.onnx\
- --vae-encoder $MODEL_PATH/vae_encoder/model.onnx\
- --vae-decoder $MODEL_PATH/vae_decoder/model.onnx\
- --merges $MODEL_PATH/tokenizer/merges.txt\
- --dict $MODEL_PATH/tokenizer/vocab.json\
+ --clip $MODEL_FILE_PATH/text_encoder/model.onnx\
+ --unet $MODEL_FILE_PATH/unet/model.onnx\
+ --vae-encoder $MODEL_FILE_PATH/vae_encoder/model.onnx\
+ --vae-decoder $MODEL_FILE_PATH/vae_decoder/model.onnx\
+ --merges $MODEL_FILE_PATH/tokenizer/merges.txt\
+ --dict $MODEL_FILE_PATH/tokenizer/vocab.json\
  --beta-start 0.00085\
  --beta-end 0.012\
  --beta scaled_linear\

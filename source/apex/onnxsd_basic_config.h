@@ -38,12 +38,12 @@ typedef Ort::SessionOptions  OrtOptionConfig;
 
 /* Executor Type */
 typedef enum ExecutionType {
-    EXECUTOR_CPU               = 1,
-    EXECUTOR_GPU_AUTO          = 2,
-    EXECUTOR_GPU_COREML        = 3,
-    EXECUTOR_GPU_TENSORRT      = 4,
-    EXECUTOR_GPU_CUDA          = 5,
-    EXECUTOR_GPU_NNAPI         = 6,
+    EXECUTOR_CPU               = 0,
+    EXECUTOR_GPU_AUTO          = 1,
+    EXECUTOR_GPU_COREML        = 2,
+    EXECUTOR_GPU_TENSORRT      = 3,
+    EXECUTOR_GPU_CUDA          = 4,
+    EXECUTOR_GPU_NNAPI         = 5,
 } ExecutionType;
 
 #define DEFAULT_EXECUTOR_CONFIG                                         \
@@ -62,31 +62,31 @@ typedef struct ORTBasicsConfig {
 /* Diffusion Scheduler Settings ===========================================*/
 /* Scheduler Type Provide */
 typedef enum SchedulerType {
-    SCHEDULER_EULER             = 1,
-    SCHEDULER_EULER_A           = 2,
-    SCHEDULER_LMS               = 3,
-    SCHEDULER_LCM               = 4,
-    SCHEDULER_HEUN              = 5,
-    SCHEDULER_DDPM              = 6,
-    SCHEDULER_DDIM              = 7,
-    SCHEDULER_UNIPC             = 8,
+    SCHEDULER_EULER             = 0,
+    SCHEDULER_EULER_A           = 1,
+    SCHEDULER_LMS               = 2,
+    SCHEDULER_LCM               = 3,
+    SCHEDULER_HEUN              = 4,
+    SCHEDULER_DDPM              = 5,
+    SCHEDULER_DDIM              = 6,
+    SCHEDULER_UNIPC             = 7,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
-    BETA_TYPE_LINEAR            = 1,
-    BETA_TYPE_SCALED_LINEAR     = 2,
-    BETA_TYPE_SQUAREDCOS_CAP_V2 = 3,
+    BETA_TYPE_LINEAR            = 0,
+    BETA_TYPE_SCALED_LINEAR     = 1,
+    BETA_TYPE_SQUAREDCOS_CAP_V2 = 2,
 } BetaType;
 
 typedef enum AlphaTransformType {
-    ALPHA_TYPE_COSINE           = 1,
-    ALPHA_TYPE_EXP              = 2,
+    ALPHA_TYPE_COSINE           = 0,
+    ALPHA_TYPE_EXP              = 1,
 } AlphaType;
 
 typedef enum PredictionType {
-    PREDICT_TYPE_EPSILON        = 1,
-    PREDICT_TYPE_V_PREDICTION   = 2,
-    PREDICT_TYPE_SAMPLE         = 3,
+    PREDICT_TYPE_EPSILON        = 0,
+    PREDICT_TYPE_V_PREDICTION   = 1,
+    PREDICT_TYPE_SAMPLE         = 2,
 } PredictionType;
 
 #define DEFAULT_SCHEDULER_CONFIG                             \
@@ -117,8 +117,8 @@ typedef struct SchedulerConfig {
 /* Diffusion Tokenizer Settings ===========================================*/
 /* Tokenizer Type Provide */
 typedef enum TokenizerType {
-    TOKENIZER_BPE               = 1,
-    TOKENIZER_WORD_PIECE        = 2,
+    TOKENIZER_BPE               = 0,
+    TOKENIZER_WORD_PIECE        = 1,
 } TokenizerType;
 
 #define DEFAULT_TOKENIZER_CONFIG                            \
