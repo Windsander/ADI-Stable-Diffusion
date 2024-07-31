@@ -12,7 +12,7 @@
 namespace ortsd {
     ORT_ENTRY void generate_context(IOrtSDContext_ptr *ctx_pp_, struct IOrtSDConfig ctx_config_) {
         // If you have any initial checking logic, plz put in there
-        if (ctx_pp_ && *ctx_pp_) return;
+        if (!ctx_pp_ || (ctx_pp_ && *ctx_pp_)) return;
         *ctx_pp_ = new onnx::sd::context::OrtSD_Context(
             onnx::sd::context::OrtSD_Config{
                 {

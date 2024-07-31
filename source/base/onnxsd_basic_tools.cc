@@ -69,7 +69,7 @@ public:
     template<class T>
     static T trapezoidal_integral(std::function<T(T)> f, T a, T b, int n = 1000) {
         T h = (b - a) / n;
-        T sum = 0.5 * (f(a) + f(b));
+        T sum = T(0.5 * (f(a) + f(b)));
         for (int i = 1; i < n; ++i) {
             sum += f(a + i * h);
         }
@@ -384,7 +384,7 @@ public:
         long split_size_ = GET_TENSOR_DATA_SIZE(shape_, 1);
         auto split_data_l_ = new T[split_size_];
         auto split_data_r_ = new T[split_size_];
-        bool enough_data_ = (input_size_ == split_size_ * 2);
+        bool enough_data_ = (long(input_size_) == long(split_size_ * 2));
 
         int64_t max_w_ = input_shape_[3];
         int64_t max_h_ = input_shape_[2];
@@ -421,18 +421,18 @@ public:
     static Tensor merge(const std::vector<Tensor> &input_tensors_, int offset_) {
         TensorShape input_shape_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetShape();
         size_t input_size_ = input_tensors_[0].GetTensorTypeAndShapeInfo().GetElementCount();
-        long tensor_num_ = input_tensors_.size();   // [1, 77, 768]
+        long tensor_num_ = long(input_tensors_.size());   // [1, 77, 768]
 
-        long result_size_ = input_size_ * tensor_num_;
+        long result_size_ = long(input_size_ * tensor_num_);
         auto result_data_ = new T[result_size_];
 
-        long inner_dim = std::accumulate(
-            input_shape_.begin() + offset_ + 1, input_shape_.end(), 1, std::multiplies<>()
-        );  // 768
-        long outer_dim = std::accumulate(
-            input_shape_.begin(), input_shape_.end() - offset_ - 1, 1, std::multiplies<>()
-        ); // 1
-        long concat_dim = input_shape_[offset_];    //  77
+        long inner_dim = long(std::accumulate(
+            input_shape_.begin() + offset_ + 1, input_shape_.end(), 1LL, std::multiplies<>()
+        ));  // 768
+        long outer_dim = long(std::accumulate(
+            input_shape_.begin(), input_shape_.end() - offset_ - 1, 1LL, std::multiplies<>()
+        )); // 1
+        long concat_dim = long(input_shape_[offset_]);    //  77
         long newest_dim = concat_dim * tensor_num_; // 154
 
         for (int l = 0; l < outer_dim; ++l) {           // 1
@@ -443,6 +443,11 @@ public:
                         long n = m + index_ * concat_dim;
                         long old_index = l * concat_dim * inner_dim + m * inner_dim + i;
                         long new_index = l * newest_dim * inner_dim + n * inner_dim + i;
+                        //  C6386: make sure in range
+                        if (new_index >= result_size_ || old_index >= input_size_) {
+                            delete[] result_data_;
+                            throw std::out_of_range("Index out of range");
+                        }
                         result_data_[new_index] = input_data_[old_index];
                     }
                 }
@@ -496,9 +501,9 @@ public:
         float original_mean_ = 0.0f;
         float weighted_mean_ = 0.0f;
         size_t elements_per_r = std::accumulate(
-            input_shape_l_.begin() + offset_ + 1, input_shape_l_.end(), 1, std::multiplies<>()
+            input_shape_l_.begin() + offset_ + 1, input_shape_l_.end(), 1LL, std::multiplies<>()
         );
-        for (size_t i = 0; i < input_shape_r_[offset_]; ++i) {
+        for (size_t i = 0; i < size_t(input_shape_r_[offset_]); ++i) {
             for (size_t j = 0; j < elements_per_r; ++j) {
                 result_data_[i * elements_per_r + j] = input_data_l_[i * elements_per_r + j] * input_data_r_[i];
                 original_mean_ += input_data_l_[i * elements_per_r + j] / float(input_size_l_) ;

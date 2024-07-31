@@ -17,7 +17,7 @@ private:
     std::vector<float> original_sample;
 
 protected:
-    uint64_t correction_steps(uint32_t inference_steps_) override;
+    uint64_t correction_steps(uint64_t inference_steps_) override;
     std::vector<float> execute_method(
         const float *predict_data_,
         const float *samples_data_,
@@ -34,7 +34,7 @@ public:
 };
 
 // base on: https://github.com/huggingface/diffusers/blob/main/src/diffusers/schedulers/scheduling_heun_discrete.py
-uint64_t HeunDiscreteScheduler::correction_steps(uint32_t inference_steps_){
+uint64_t HeunDiscreteScheduler::correction_steps(uint64_t inference_steps_){
     int start_at = 0;
     int end_when = int(scheduler_sigmas.size() - 1);
 

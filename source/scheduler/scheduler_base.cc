@@ -34,7 +34,7 @@ protected:
     float generate_sigma_at(float timestep_);
 
 protected:
-    virtual uint64_t correction_steps(uint32_t inference_steps_) { return inference_steps_; };
+    virtual uint64_t correction_steps(uint64_t inference_steps_) { return inference_steps_; };
     virtual std::vector<float> execute_method(
         const float *predict_data_, const float* samples_data_,
         long data_size_, long step_index_, float random_intensity_) = 0;
@@ -121,7 +121,7 @@ SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
             }
         }
     }
-    return std::make_tuple(c_skip, c_out, 0.0);
+    return std::make_tuple(c_skip, c_out, 0.0f);
 }
 
 void SchedulerBase::create() {
@@ -207,7 +207,7 @@ uint64_t SchedulerBase::init(uint64_t inference_steps_) {
     for (uint32_t i = 0; i < inference_steps_; ++i) {
         float t = float(end_when) - step_gap * float(i);
         float sigma = generate_sigma_at(t);
-        scheduler_timesteps.insert(make_pair(i, t));
+        scheduler_timesteps.insert(make_pair(long(i), int64_t(t)));
         scheduler_sigmas.push_back(sigma);
         scheduler_max_sigma = max(scheduler_max_sigma, sigma);
     }

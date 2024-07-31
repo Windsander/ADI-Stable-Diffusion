@@ -115,16 +115,16 @@ IMAGE_DATA OrtSD_Context::convert_result(const onnx::sd::base::Tensor &tensor_) 
         throw std::runtime_error("Expected 4D tensor (N, C, H, W)");
     }
 
-    int batch_size = shape[0];
-    int channels = shape[1];
-    int height = shape[2];
-    int width = shape[3];
+    int batch_size = int(shape[0]);
+    int channels = int(shape[1]);
+    int height = int(shape[2]);
+    int width = int(shape[3]);
 
     if (batch_size != 1) {
         throw std::runtime_error("Batch size > 1 is not supported");
     }
 
-    uint64_t image_size_ = height * width * channels;
+    uint64_t image_size_ = uint64_t(height * width * channels);
     auto tensor_data_ = tensor_.GetTensorData<float>();
     auto image_data_ = new IMAGE_BYTE[image_size_];
 

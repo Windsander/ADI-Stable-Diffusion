@@ -117,7 +117,10 @@ void ModelBase::init(ONNXRuntimeExecutor &ort_executor_) {
 }
 
 void ModelBase::execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_) {
-    if (!model_session) amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model not found"));
+    if (!model_session) {
+        amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model not found"));
+        return;
+    }
     try {
         Ort::IoBinding io_binding(*model_session);
         for (size_t i = 0; i < model_meta.tensor_count_i; ++i) {

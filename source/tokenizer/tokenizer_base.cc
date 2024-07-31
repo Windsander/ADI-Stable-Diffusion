@@ -218,7 +218,7 @@ protected:
             } else {
                 std::vector<std::string> parts = PromptsHelper::split(text, re_breaking);
                 for (int i = 0; i < parts.size(); ++i) {
-                    if (i > 0) { prompt_weight_.emplace_back("BREAK", -1); }
+                    if (i > 0) { prompt_weight_.emplace_back("BREAK", -1.0f); }
                     prompt_weight_.emplace_back(parts[i], 1.0f);
                 }
             }
@@ -237,7 +237,7 @@ protected:
         if (prompt_weight_.empty()) {
             prompt_weight_.emplace_back("", 1.0f);
         }
-        int i = 0;
+        size_t i = 0;
         while (i + 1 < prompt_weight_.size()) {
             if (prompt_weight_[i].second == prompt_weight_[i + 1].second) {
                 prompt_weight_[i].first += prompt_weight_[i + 1].first;
@@ -396,7 +396,7 @@ private:        // WARNING: Test ONLY! Currently abandoned!
 
             for (int i = 0; i < sd_tokenizer_config.avail_token_count; ++i) {
                 for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
-                    embeddings_matrix[i][j] = dis(gen);
+                    embeddings_matrix[i][j] = float(dis(gen));
                 }
             }
         }
@@ -410,18 +410,17 @@ private:        // WARNING: Test ONLY! Currently abandoned!
 
             for (int pos = 0; pos < sd_tokenizer_config.avail_token_size; ++pos) {
                 for (int i = 0; i < sd_tokenizer_config.major_hidden_dim; i += 2) {
-                    positional_matrix[pos][i] = sin(
-                        pos / pow(10000, 2.0 * i / sd_tokenizer_config.major_hidden_dim));
-                    if (i + 1 < sd_tokenizer_config.major_hidden_dim) {
-                        positional_matrix[pos][i + 1] = cos(
-                            pos / pow(10000, 2.0 * (i + 1) / sd_tokenizer_config.major_hidden_dim));
+                    positional_matrix[pos][i] = float(sin(pos / pow(10000, 2.0 * i / sd_tokenizer_config.major_hidden_dim)));
+                    size_t aim = size_t(i + 1);
+                    if (aim < sd_tokenizer_config.major_hidden_dim) {
+                        positional_matrix[pos][aim] = float(cos(pos / pow(10000, 2.0 * (i + 1) / sd_tokenizer_config.major_hidden_dim)));
                     }
                 }
             }
         }
     }
 
-    Tensor test_encoding(const Tensor &token_) {
+    Tensor test_encoding(const Tensor &token_) const {
         auto *token_data_ = token_.GetTensorData<int>();
         long token_size_ = TensorHelper::get_data_size(token_);
 
@@ -431,7 +430,7 @@ private:        // WARNING: Test ONLY! Currently abandoned!
             std::vector<float> embeddings_ = embeddings_matrix[token_data_[i]];
             std::vector<float> positional_ = positional_matrix[i];
 
-            int offset_ = sd_tokenizer_config.avail_token_size * i;
+            size_t offset_ = size_t(sd_tokenizer_config.avail_token_size * i);
             for (int j = 0; j < sd_tokenizer_config.major_hidden_dim; ++j) {
                 result_[offset_ + j] = embeddings_[j] + positional_[j];
             }
