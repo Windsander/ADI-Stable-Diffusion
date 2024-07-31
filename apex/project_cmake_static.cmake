@@ -8,11 +8,41 @@
 # - ???What?
 
 # StaticLib==============================================================================================
+# Auto Choose Archiver based on platforms to generate onnxruntime.a
+function(auto_choose_archiver_for_ort)
+    if (ORT_BUILD_SHARED_ORT)
+        return()
+    endif()
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_choose_archiver${ColourReset}\ start)
+
+    # Check if ARCHIVER_PATH is already set
+    if (NOT ARCHIVER_PATH)
+        # compatible caused by NDK find error
+        if (WIN32)
+            set(ARCHIVER_PATH lib)
+        elseif (APPLE)
+            set(ARCHIVER_PATH libtool)
+        elseif (LINUX OR ANDROID)
+            set(ARCHIVER_PATH ar)
+        else()
+            message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
+        endif()
+    endif()
+
+    if (NOT ARCHIVER_PATH)
+        message(FATAL_ERROR "${ARCHIVER_PATH} library not found!")
+    else()
+        message(\ ${PROJECT_NAME}=>\ "auto selected ARCHIVER: ${ARCHIVER_PATH}")
+    endif()
+
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_choose_archiver${ColourReset}\ done)
+endfunction()
+
 # Build Windows Static ORT.a
 macro(merge_static_libs_windows)
     set(TEMP_SCRIPT "${ONNX_INFERENCE_PATH}/run_lib.bat")
     file(WRITE ${TEMP_SCRIPT} "@echo off\n")
-    file(APPEND ${TEMP_SCRIPT} "lib /OUT:libonnxruntime.lib \\\n")
+    file(APPEND ${TEMP_SCRIPT} "${ARCHIVER_PATH} /OUT:libonnxruntime.lib \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_common.lib \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_framework.lib \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_flatbuffers.lib \\\n")
@@ -54,7 +84,7 @@ endmacro()
 macro(merge_static_libs_macos)
     set(TEMP_SCRIPT "${ONNX_INFERENCE_PATH}/run_libtool.sh")
     file(WRITE ${TEMP_SCRIPT} "#!/bin/sh\n")
-    file(APPEND ${TEMP_SCRIPT} "libtool -static -o libonnxruntime.a \\\n")
+    file(APPEND ${TEMP_SCRIPT} "${ARCHIVER_PATH} -static -o libonnxruntime.a \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_common.a \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_framework.a \\\n")
     file(APPEND ${TEMP_SCRIPT} "${ONNX_INFERENCE_PATH}/libonnxruntime_flatbuffers.a \\\n")

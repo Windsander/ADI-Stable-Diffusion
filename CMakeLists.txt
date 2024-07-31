@@ -41,6 +41,35 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# Set the output directory for executable files
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/bin)
+
+# Set the output directory for library files
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/lib)
+
+# Set the output directory for archive files
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/lib)
+
+message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "CMAKE_RUNTIME_OUTPUT_DIRECTORY: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+message(STATUS "CMAKE_LIBRARY_OUTPUT_DIRECTORY: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+message(STATUS "CMAKE_ARCHIVE_OUTPUT_DIRECTORY: ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+
 # do prepare option auto enable, based on paltform
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     set(SD_STANDALONE ON)
@@ -112,24 +141,28 @@ option(ORT_COMPILED_ONLINE           "ort-sd: using online onnxruntime(ort), oth
 option(ORT_COMPILED_HEAVY            "ort-sd: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
 option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
 option(ORT_BUILD_COMBINE_BASE        "ort-sd: build combine code together to build a single output lib" OFF)
-option(ORT_BUILD_SHARED_CFDI         "ort-sd: build CFDI project shared libs" OFF)
-option(ORT_BUILD_SHARED_LIBS         "ort-sd: build ORT in shared libs" OFF)
+option(ORT_BUILD_SHARED_ADI          "ort-sd: build ADI project shared libs" OFF)
+option(ORT_BUILD_SHARED_ORT          "ort-sd: build ORT in shared libs" OFF)
 option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
 option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
 option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 
 if (ORT_BUILD_COMBINE_BASE)
-    set(ORT_BUILD_SHARED_LIBS OFF)  # in this mode, we will never use ORT_BUILD_SHARED_LIBS option
+    set(ORT_BUILD_SHARED_ORT OFF)  # in this mode, we will never use ORT_BUILD_SHARED_ORT option
     set(ORT_COMPILED_ONLINE OFF)
 endif ()
-if (ORT_COMPILED_ONLINE)            # ORT-static can only been built by local
+if (ORT_COMPILED_ONLINE)            # pure ORT-static(with pure onnxruntime-static) can only been built in local
     message("[onnx.runtime.sd][I] onnxruntime ${Blue}ORT_COMPILED_ONLINE:OFF${ColourReset} ${Red}enable ort.shared lib${ColourReset} ")
-    set(ORT_BUILD_SHARED_LIBS ON)
+    set(ORT_BUILD_SHARED_ORT ON)
 endif ()
-if (NOT ORT_BUILD_SHARED_LIBS AND NOT ARCHIVER_PATH)    # ORT-static can only been built with ar-tool helping
-    message("[onnx.runtime.sd][I] onnxruntime ${Blue}ARCHIVER_PATH:NaN (Unset)${ColourReset} ${Red}disable ort.static lib${ColourReset} ")
-    set(ORT_BUILD_SHARED_LIBS ON)
+
+if(NOT ORT_BUILD_SHARED_ORT)       # when build static, auto choose ARCHIVER_PATH if user not set.
+    auto_choose_archiver_for_ort()  # only onnxruntime.a needs arvhiver to generate, we merge a bunch of [ort.a] series into one
+    if (NOT ARCHIVER_PATH)          # if Archiver not found, then setback to shared-ort
+        message("[onnx.runtime.sd][I] onnxruntime ${Blue}ARCHIVER_PATH:NaN (Unset)${ColourReset} ${Red}disable ort.static lib${ColourReset} ")
+        set(ORT_BUILD_SHARED_ORT ON)
+    endif ()
 endif ()
 
 set(option_state "option_state {\n")
@@ -140,8 +173,8 @@ set(option_state "${option_state}    }\n")
 set(option_state "${option_state}    building {\n")
 set(option_state "${option_state}        ORT_BUILD_COMMAND_LINE: ${Cyan}${ORT_BUILD_COMMAND_LINE}${ColourReset},\n")
 set(option_state "${option_state}        ORT_BUILD_COMBINE_BASE: ${Cyan}${ORT_BUILD_COMBINE_BASE}${ColourReset},\n")
-set(option_state "${option_state}        ORT_BUILD_SHARED_CFDI : ${Cyan}${ORT_BUILD_SHARED_CFDI}${ColourReset},\n")
-set(option_state "${option_state}        ORT_BUILD_SHARED_LIBS : ${Cyan}${ORT_BUILD_SHARED_LIBS}${ColourReset},\n")
+set(option_state "${option_state}        ORT_BUILD_SHARED_ADI :  ${Cyan}${ORT_BUILD_SHARED_ADI}${ColourReset},\n")
+set(option_state "${option_state}        ORT_BUILD_SHARED_ORT :  ${Cyan}${ORT_BUILD_SHARED_ORT}${ColourReset},\n")
 set(option_state "${option_state}    }\n")
 set(option_state "${option_state}    provider {\n")
 set(option_state "${option_state}        ORT_ENABLE_TENSOR_RT  : ${Cyan}${ORT_ENABLE_TENSOR_RT}${ColourReset},\n")
@@ -270,10 +303,9 @@ auto_target_sources(library_data_SOURCES ${CMAKE_CURRENT_SOURCE_DIR} include)
 auto_print_list(library_data_SOURCES)
 
 # we can get only one share lib
-if(ORT_BUILD_SHARED_CFDI)
+if(ORT_BUILD_SHARED_ADI)
     message("[onnx.runtime.sd][I] Build library[SHARED]: ${library_name}")
     add_library(${library_name} SHARED)
-    target_compile_definitions(${library_name} PRIVATE -DSD_BUILD_DLL)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else()
     message("[onnx.runtime.sd][I] ${Blue}Build library[STATIC]${ColourReset}: ${library_name}")
@@ -288,6 +320,7 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 
 #link references
 auto_link_reference_library(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH})
+auto_copy_reference_dynamic(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 

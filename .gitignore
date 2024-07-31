@@ -1,6 +1,7 @@
 build*/
 test/
 
+.vs/
 .vscode/
 .cache/
 .idea/
@@ -28,3 +29,5 @@ sd/sd-dictionary
 sd/sd-base-model
 engine/onnxruntime-*
 engine/onnxruntime/*
+
+CMakeSettings.json

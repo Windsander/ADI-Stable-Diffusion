@@ -9,33 +9,33 @@
 
 # 平台限定=================================================================================================
 #自动连接对应平台关联库
-macro(auto_link_reference_library target_lib lib_name ref_lib_path)
+function(auto_link_reference_library target_lib lib_name ref_lib_path)
     message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ start)
 
     # compatible caused by NDK find error
     if (WIN32)
-        if (ORT_BUILD_SHARED_LIBS)
-            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")     # dll:: linking should be .lib
+        if (ORT_BUILD_SHARED_ORT)
+            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")     # dll:: linking should be .lib as import library(.lib in stub mode)
         else()
-            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")
+            set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.lib")     # lib:: make sure .lib is not a stub format, static needs full code
         endif()
         set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/include)
     elseif (APPLE)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.dylib")
         else()
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.a")
         endif()
         set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/include)
     elseif (LINUX)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
         else()
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.a")
         endif()
         set(INCLUDE_PATH ${ONNX_INFERENCE_PATH}/include)
     elseif (ANDROID)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
         else()
             set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.a")
@@ -61,32 +61,32 @@ macro(auto_link_reference_library target_lib lib_name ref_lib_path)
             ${LIBRARY_PATH}
     )
     message(\ ${PROJECT_NAME}=>\ ${Blue}auto_link_reference_library${ColourReset}\ done)
-endmacro()
+endfunction()
 
 #检测生成动态库文件是否存在
-macro(check_library_exists lib_name lib_path result_var)
+function(check_library_exists lib_name lib_path result_var)
     message(STATUS "Checking library: ${lib_name} in path: ${lib_path}")
 
     if (WIN32)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${lib_path}/${lib_name}.dll")
         else()
             set(LIBRARY_PATH "${lib_path}/${lib_name}.lib")
         endif()
     elseif (APPLE)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.dylib")
         else()
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.a")
         endif()
     elseif (LINUX)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.so")
         else()
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.a")
         endif()
     elseif (ANDROID)
-        if (ORT_BUILD_SHARED_LIBS)
+        if (ORT_BUILD_SHARED_ORT)
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.so")
         else()
             set(LIBRARY_PATH "${lib_path}/lib${lib_name}.a")
@@ -104,7 +104,43 @@ macro(check_library_exists lib_name lib_path result_var)
         set(${result_var} FALSE)
         message(STATUS "${lib_name} library not found at ${LIBRARY_PATH}")
     endif()
-endmacro()
+endfunction()
+
+#自动复制对应平台关联动态库
+function(auto_copy_reference_dynamic target_lib lib_name ref_lib_path target_dir)
+    if (NOT ORT_BUILD_SHARED_ORT)
+        return()
+    endif()
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_copy_reference_dynamic${ColourReset}\ start)
+
+    # compatible caused by NDK find error
+    if (WIN32)
+        set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.dll") 
+    elseif (APPLE)
+        set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.dylib")
+    elseif (LINUX)
+        set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
+    elseif (ANDROID)
+        set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
+    else()
+        message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
+    endif()
+
+    if (NOT LIBRARY_PATH)
+        message(FATAL_ERROR "${lib_name} library not found in ${ref_lib_path}")
+    else()
+        message(\ ${PROJECT_NAME}=>\ "Add post-copy ${lib_name} library from ${LIBRARY_PATH} to ${target_dir}")
+    endif()
+
+    add_custom_command(TARGET ${target_lib} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying ${LIBRARY_PATH} to ${target_dir}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${LIBRARY_PATH}
+        ${target_dir}
+    )
+
+    message(\ ${PROJECT_NAME}=>\ ${Blue}auto_copy_reference_dynamic${ColourReset}\ done)
+endfunction()
 
 # 资源下载=================================================================================================
 # 下载并解压 Define the download_and_decompress function

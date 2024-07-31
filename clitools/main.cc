@@ -559,6 +559,9 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
             params.txt_attn_decrease_factor = std::stof(argv[i]);
         } else if (arg == "-v" || arg == "--verbose") {
             params.verbose = true;
+        } else if (arg == "--help") {
+            print_usage(argc, argv);
+            exit(1);
         } else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
             print_usage(argc, argv);
