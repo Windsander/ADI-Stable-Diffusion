@@ -37,26 +37,26 @@ by simply executing script [auto_build.sh](auto_build.sh):
 ```bash
 # if you do not pass the BUILD_TYPE parameter, the script will use the default Debug build type.
 # and, if you not enable certain ORTProvider by [options]], script will choose default ORTProvider by platform
-bash auto_build.sh
+bash ./auto_build.sh
 
 # Example-MacOS:
-bash auto_build.sh --platform macos --build-type debug
+bash ./auto_build.sh --platform macos --build-type debug
            
 # Example-Windows:
-bash auto_build.sh --platform windows --build-type debug
+bash ./auto_build.sh --platform windows --build-type debug
                     
 # Example-Linux(Ubuntu):
-bash auto_build.sh --platform linux --build-type debug
+bash ./auto_build.sh --platform linux --build-type debug
            
 # Example-Android:
-bash auto_build.sh --platform android \
+bash ./auto_build.sh --platform android \
            --build-type Debug \
            --android-sdk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk \
            --android-ndk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk/ndk/26.1.10909125 \
            --android-ver 27
            
 # Example(with Extra Options) as below, build release with CUDA=ON TensorRT=ON, and custom compiler configs
-bash auto_build.sh [params] \
+bash ./auto_build.sh [params] \
            --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
            --ninja /usr/local/bin/ninja \
            --jobs 8 \
@@ -88,7 +88,7 @@ cd ./cmake-build-debug/bin/
 
 # and here is an example of using this tool:
 # sd-turbo, img2img, positive, inference_steps=1, guide=1.0, euler_a(for 1-step purpose)
-ort-sd-clitools -p "A cat in the water at sunset" -m img2img -i ../../sd/io-test/input-test.png -o ../../sd/io-test/output.png -w 512 -h 512 -c 3 --seed 15.0 --dims 1024 --clip ../../sd/sd-base-model/onnx-sd-turbo/text_encoder/model.onnx --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx --dict ../../sd/sd-dictionary/vocab.txt --beta-start 0.00085 --beta-end 0.012 --beta scaled_linear --alpha cos --scheduler euler_a --predictor epsilon --tokenizer bpe --train-steps 1000 --token-idx-num 49408 --token-length 77 --token-border 1.0 --gain 1.1 --decoding 0.18215 --guidance 1.0 --steps 1 -v
+./ort-sd-clitools -p "A cat in the water at sunset" -m img2img -i ../../sd/io-test/input-test.png -o ../../sd/io-test/output.png -w 512 -h 512 -c 3 --seed 15.0 --dims 1024 --clip ../../sd/sd-base-model/onnx-sd-turbo/text_encoder/model.onnx --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx --dict ../../sd/sd-dictionary/vocab.txt --beta-start 0.00085 --beta-end 0.012 --beta scaled_linear --alpha cos --scheduler euler_a --predictor epsilon --tokenizer bpe --train-steps 1000 --token-idx-num 49408 --token-length 77 --token-border 1.0 --gain 1.1 --decoding 0.18215 --guidance 1.0 --steps 1 -v
 ```
 
 - **Below show What actually happened in [Example: 1-step img2img inference] in Latent Space (Skip All Models):**

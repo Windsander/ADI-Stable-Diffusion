@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        build_type: [ Release, Debug ]
+        build_type: [ MinSizeRel, Debug ]
         c_compiler: [ gcc, clang, cl ]
         include:
           - os: windows-latest      # Platform: Windows-MSVC
@@ -90,13 +90,6 @@ jobs:
                                  --android-sdk "$ANDROID_SDK_ROOT" \
                                  --android-ndk "$ANDROID_NDK_HOME" \
                                  --android-ver 27 \
-                                 -c
-          elif [ "${{ matrix.platform }}" == "windows" ]; then
-            bash ./auto_build.sh --platform windows \
-                                 --cmake "cmake" \
-                                 --ninja "ninja" \
-                                 --build-type Debug \
-                                 --jobs 4 \
                                  -c
           else
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
