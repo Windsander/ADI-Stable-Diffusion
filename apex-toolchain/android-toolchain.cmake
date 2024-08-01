@@ -1,4 +1,4 @@
-# android-toolchain.cmake
+# android-toolchain.cmake !!!DEPRECATED!!!
 
 # ANDROID_SDK
 if(DEFINED ANDROID_SDK)
@@ -21,13 +21,6 @@ elseif(DEFINED ENV{ANDROID_VER})
     set(ANDROID_VER $ENV{ANDROID_VER})
 endif()
 
-# ANDROID_ABI
-if(DEFINED ANDROID_ABI)
-    set(ANDROID_ABI ${ANDROID_ABI})
-elseif(DEFINED ENV{ANDROID_ABI})
-    set(ANDROID_ABI $ENV{ANDROID_ABI})
-endif()
-
 # Prepare Android NDK
 set(CMAKE_SYSTEM_NAME Android)
 set(CMAKE_ANDROID_NDK_TOOLCHAIN_VERSION clang)
@@ -35,13 +28,13 @@ if(DEFINED ANDROID_VER)
     set(CMAKE_SYSTEM_VERSION ${ANDROID_VER})
 endif()
 
-# refer to ANDROID_ABI dynamic set CMAKE_SYSTEM_PROCESSOR & CMAKE_ANDROID_ARCH_ABI
+# Refer to ANDROID_ABI to dynamically set CMAKE_SYSTEM_PROCESSOR & CMAKE_ANDROID_ARCH_ABI
 if(DEFINED ANDROID_ABI)
     if(${ANDROID_ABI} STREQUAL "arm64-v8a")
         set(CMAKE_SYSTEM_PROCESSOR aarch64)
         set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
     elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a")
-        set(CMAKE_SYSTEM_PROCESSOR armv7)
+        set(CMAKE_SYSTEM_PROCESSOR armv7-a)
         set(CMAKE_ANDROID_ARCH_ABI armeabi-v7a)
     elseif(${ANDROID_ABI} STREQUAL "x86")
         set(CMAKE_SYSTEM_PROCESSOR x86)
@@ -52,9 +45,17 @@ if(DEFINED ANDROID_ABI)
     endif()
 endif()
 
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --hash-style=both")
-#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --hash-style=both")
-#set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} --hash-style=both")
+# Set the correct compiler paths based on the host operating system
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${CMAKE_SYSTEM_PROCESSOR}/bin)
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/windows-${CMAKE_SYSTEM_PROCESSOR}/bin)
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-${CMAKE_SYSTEM_PROCESSOR}/bin)
+endif()
+
+set(CMAKE_C_COMPILER ${ANDROID_TOOLCHAIN_PATH}/clang)
+set(CMAKE_CXX_COMPILER ${ANDROID_TOOLCHAIN_PATH}/clang++)
+
+# Include the default Android toolchain file provided by the NDK
 set(CMAKE_TOOLCHAIN_FILE ${ANDROID_NDK}/build/cmake/android.toolchain.cmake)
-set(CMAKE_C_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang -std=c++17)
-set(CMAKE_CXX_COMPILER ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ -std=c++17)

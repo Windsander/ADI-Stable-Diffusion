@@ -98,8 +98,8 @@ jobs:
                                  --cmake "cmake" \
                                  --ninja "ninja" \
                                  --build-type ${{ matrix.build_type }} \
+                                 --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
-                                 --android-sdk "$ANDROID_SDK_ROOT" \
                                  --android-ndk "$ANDROID_NDK_HOME" \
                                  --android-ver 27 \
                                  -c
@@ -108,6 +108,7 @@ jobs:
                                  --cmake "cmake" \
                                  --ninja "ninja" \
                                  --build-type ${{ matrix.build_type }} \
+                                 --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
                                  -c
           fi

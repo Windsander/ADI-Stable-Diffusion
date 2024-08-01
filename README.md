@@ -50,8 +50,7 @@ bash ./auto_build.sh --platform linux --build-type debug
            
 # Example-Android:
 bash ./auto_build.sh --platform android \
-           --build-type Debug \
-           --android-sdk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk \
+           --build-type debug \
            --android-ndk /Volumes/AL-Data-W04/WorkingEnv/Android/sdk/ndk/26.1.10909125 \
            --android-ver 27
            
@@ -59,6 +58,7 @@ bash ./auto_build.sh --platform android \
 bash ./auto_build.sh [params] \
            --cmake /opt/homebrew/Cellar/cmake/3.29.5/bin/cmake \
            --ninja /usr/local/bin/ninja \
+           --arch-abi x86_64 \
            --jobs 8 \
            --options "-DORT_ENABLE_CUDA=ON -DORT_ENABLE_TENSOR_RT=ON"
 ```

@@ -1,12 +1,11 @@
 #!/bin/bash
 
 # Default configuration
-DEFAULT_BUILD_TYPE=Debug
+DEFAULT_BUILD_TYPE=debug
 DEFAULT_CMAKE="cmake"
 DEFAULT_NINJA="ninja"
 DEFAULT_JOBS=4
 DEFAULT_ANDROID_VER=21          # env used
-DEFAULT_ANDROID_ABI=arm64-v8a   # env used
 DEFAULT_CONFIRM_OPTION="-n"     # Default confirmation option
 
 # Function: Show help message
@@ -14,15 +13,15 @@ show_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  --platform PLATFORM      Target platform (e.g., android, linux, macos, windows)"
+    echo "  --arch-abi ARCH          Target ABI (e.g., x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a)"
     echo "  --build-type TYPE        Build type (Debug, Release, etc.)"
     echo "  --cmake PATH             Path to CMake executable"
     echo "  --ninja PATH             Path to Ninja executable"
     echo "  --jobs N                 Number of parallel jobs"
     echo "  --options OPTIONS        Extra CMake options, see README.md"
-    echo "  --android-sdk PATH       [android] Path to Android SDK"
+#    echo "  --android-sdk PATH       [android] Path to Android SDK"
     echo "  --android-ndk PATH       [android] Path to Android NDK"
     echo "  --android-ver N          [android] Android system version (default: 21)"
-    echo "  --android-abi N          [android] Android ABI (Application Binary Interface, default: arm64-v8a)"
     echo "  -y/n/c                   Setting 'yes/no/cancel' to auto prepare sd-models"
     echo "  -h, --help               Show this help message"
 }
@@ -32,15 +31,15 @@ CONFIRM_OPTION=""
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --platform) PLATFORM="$2"; shift ;;
+        --arch-abi) TARGET_ABI="$2"; shift ;;
         --build-type) BUILD_TYPE="$2"; shift ;;
         --cmake) CMAKE="$2"; shift ;;
         --ninja) NINJA="$2"; shift ;;
         --jobs) JOBS="$2"; shift ;;
         --options) CMAKE_OPTIONS="$2"; shift ;;
-        --android-sdk) ANDROID_SDK="$2"; shift ;;
+#        --android-sdk) ANDROID_SDK="$2"; shift ;;
         --android-ndk) ANDROID_NDK="$2"; shift ;;
         --android-ver) ANDROID_VER="$2"; shift ;;
-        --android-abi) ANDROID_ABI="$2"; shift ;;
         -n) CONFIRM_OPTION="-n" ;;
         -y) CONFIRM_OPTION="-y" ;;
         -c) CONFIRM_OPTION="-c" ;;
@@ -56,7 +55,6 @@ JOBS=${JOBS:-$DEFAULT_JOBS}
 CMAKE=${CMAKE:-$DEFAULT_CMAKE}
 NINJA=${NINJA:-$DEFAULT_NINJA}
 ANDROID_VER=${ANDROID_VER:-$DEFAULT_ANDROID_VER}
-ANDROID_ABI=${ANDROID_ABI:-$DEFAULT_ANDROID_ABI}
 CMAKE_OPTIONS=${CMAKE_OPTIONS:-}
 CONFIRM_OPTION=${CONFIRM_OPTION:-$DEFAULT_CONFIRM_OPTION}
 
@@ -71,6 +69,28 @@ if [ -z "$PLATFORM" ]; then
     esac
 fi
 
+# Detect TARGET_ABI if not specified or set to default
+if [ -z "$TARGET_ABI" ] || [ "$TARGET_ABI" == "default" ]; then
+    case "$(uname -m)" in
+        x86_64)
+            TARGET_ABI="x86_64"
+            ;;
+        aarch64 | arm64)
+            TARGET_ABI="aarch64"
+            ;;
+        i386 | i686)
+            TARGET_ABI="x86"
+            ;;
+        armv7l)
+            TARGET_ABI="armeabi-v7a"
+            ;;
+        *)
+            echo "Unsupported current system architecture: $(uname -m)"
+            exit 1
+            ;;
+    esac
+fi
+
 # Set project root and build directories
 PROJECT_ROOT=$(dirname "$0")
 BUILD_DIR=${PROJECT_ROOT}/cmake-build-${BUILD_TYPE}-${PLATFORM}
@@ -79,38 +99,79 @@ BUILD_DIR=${PROJECT_ROOT}/cmake-build-${BUILD_TYPE}-${PLATFORM}
 rm -rf ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 
+# Map platform to CMAKE_SYSTEM_NAME
+case "$PLATFORM" in
+    android)
+        CMAKE_SYSTEM_NAME="Android"
+        ;;
+    linux)
+        CMAKE_SYSTEM_NAME="Linux"
+        ;;
+    macos)
+        CMAKE_SYSTEM_NAME="Darwin"
+        ;;
+    windows)
+        CMAKE_SYSTEM_NAME="Windows"
+        ;;
+    *)
+        echo "Unsupported platform: $PLATFORM"
+        exit 1
+        ;;
+esac
+
+# Map arch-abi to CMAKE_SYSTEM_PROCESSOR
+case "$TARGET_ABI" in
+    x86_64)
+        CMAKE_SYSTEM_PROCESSOR="x86_64"
+        ;;
+    aarch64)
+        CMAKE_SYSTEM_PROCESSOR="aarch64"
+        ;;
+    arm64)
+        CMAKE_SYSTEM_PROCESSOR="aarch64"
+        ;;
+    x86)
+        CMAKE_SYSTEM_PROCESSOR="x86"
+        ;;
+    arm64-v8a)
+        CMAKE_SYSTEM_PROCESSOR="aarch64"
+        ;;
+    armeabi-v7a)
+        CMAKE_SYSTEM_PROCESSOR="armv7-a"
+        ;;
+    *)
+        echo "Unsupported arch-abi: $TARGET_ABI"
+        echo "Please choose arch-abi from [x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a]"
+        exit 1
+        ;;
+esac
+
 # Platform-specific configuration
 case "$PLATFORM" in
     android)
-        if [ -z "$ANDROID_SDK" ]; then
-            echo "Please set ANDROID_SDK environment variable or pass it as a parameter."
-            exit 1
-        fi
-
-        if [ -z "$ANDROID_NDK" ]; then
-            echo "Please set ANDROID_NDK environment variable or pass it as a parameter."
-            exit 1
-        fi
-
-        export ANDROID_SDK
-        export ANDROID_NDK
-        export ANDROID_VER
-        export ANDROID_ABI
-
-        TOOLCHAIN_FILE=./apex-toolchain/android-toolchain.cmake #${ANDROID_NDK}/build/cmake/android.toolchain.cmake
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} -DANDROID_NDK=${ANDROID_NDK}"
+#        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_SDK=${ANDROID_SDK}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
         ;;
 
     linux)
         CMAKE_OPTIONS="${CMAKE_OPTIONS}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
         ;;
 
     macos)
         CMAKE_OPTIONS="${CMAKE_OPTIONS}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
         ;;
 
     windows)
         CMAKE_OPTIONS="${CMAKE_OPTIONS}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
         ;;
 
     *)
