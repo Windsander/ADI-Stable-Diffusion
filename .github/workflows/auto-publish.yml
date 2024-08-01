@@ -1,0 +1,133 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - 'release/release-v*'
+
+jobs:
+  build-and-deploy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [linux, macos, windows]
+        arch: [x86_64]  # 可以根据需要添加其他架构
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build zip tar
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install cmake ninja zip
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install cmake ninja zip
+
+      - name: Build project
+        run: |
+          bash ./auto_build.sh --platform ${{ matrix.platform }} --build-type minsizerel
+
+      - name: Create release directory
+        run: |
+          mkdir -p release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
+
+      - name: Copy files to release directory (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cp -r include release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+
+      - name: Copy files to release directory (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cp -r include release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ github.ref_name }}/
+
+      - name: Copy files to release directory (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cp -r include release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel-windows/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel-windows/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ github.ref_name }}/
+
+      - name: Create zip archive (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          tar -czvf release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
+
+      - name: Create zip archive (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          tar -czvf release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
+
+      - name: Create zip archive (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          zip -r release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
+
+      - name: Read changelog
+        id: read_changelog
+        run: |
+          CHANGELOG=$(cat changelog.md)
+          echo "::set-output name=changelog::$CHANGELOG"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: ${{ steps.read_changelog.outputs.changelog }}
+
+      - name: Upload release asset (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+          asset_name: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload release asset (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+          asset_name: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload release asset (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip
+          asset_name: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
