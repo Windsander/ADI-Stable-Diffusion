@@ -1,4 +1,4 @@
-name: Deploy
+name: Auto publish packages
 
 on:
   push:
