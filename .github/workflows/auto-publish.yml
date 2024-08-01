@@ -1,4 +1,4 @@
-name: Auto publish packages
+name: Auto publish packages (Release)
 
 on:
   push:
@@ -6,101 +6,39 @@ on:
       - 'release/release-v*'
 
 jobs:
-  build-and-deploy:
+  release:
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         platform: [ linux, macos, windows, android ]
-        arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
         build_type: [ minsizerel ]
         include:
-          - os: windows-latest      # Platform: Windows-MSVC (x86_64)
+          - platform: windows       # Platform: Windows (keep: x86_64, x86, arm64)
+            arch: [ x86_64, x86, arm64 ]
             c_compiler: cl
             cpp_compiler: cl
-            platform: windows
-            arch: x86_64
-          - os: windows-latest      # Platform: Windows-MSVC (x86)
-            c_compiler: cl
-            cpp_compiler: cl
-            platform: windows
-            arch: x86
-          - os: windows-latest      # Platform: Windows-MSVC (arm64)
-            c_compiler: cl
-            cpp_compiler: cl
-            platform: windows
-            arch: arm64
-          - os: ubuntu-latest       # Platform: Linux-Clang (x86_64)
-            c_compiler: clang
-            cpp_compiler: clang++
-            platform: linux
-            arch: x86_64
-          - os: ubuntu-latest       # Platform: Linux-Clang (aarch64)
-            c_compiler: clang
-            cpp_compiler: clang++
-            platform: linux
-            arch: aarch64
-          - os: macos-latest        # Platform: MacOS-Clang (x86_64)
-            c_compiler: clang
-            cpp_compiler: clang++
-            platform: macos
-            arch: x86_64
-          - os: macos-latest        # Platform: MacOS-Clang (arm64)
-            c_compiler: clang
-            cpp_compiler: clang++
-            platform: macos
-            arch: arm64
-          - os: android             # Platform: Android-GCC (x86_64)
+          - platform: linux         # Platform: Linux (keep: x86_64, aarch64)
+            arch: [ x86_64, aarch64 ]
             c_compiler: gcc
             cpp_compiler: g++
-            platform: android
-            arch: x86_64
-          - os: android             # Platform: Android-GCC (x86)
-            c_compiler: gcc
-            cpp_compiler: g++
-            platform: android
-            arch: x86
-          - os: android             # Platform: Android-GCC (arm64-v8a)
-            c_compiler: gcc
-            cpp_compiler: g++
-            platform: android
-            arch: arm64-v8a
-          - os: android             # Platform: Android-GCC (armeabi-v7a)
-            c_compiler: gcc
-            cpp_compiler: g++
-            platform: android
-            arch: armeabi-v7a
+          - platform: macos         # Platform: MacOS (keep: x86_64, arm64)
+            arch: [ x86_64, arm64 ]
+            c_compiler: clang
+            cpp_compiler: clang++
+          - platform: android       # Platform: Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
+            arch: [ x86_64, x86, arm64-v8a, armeabi-v7a ]
+            c_compiler: clang
+            cpp_compiler: clang++
         exclude:
-          # Linux (keep: x86_64, aarch64)
-          - os: ubuntu-latest
-            arch: arm64-v8a
-          - os: ubuntu-latest
-            arch: armeabi-v7a
-          - os: ubuntu-latest
-            arch: x86
-          - os: ubuntu-latest
-            arch: arm64
-          # macOS (keep: x86_64, arm64)
-          - os: macos-latest
-            arch: arm64-v8a
-          - os: macos-latest
-            arch: armeabi-v7a
-          - os: macos-latest
-            arch: x86
-          - os: macos-latest
-            arch: aarch64
-          # Windows (keep: x86_64, x86, arm64)
+          # Exclude unsupported compiler combinations
           - os: windows-latest
-            arch: arm64-v8a
-          - os: windows-latest
-            arch: armeabi-v7a
-          - os: windows-latest
-            arch: aarch64
-          # Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
-          - os: android
-            arch: aarch64
-          - os: android
-            arch: arm64
+            platform: [ linux, macos, android ]
+          - os: ubuntu-latest
+            platform: [ macos, windows ]
+          - os: macos-latest
+            platform: [ linux, windows, android ]
 
     steps:
       - name: Checkout repository
