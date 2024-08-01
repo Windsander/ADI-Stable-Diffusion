@@ -14,28 +14,64 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
+        platform: [ windows, linux, macos, android ]
         build_type: [ minsizerel ]
+        arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
         include:
           - os: windows-latest
             platform: windows       # Platform: Windows (keep: x86_64, x86, arm64)
-            arch: [ x86_64, x86, arm64 ]
             c_compiler: cl
             cpp_compiler: cl
           - os: macos-latest
             platform: macos         # Platform: MacOS (keep: x86_64, arm64)
-            arch: [ x86_64, arm64 ]
             c_compiler: clang
             cpp_compiler: clang++
           - os: ubuntu-latest
             platform: linux         # Platform: Linux (keep: x86_64, aarch64)
-            arch: [ x86_64, aarch64 ]
             c_compiler: gcc
             cpp_compiler: g++
           - os: ubuntu-latest
             platform: android       # Platform: Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
-            arch: [ x86_64, x86, arm64-v8a, armeabi-v7a ]
             c_compiler: clang
             cpp_compiler: clang++
+        exclude:
+          # Linux (keep: x86_64, aarch64)
+          - platform: linux
+            arch: arm64-v8a
+          - platform: linux
+            arch: armeabi-v7a
+          - platform: linux
+            arch: x86
+          - platform: linux
+            arch: arm64
+          # macOS (keep: x86_64, arm64)
+          - platform: macos
+            arch: arm64-v8a
+          - platform: macos
+            arch: armeabi-v7a
+          - platform: macos
+            arch: x86
+          - platform: macos
+            arch: aarch64
+          # Windows (keep: x86_64, x86, arm64)
+          - platform: windows
+            arch: arm64-v8a
+          - platform: windows
+            arch: armeabi-v7a
+          - platform: windows
+            arch: aarch64
+          # Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
+          - platform: android
+            arch: aarch64
+          - platform: android
+            arch: arm64
+          # Exclude unsupported compiler combinations
+          - os: windows-latest
+            platform: [ linux, macos, android ]
+          - os: ubuntu-latest
+            platform: [ windows, macos ]
+          - os: macos-latest
+            platform: [ windows, linux, android ]
 
     steps:
       - uses: actions/checkout@v4
