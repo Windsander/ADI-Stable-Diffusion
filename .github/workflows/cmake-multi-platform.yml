@@ -8,101 +8,100 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest, android ]
         build_type: [ MinSizeRel, Debug ]
         c_compiler: [ gcc, clang, cl ]
         arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
         include:
-          - os: windows-latest      # Platform: Windows-MSVC (x86_64)
+          - platform: windows       # Platform: Windows-MSVC (x86_64)
             c_compiler: cl
             cpp_compiler: cl
-            platform: windows
+            os: windows-latest
             arch: x86_64
-          - os: windows-latest      # Platform: Windows-MSVC (x86)
+          - platform: windows       # Platform: Windows-MSVC (x86)
             c_compiler: cl
             cpp_compiler: cl
-            platform: windows
+            os: windows-latest
             arch: x86
-          - os: windows-latest      # Platform: Windows-MSVC (arm64)
+          - platform: windows       # Platform: Windows-MSVC (arm64)
             c_compiler: cl
             cpp_compiler: cl
-            platform: windows
+            os: windows-latest
             arch: arm64
-          - os: ubuntu-latest       # Platform: Linux-Clang (x86_64)
+          - platform: linux         # Platform: Linux-Clang (x86_64)
             c_compiler: clang
             cpp_compiler: clang++
-            platform: linux
+            os: ubuntu-latest
             arch: x86_64
-          - os: ubuntu-latest       # Platform: Linux-Clang (aarch64)
+          - platform: linux         # Platform: Linux-Clang (aarch64)
             c_compiler: clang
             cpp_compiler: clang++
-            platform: linux
+            os: ubuntu-latest
             arch: aarch64
-          - os: macos-latest        # Platform: MacOS-Clang (x86_64)
+          - platform: macos         # Platform: MacOS-Clang (x86_64)
             c_compiler: clang
             cpp_compiler: clang++
-            platform: macos
+            os: macos-latest
             arch: x86_64
-          - os: macos-latest        # Platform: MacOS-Clang (arm64)
+          - platform: macos         # Platform: MacOS-Clang (arm64)
             c_compiler: clang
             cpp_compiler: clang++
-            platform: macos
+            os: macos-latest
             arch: arm64
-          - os: android             # Platform: Android-GCC (x86_64)
+          - platform: android       # Platform: Android-GCC (x86_64)
             c_compiler: gcc
             cpp_compiler: g++
-            platform: android
+            os: ubuntu-latest
             arch: x86_64
-          - os: android             # Platform: Android-GCC (x86)
+          - platform: android       # Platform: Android-GCC (x86)
             c_compiler: gcc
             cpp_compiler: g++
-            platform: android
+            os: ubuntu-latest
             arch: x86
-          - os: android             # Platform: Android-GCC (arm64-v8a)
+          - platform: android       # Platform: Android-GCC (arm64-v8a)
             c_compiler: gcc
             cpp_compiler: g++
-            platform: android
+            os: ubuntu-latest
             arch: arm64-v8a
-          - os: android             # Platform: Android-GCC (armeabi-v7a)
+          - platform: android       # Platform: Android-GCC (armeabi-v7a)
             c_compiler: gcc
             cpp_compiler: g++
-            platform: android
+            os: ubuntu-latest
             arch: armeabi-v7a
         exclude:
           # Linux (keep: x86_64, aarch64)
-          - os: ubuntu-latest
+          - platform: linux
             arch: arm64-v8a
-          - os: ubuntu-latest
+          - platform: linux
             arch: armeabi-v7a
-          - os: ubuntu-latest
+          - platform: linux
             arch: x86
-          - os: ubuntu-latest
+          - platform: linux
             arch: arm64
           # macOS (keep: x86_64, arm64)
-          - os: macos-latest
+          - platform: macos
             arch: arm64-v8a
-          - os: macos-latest
+          - platform: macos
             arch: armeabi-v7a
-          - os: macos-latest
+          - platform: macos
             arch: x86
-          - os: macos-latest
+          - platform: macos
             arch: aarch64
           # Windows (keep: x86_64, x86, arm64)
-          - os: windows-latest
+          - platform: windows
             arch: arm64-v8a
-          - os: windows-latest
+          - platform: windows
             arch: armeabi-v7a
-          - os: windows-latest
+          - platform: windows
             arch: aarch64
           # Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
-          - os: android
+          - platform: android
             arch: aarch64
-          - os: android
+          - platform: android
             arch: arm64
           # Exclude unsupported compiler combinations
           - os: windows-latest
