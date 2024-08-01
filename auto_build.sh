@@ -93,7 +93,7 @@ fi
 
 # Set project root and build directories
 PROJECT_ROOT=$(dirname "$0")
-BUILD_DIR=${PROJECT_ROOT}/cmake-build-${BUILD_TYPE}-${PLATFORM}
+BUILD_DIR=${PROJECT_ROOT}/cmake-build-${BUILD_TYPE}-${PLATFORM}-${TARGET_ABI}
 
 # Clean old build directory
 rm -rf ${BUILD_DIR}
@@ -128,16 +128,16 @@ case "$TARGET_ABI" in
         CMAKE_SYSTEM_PROCESSOR="aarch64"
         ;;
     arm64)
-        CMAKE_SYSTEM_PROCESSOR="aarch64"
+        CMAKE_SYSTEM_PROCESSOR="arm64"
         ;;
     x86)
         CMAKE_SYSTEM_PROCESSOR="x86"
         ;;
     arm64-v8a)
-        CMAKE_SYSTEM_PROCESSOR="aarch64"
+        CMAKE_SYSTEM_PROCESSOR="arm64-v8a"
         ;;
     armeabi-v7a)
-        CMAKE_SYSTEM_PROCESSOR="armv7-a"
+        CMAKE_SYSTEM_PROCESSOR="armeabi-v7a"
         ;;
     *)
         echo "Unsupported arch-abi: $TARGET_ABI"

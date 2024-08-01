@@ -27,6 +27,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_static.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/apex-toolchain/generic-toolchain.cmake)
 
 PROJECT("onnxruntime-sd")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
@@ -357,7 +358,7 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Done ############
 
 # check command line available
 if (ORT_BUILD_COMMAND_LINE)
-    message("[onnx.runtime.sd][I] build command line tools at ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
+    message("[onnx.runtime.sd][I] build command line tools at ${Red}${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${ColourReset}")
     add_subdirectory(clitools)
 endif()
 
