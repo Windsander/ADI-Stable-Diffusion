@@ -26,18 +26,18 @@ endif()
 
 # Set the correct compiler paths based on the host operating system and processor
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${CMAKE_HOST_SYSTEM_PROCESSOR}/bin)
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${CMAKE_HOST_SYSTEM_PROCESSOR})
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/windows-${CMAKE_HOST_SYSTEM_PROCESSOR}/bin)
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/windows-${CMAKE_HOST_SYSTEM_PROCESSOR})
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-${CMAKE_HOST_SYSTEM_PROCESSOR}/bin)
+    set(ANDROID_TOOLCHAIN_PATH ${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-${CMAKE_HOST_SYSTEM_PROCESSOR})
 else()
     message(FATAL_ERROR "Unsupported CMAKE_HOST_SYSTEM_NAME: ${CMAKE_HOST_SYSTEM_NAME}")
 endif()
 
-set(CMAKE_C_COMPILER ${ANDROID_TOOLCHAIN_PATH}/clang)
-set(CMAKE_CXX_COMPILER ${ANDROID_TOOLCHAIN_PATH}/clang++)
+set(CMAKE_C_COMPILER ${ANDROID_TOOLCHAIN_PATH}/bin/clang)
+set(CMAKE_CXX_COMPILER ${ANDROID_TOOLCHAIN_PATH}/bin/clang++)
 
 # Set appropriate flags for the target architecture
-set(CMAKE_C_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_NDK}/toolchains/llvm/prebuilt/${CMAKE_HOST_SYSTEM_NAME}-x86_64/sysroot" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_NDK}/toolchains/llvm/prebuilt/${CMAKE_HOST_SYSTEM_NAME}-x86_64/sysroot" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_TOOLCHAIN_PATH}/sysroot" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_TOOLCHAIN_PATH}/sysroot" CACHE STRING "" FORCE)
