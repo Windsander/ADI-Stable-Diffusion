@@ -8,11 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
         build_type: [ MinSizeRel, Debug ]
         c_compiler: [ gcc, clang, cl ]
         arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
