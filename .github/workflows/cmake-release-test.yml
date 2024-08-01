@@ -14,33 +14,28 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        platform: [ linux, macos, windows, android ]
         build_type: [ minsizerel ]
         include:
-          - platform: windows       # Platform: Windows (keep: x86_64, x86, arm64)
+          - os: windows-latest
+            platform: windows       # Platform: Windows (keep: x86_64, x86, arm64)
             arch: [ x86_64, x86, arm64 ]
             c_compiler: cl
             cpp_compiler: cl
-          - platform: linux         # Platform: Linux (keep: x86_64, aarch64)
-            arch: [ x86_64, aarch64 ]
-            c_compiler: gcc
-            cpp_compiler: g++
-          - platform: macos         # Platform: MacOS (keep: x86_64, arm64)
+          - os: macos-latest
+            platform: macos         # Platform: MacOS (keep: x86_64, arm64)
             arch: [ x86_64, arm64 ]
             c_compiler: clang
             cpp_compiler: clang++
-          - platform: android       # Platform: Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
+          - os: ubuntu-latest
+            platform: linux         # Platform: Linux (keep: x86_64, aarch64)
+            arch: [ x86_64, aarch64 ]
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            platform: android       # Platform: Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
             arch: [ x86_64, x86, arm64-v8a, armeabi-v7a ]
             c_compiler: clang
             cpp_compiler: clang++
-        exclude:
-          # Exclude unsupported compiler combinations
-          - os: windows-latest
-            platform: [ linux, macos, android ]
-          - os: ubuntu-latest
-            platform: [ macos, windows ]
-          - os: macos-latest
-            platform: [ linux, windows, android ]
 
     steps:
       - uses: actions/checkout@v4
