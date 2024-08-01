@@ -130,7 +130,7 @@ elseif (LINUX AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")  # for Linux x86_64
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
-    set(CURRENT_PLATFORM linux-x86_64)
+    set(CURRENT_PLATFORM linux-x64)
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CUDA")
 elseif (LINUX AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64") # for Linux aarch64
@@ -148,7 +148,7 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE ON)
-    set(CURRENT_PLATFORM Android)
+    set(CURRENT_PLATFORM android-${CMAKE_SYSTEM_PROCESSOR})
     set(SD_ORT_ONLINE_AVAIL ON)
     set(SD_STANDALONE OFF)
 
@@ -158,6 +158,7 @@ elseif (ANDROID)                    # for Android
     set(ENGINE_NAME "ORT-CPU-NNAPI")
     message("[onnx.runtime.sd][I] target arch abi set to ${Red}${CMAKE_SYSTEM_PROCESSOR}:${CMAKE_ANDROID_ARCH_ABI}${ColourReset} minsdk ${Cyan}${CMAKE_SYSTEM_VERSION}${ColourReset}")
 endif ()
+message("[onnx.runtime.sd][I] target processor set to ${Red}${CMAKE_SYSTEM_PROCESSOR}${ColourReset}")
 message("[onnx.runtime.sd][I] target platform set to ${Red}${CMAKE_SYSTEM_NAME}${ColourReset}")
 message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${ColourReset}")
 

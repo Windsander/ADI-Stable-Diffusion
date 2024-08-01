@@ -67,11 +67,21 @@ jobs:
             arch: arm64
           # Exclude unsupported compiler combinations
           - os: windows-latest
-            platform: [ linux, macos, android ]
+            platform: linux
+          - os: windows-latest
+            platform: macos
+          - os: windows-latest
+            platform: android
           - os: ubuntu-latest
-            platform: [ windows, macos ]
+            platform: windows
+          - os: ubuntu-latest
+            platform: macos
           - os: macos-latest
-            platform: [ windows, linux, android ]
+            platform: windows
+          - os: macos-latest
+            platform: linux
+          - os: macos-latest
+            platform: android
 
     steps:
       - uses: actions/checkout@v4
