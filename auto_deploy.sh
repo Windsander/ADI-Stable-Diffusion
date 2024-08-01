@@ -46,8 +46,8 @@ read_changelog() {
 # Create Homebrew Formula
 create_homebrew_formula() {
     echo "Creating Homebrew Formula..."
-    mkdir -p Formula
-    cat <<EOF > Formula/adi.rb
+    mkdir -p publish
+    cat <<EOF > publish/adi.rb
 class Adi < Formula
   desc "$DESCRIPTION"
   homepage "$REPO_URL"
@@ -122,8 +122,8 @@ $CHANGELOG
 EOF
     debuild -us -uc
     cd ..
-    mkdir -p ../debian
-    mv ../adi_$VERSION-1_amd64.deb ../debian/
+    mkdir -p ../publish
+    mv ../adi_$VERSION-1_amd64.deb ../publish/
 }
 
 # Create RPM Package
@@ -179,8 +179,8 @@ $CHANGELOG
 EOF
 
     rpmbuild -ba ~/rpmbuild/SPECS/adi.spec
-    mkdir -p ../rpms/x86_64
-    mv ~/rpmbuild/RPMS/x86_64/adi-$VERSION-1.x86_64.rpm ../rpms/x86_64/
+    mkdir -p ../publish
+    mv ~/rpmbuild/RPMS/x86_64/adi-$VERSION-1.x86_64.rpm ../publish/
 }
 
 # Main function
