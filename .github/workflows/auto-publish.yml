@@ -10,9 +10,97 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        platform: [linux, macos, windows]
-        arch: [x86_64]  # 可以根据需要添加其他架构
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        platform: [ linux, macos, windows, android ]
+        arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
+        build_type: [ minsizerel ]
+        include:
+          - os: windows-latest      # Platform: Windows-MSVC (x86_64)
+            c_compiler: cl
+            cpp_compiler: cl
+            platform: windows
+            arch: x86_64
+          - os: windows-latest      # Platform: Windows-MSVC (x86)
+            c_compiler: cl
+            cpp_compiler: cl
+            platform: windows
+            arch: x86
+          - os: windows-latest      # Platform: Windows-MSVC (arm64)
+            c_compiler: cl
+            cpp_compiler: cl
+            platform: windows
+            arch: arm64
+          - os: ubuntu-latest       # Platform: Linux-Clang (x86_64)
+            c_compiler: clang
+            cpp_compiler: clang++
+            platform: linux
+            arch: x86_64
+          - os: ubuntu-latest       # Platform: Linux-Clang (aarch64)
+            c_compiler: clang
+            cpp_compiler: clang++
+            platform: linux
+            arch: aarch64
+          - os: macos-latest        # Platform: MacOS-Clang (x86_64)
+            c_compiler: clang
+            cpp_compiler: clang++
+            platform: macos
+            arch: x86_64
+          - os: macos-latest        # Platform: MacOS-Clang (arm64)
+            c_compiler: clang
+            cpp_compiler: clang++
+            platform: macos
+            arch: arm64
+          - os: android             # Platform: Android-GCC (x86_64)
+            c_compiler: gcc
+            cpp_compiler: g++
+            platform: android
+            arch: x86_64
+          - os: android             # Platform: Android-GCC (x86)
+            c_compiler: gcc
+            cpp_compiler: g++
+            platform: android
+            arch: x86
+          - os: android             # Platform: Android-GCC (arm64-v8a)
+            c_compiler: gcc
+            cpp_compiler: g++
+            platform: android
+            arch: arm64-v8a
+          - os: android             # Platform: Android-GCC (armeabi-v7a)
+            c_compiler: gcc
+            cpp_compiler: g++
+            platform: android
+            arch: armeabi-v7a
+        exclude:
+          # Linux (keep: x86_64, aarch64)
+          - os: ubuntu-latest
+            arch: arm64-v8a
+          - os: ubuntu-latest
+            arch: armeabi-v7a
+          - os: ubuntu-latest
+            arch: x86
+          - os: ubuntu-latest
+            arch: arm64
+          # macOS (keep: x86_64, arm64)
+          - os: macos-latest
+            arch: arm64-v8a
+          - os: macos-latest
+            arch: armeabi-v7a
+          - os: macos-latest
+            arch: x86
+          - os: macos-latest
+            arch: aarch64
+          # Windows (keep: x86_64, x86, arm64)
+          - os: windows-latest
+            arch: arm64-v8a
+          - os: windows-latest
+            arch: armeabi-v7a
+          - os: windows-latest
+            arch: aarch64
+          # Android (keep: x86_64, x86, arm64-v8a, armeabi-v7a)
+          - os: android
+            arch: aarch64
+          - os: android
+            arch: arm64
 
     steps:
       - name: Checkout repository
@@ -39,9 +127,31 @@ jobs:
         run: |
           choco install cmake ninja zip
 
-      - name: Build project
+      - name: Set up Android SDK and NDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 27
+          ndk-version: 26.1.10909125
+          cmake-version: 3.29.5
+
+      - name: Build project (Linux, macOS, Windows)
+        if: matrix.platform != 'android'
         run: |
-          bash ./auto_build.sh --platform ${{ matrix.platform }} --build-type minsizerel
+          bash ./auto_build.sh --platform ${{ matrix.platform }} --build-type ${{ matrix.build_type }}
+
+      - name: Build project (Android)
+        if: matrix.platform == 'android'
+        run: |
+          bash ./auto_build.sh --platform android \
+                               --cmake "cmake" \
+                               --ninja "ninja" \
+                               --build-type ${{ matrix.build_type }} \
+                               --jobs 4 \
+                               --android-sdk "$ANDROID_SDK_ROOT" \
+                               --android-ndk "$ANDROID_NDK_HOME" \
+                               --android-ver 27 \
+                               -c
 
       - name: Create release directory
         run: |
@@ -63,7 +173,7 @@ jobs:
           cp -r cmake-build-minsizerel/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
           cp -r cmake-build-minsizerel/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
           cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
-          cp LICENSE release-${{ matrix.platform }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
 
       - name: Copy files to release directory (Windows)
         if: matrix.os == 'windows-latest'
@@ -72,7 +182,16 @@ jobs:
           cp -r cmake-build-minsizerel-windows/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
           cp -r cmake-build-minsizerel-windows/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
           cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
-          cp LICENSE release-${{ matrix.platform }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+
+      - name: Copy files to release directory (Android)
+        if: matrix.platform == 'android'
+        run: |
+          cp -r include release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/bin release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp -r cmake-build-minsizerel/lib release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp README.md release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
+          cp LICENSE release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}/
 
       - name: Create zip archive (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -86,6 +205,11 @@ jobs:
 
       - name: Create zip archive (Windows)
         if: matrix.os == 'windows-latest'
+        run: |
+          zip -r release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
+
+      - name: Create zip archive (Android)
+        if: matrix.platform == 'android'
         run: |
           zip -r release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}
 
@@ -125,6 +249,15 @@ jobs:
 
       - name: Upload release asset (Windows)
         if: matrix.os == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip
+          asset_name: release-${{ matrix.platform }}-${{ matrix.arch }}-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload release asset (Android)
+        if: matrix.platform == 'android'
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}

@@ -147,8 +147,8 @@ endfunction()
 function(download_and_decompress url filename output_dir)
     file(MAKE_DIRECTORY ${output_dir})
 
-    # Check if the platform is Linux and filename contains x86_64
-    if (LINUX AND filename MATCHES "x86_64")
+    # Check if the platform is Linux/Windows and filename contains x86_64
+    if ((LINUX OR WIN32) AND filename MATCHES "x86_64")
         string(REPLACE "x86_64" "x64" modified_filename ${filename})
         string(REPLACE ${filename} ${modified_filename} download_url ${url})
         message(STATUS "Downloading ${download_url} as ${filename}")
