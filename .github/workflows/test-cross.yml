@@ -60,6 +60,11 @@ jobs:
             c_compiler: gcc
           - os: macos-latest
             c_compiler: cl
+          # Exclude unsupported compiler platform (cross need heavy config cannot be auto)
+          - os: ubuntu-latest
+            platform: windows
+          - os: ubuntu-latest
+            platform: macos
 
     steps:
       - uses: actions/checkout@v4
@@ -99,6 +104,8 @@ jobs:
             brew install arm-unknown-linux-gnueabihf
           elif [[ "${{ matrix.arch }}" == "x86" ]]; then
             brew install i686-unknown-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+            brew install x86_64-unknown-linux-gnu
           elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
             brew install aarch64-unknown-linux-gnu
           elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
@@ -113,7 +120,6 @@ jobs:
           choco install mingw
           # Install MSVC build tools
           choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
-          refreshenv
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
