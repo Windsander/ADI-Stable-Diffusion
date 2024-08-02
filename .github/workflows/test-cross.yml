@@ -120,6 +120,40 @@ jobs:
           choco install mingw
           # Install MSVC build tools
           choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
+          # Install MinGW-w64 for cross-compiling to Linux
+          choco install mingw-w64 -y
+           
+          if (${{ matrix.arch }} -eq 'x86_64') {
+            # For x86_64 Linux
+            choco install mingw-w64-x86_64-linux-gnu
+            setx CC x86_64-linux-gnu-gcc
+            setx CXX x86_64-linux-gnu-g++
+          } elseif (${{ matrix.arch }} -eq 'aarch64') {
+            # For AArch64 Linux
+            choco install mingw-w64-aarch64-linux-gnu
+            setx CC aarch64-linux-gnu-gcc
+            setx CXX aarch64-linux-gnu-g++
+          } elseif (${{ matrix.arch }} -eq 'arm64') {
+            # For ARM64 Linux
+            choco install mingw-w64-arm-linux-gnueabihf
+            setx CC arm-linux-gnueabihf-gcc
+            setx CXX arm-linux-gnueabihf-g++
+          } elseif (${{ matrix.arch }} -eq 'x86') {
+            # For x86 Linux
+            choco install mingw-w64-i686-linux-gnu
+            setx CC i686-linux-gnu-gcc
+            setx CXX i686-linux-gnu-g++
+          } elseif (${{ matrix.arch }} -eq 'arm64-v8a') {
+            # For ARM64-v8a Linux
+            choco install mingw-w64-aarch64-linux-gnu
+            setx CC aarch64-linux-gnu-gcc
+            setx CXX aarch64-linux-gnu-g++
+          } elseif (${{ matrix.arch }} -eq 'armeabi-v7a') {
+            # For ARMv7-a Linux
+            choco install mingw-w64-arm-linux-gnueabihf
+            setx CC arm-linux-gnueabihf-gcc
+            setx CXX arm-linux-gnueabihf-g++
+          }
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'

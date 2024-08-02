@@ -16,7 +16,7 @@ endif()
 
 # Set the correct compiler paths and flags based on the host operating system
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    find_cross_compiler(clang gcc)
+    find_cross_compiler(gcc clang)
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     find_native_compiler(gcc clang)
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
