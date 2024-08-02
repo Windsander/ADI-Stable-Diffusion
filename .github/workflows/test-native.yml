@@ -90,7 +90,9 @@ jobs:
 
       - name: Install dependencies on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install dependencies on macOS
         if: runner.os == 'macOS'
