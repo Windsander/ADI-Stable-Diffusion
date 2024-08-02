@@ -39,7 +39,23 @@ message(STATUS "Found compiler: clang at ${ANDROID_TOOLCHAIN_PATH}")
 
 set(CMAKE_C_COMPILER ${ANDROID_TOOLCHAIN_PATH}/bin/clang)
 set(CMAKE_CXX_COMPILER ${ANDROID_TOOLCHAIN_PATH}/bin/clang++)
-find_library(log-lib log)
+
+set(NDK_PROC_aarch64_ABI "arm64-v8a")
+set(NDK_PROC_armv7-a_ABI "armeabi-v7a")
+set(NDK_PROC_armv6_ABI   "armeabi-v6")
+set(NDK_PROC_armv5te_ABI "armeabi")
+set(NDK_PROC_i686_ABI    "x86")
+set(NDK_PROC_mips_ABI    "mips")
+set(NDK_PROC_mips64_ABI  "mips64")
+set(NDK_PROC_x86_64_ABI  "x86_64")
+
+set(NDK_ARCH_arm64_ABI  "arm64-v8a")
+set(NDK_ARCH_arm_ABI    "armeabi")
+set(NDK_ARCH_mips_ABI   "mips")
+set(NDK_ARCH_mips64_ABI "mips64")
+set(NDK_ARCH_x86_ABI    "x86")
+set(NDK_ARCH_x86_64_ABI "x86_64")
+
 # Set appropriate flags for the target architecture
 set(CMAKE_C_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_TOOLCHAIN_PATH}/sysroot" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS "-target ${TARGET_TRIPLE}${CMAKE_SYSTEM_VERSION} --sysroot=${ANDROID_TOOLCHAIN_PATH}/sysroot" CACHE STRING "" FORCE)
