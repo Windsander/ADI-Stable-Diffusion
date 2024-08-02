@@ -5,7 +5,7 @@
   <a href="/LICENSE"><img src="https://img.shields.io/badge/License-GNU_GPLv3-F4E28D"/></a>
   <a href="https://onnxruntime.ai"><img src="https://img.shields.io/badge/Powered%20by-ONNXRuntime-blue"/></a>
   <a href="https://github.com/Windsander/ADI-Stable-Diffusion/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/Windsander/ADI-Stable-Diffusion/cmake-multi-platform.yml?label=All%20platforms" alt="CI Status"/>
+    <img src="https://img.shields.io/github/actions/workflow/status/Windsander/ADI-Stable-Diffusion/test-native.yml?label=All%20platforms" alt="CI Status"/>
   </a>
 </p>
 

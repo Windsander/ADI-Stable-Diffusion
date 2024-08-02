@@ -1,4 +1,4 @@
-name: Cross Compilation on multiple platforms
+name: <Test> Cross Compiling
 
 on:
   push:

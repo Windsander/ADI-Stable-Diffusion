@@ -1,4 +1,4 @@
-name: Cross Compilation on multiple platforms
+name: <Test> Native Compiling
 
 on:
   push:
@@ -70,8 +70,6 @@ jobs:
             platform: linux
           - os: windows-latest
             platform: macos
-          - os: windows-latest
-            platform: android
           - os: ubuntu-latest
             platform: windows
           - os: ubuntu-latest
@@ -80,8 +78,6 @@ jobs:
             platform: windows
           - os: macos-latest
             platform: linux
-          - os: macos-latest
-            platform: android
 
     steps:
       - uses: actions/checkout@v4
