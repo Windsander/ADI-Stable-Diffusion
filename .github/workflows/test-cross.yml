@@ -72,15 +72,48 @@ jobs:
 
       - name: Install dependencies on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build gcc g++
+          if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          elif [[ "${{ matrix.arch }}" == "x86" ]]; then
+          sudo apt-get install -y gcc-multilib g++-multilib
+          elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
+          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          fi
 
       - name: Install dependencies on macOS
         if: runner.os == 'macOS'
-        run: brew install ninja
+        run: |
+          brew install ninja
+          brew install llvm
+          brew tap messense/macos-cross-toolchains
+          if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
+            brew install aarch64-unknown-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            brew install arm-unknown-linux-gnueabihf
+          elif [[ "${{ matrix.arch }}" == "x86" ]]; then
+            brew install i686-unknown-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
+            brew install aarch64-unknown-linux-gnu
+          elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
+            brew install armv7-unknown-linux-gnueabihf
+          fi
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
-        run: choco install ninja
+        run: |
+          choco install ninja
+          choco install llvm
+          choco install mingw
+          # Install MSVC build tools
+          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
+          refreshenv
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
