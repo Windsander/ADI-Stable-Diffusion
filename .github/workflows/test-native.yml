@@ -112,6 +112,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
+            clang -print-targets
             bash ./auto_build.sh --platform android \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
