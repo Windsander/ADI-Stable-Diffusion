@@ -1,0 +1,65 @@
+name: 02 Auto deploy clitools (Release)
+
+on:
+  workflow_run:
+    workflows: ["01 Auto publish packages (Release)"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v2
+
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential devscripts debhelper rpm
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          VERSION=$(echo "${GITHUB_REF#refs/heads/release-}")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+
+      - name: Run deploy script
+        run: |
+          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+          chmod +x auto_deploy.sh
+          ./auto_deploy.sh --version $VERSION
+
+      - name: Checkout or create deploy branch
+        run: |
+          git fetch origin
+          if git rev-parse --verify origin/deploy; then
+            git checkout deploy
+          else
+            git checkout --orphan deploy
+            git reset --hard
+            git commit --allow-empty -m "Initializing deploy branch"
+            git push origin deploy
+          fi
+
+      - name: Copy and rename deployment files
+        run: |
+          cd $GITHUB_WORKSPACE
+          cp *.rb *.deb *.rpm README.md LICENSE .
+          if [ -f CHANGELOG.md ]; then
+            cp CHANGELOG.md CHANGELOG-${VERSION}.md
+          fi
+
+      - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.rb *.deb *.rpm README.md LICENSE CHANGELOG-${VERSION}.md
+          git commit -m "Deploy version $VERSION"
+          git push origin deploy

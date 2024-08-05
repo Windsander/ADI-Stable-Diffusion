@@ -2,8 +2,34 @@
 
 set -e
 
-# Variables from environment
-VERSION="${VERSION}"
+# Function to display usage
+usage() {
+    echo "Usage: $0 --version [version]"
+    exit 1
+}
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --version)
+        VERSION="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        *)
+        usage # unknown option
+        ;;
+    esac
+done
+
+# Check if VERSION is set
+if [[ -z "$VERSION" ]]; then
+    echo "Error: --version [version] is required"
+    usage
+fi
+
+echo "Deploying version: $VERSION"
 
 # Static variables
 REPO_URL="https://github.com/Windsander/ADI-Stable-Diffusion"
@@ -117,17 +143,14 @@ create_homebrew_formula() {
   local url_x86_64=$3
   local url_arm64=$4
 
-  # 下载 x86_64 压缩包并计算 SHA-256 校验和
-  curl -L -o release-${version}-macos-x86_64.tar.gz ${url_x86_64}
+  # 计算 SHA-256 校验和
   local sha256_x86_64
-  sha256_x86_64=$(shasum -a 256 release-${version}-macos-x86_64.tar.gz | awk '{ print $1 }')
+  sha256_x86_64=$(curl -L ${url_x86_64} | shasum -a 256 | awk '{ print $1 }')
 
-  # 下载 arm64 压缩包并计算 SHA-256 校验和
-  curl -L -o release-${version}-macos-arm64.tar.gz ${url_arm64}
   local sha256_arm64
-  sha256_arm64=$(shasum -a 256 release-${version}-macos-arm64.tar.gz | awk '{ print $1 }')
+  sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
 
-  cat <<EOF > ${formula_name}.rb
+  cat <<EOF > ${formula_name}-${version}.rb
 class ${formula_name^} < Formula
   desc "ADI Stable Diffusion"
   homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
@@ -168,7 +191,12 @@ class ${formula_name^} < Formula
 end
 EOF
 
-  echo "Formula made: ${formula_name}.rb"
+  echo "Formula made: ${formula_name}-${version}.rb"
+
+  # 创建指向最新版本公式文件的符号链接，并覆盖上一个版本的链接 (以求方便用户直接安装最新版)
+  ln -sf ${formula_name}-${version}.rb ${formula_name}.rb
+  echo "Linking last: ${formula_name}.rb -> ${formula_name}-${version}.rb"
+
   echo "Formula created successfully"
 }
 
@@ -384,3 +412,5 @@ main() {
 }
 
 main
+
+echo "Deployment completed successfully."

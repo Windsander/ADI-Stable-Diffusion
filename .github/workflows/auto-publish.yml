@@ -1,4 +1,4 @@
-name: Auto publish packages (Release)
+name: 01 Auto publish packages (Release)
 
 on:
   push:
