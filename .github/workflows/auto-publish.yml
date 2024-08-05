@@ -153,6 +153,7 @@ jobs:
           cp -r include release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
           cp -r cmake-build-${{ matrix.build_type }}-${{ matrix.platform }}-${{ matrix.arch }}/bin release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
           cp -r cmake-build-${{ matrix.build_type }}-${{ matrix.platform }}-${{ matrix.arch }}/lib release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
+          cp CHANGELOG.md release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
           cp README.md release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
           cp LICENSE release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
 
@@ -179,7 +180,7 @@ jobs:
       - name: Read changelog
         id: read_changelog
         run: |
-          CHANGELOG=$(cat changelog.md)
+          CHANGELOG=$(cat CHANGELOG.md)
           echo "::set-output name=changelog::$CHANGELOG"
 
       - name: Create GitHub Release

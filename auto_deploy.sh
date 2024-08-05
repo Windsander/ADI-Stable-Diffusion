@@ -4,9 +4,6 @@ set -e
 
 # Variables from environment
 VERSION="${VERSION}"
-TARBALL_LOG="${TARBALL_LOG}"
-TARBALL_URL="${TARBALL_URL}"
-TARBALL_SHA256="${TARBALL_SHA256}"
 
 # Static variables
 REPO_URL="https://github.com/Windsander/ADI-Stable-Diffusion"
@@ -14,33 +11,103 @@ DESCRIPTION="Agile Diffusers Inference (ADI) Command Line Tool"
 LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion."
 MAINTAINER="Arikan.Li<https://github.com/Windsander/ADI-Stable-Diffusion/issues>"
 LICENSE="GPL-3.0 license"
-RELEASE="1%{?dist}"
 
 # Ensure necessary tools are installed
 ensure_tools() {
     echo "Ensuring necessary tools are installed..."
-    if ! command -v cmake &> /dev/null; then
-        echo "CMake not found, installing..."
-        sudo apt-get install -y cmake || sudo yum install -y cmake || brew install cmake
-    fi
-    if ! command -v ninja &> /dev/null; then
-        echo "Ninja not found, installing..."
-        sudo apt-get install -y ninja-build || sudo yum install -y ninja || brew install ninja
-    fi
-    if ! command -v dput &> /dev/null; then
-        echo "dput not found, installing..."
-        sudo apt-get install -y dput
-    fi
-    if ! command -v copr-cli &> /dev/null; then
-        echo "copr-cli not found, installing..."
-        sudo dnf install -y copr-cli || sudo yum install -y copr-cli
-    fi
-}
 
-# Read changelog from TARBALL_LOG
-read_changelog() {
-    echo "Reading changelog from $TARBALL_LOG..."
-    CHANGELOG=$(cat "$TARBALL_LOG")
+    OS=$(uname -s)
+
+    case "$OS" in
+        Linux*)
+            # Ensure tools for Linux (Ubuntu)
+            if ! command -v cmake &> /dev/null; then
+                echo "CMake not found, installing..."
+                sudo apt-get update
+                sudo apt-get install -y cmake
+            fi
+            if ! command -v ninja &> /dev/null; then
+                echo "Ninja not found, installing..."
+                sudo apt-get install -y ninja-build
+            fi
+            if ! command -v dput &> /dev/null; then
+                echo "dput not found, installing..."
+                sudo apt-get install -y dput
+            fi
+            if ! command -v copr-cli &> /dev/null; then
+                echo "copr-cli not found, installing..."
+                sudo dnf install -y copr-cli || sudo yum install -y copr-cli
+            fi
+            if ! command -v curl &> /dev/null; then
+                echo "curl not found, installing..."
+                sudo apt-get install -y curl
+            fi
+            if ! command -v sha256sum &> /dev/null; then
+                echo "sha256sum not found, installing..."
+                sudo apt-get install -y coreutils
+            fi
+            if ! command -v dpkg-deb &> /dev/null; then
+                echo "dpkg-deb not found, installing..."
+                sudo apt-get install -y dpkg
+            fi
+            if ! command -v debuild &> /dev/null; then
+                echo "debuild not found, installing..."
+                sudo apt-get install -y devscripts
+            fi
+            if ! command -v rpmbuild &> /dev/null; then
+                echo "rpmbuild not found, installing..."
+                sudo yum install -y rpm-build || sudo dnf install -y rpm-build
+            fi
+            ;;
+
+        Darwin*)
+            # Ensure tools for macOS
+            if ! command -v cmake &> /dev/null; then
+                echo "CMake not found, installing..."
+                brew install cmake
+            fi
+            if ! command -v ninja &> /dev/null; then
+                echo "Ninja not found, installing..."
+                brew install ninja
+            fi
+            if ! command -v curl &> /dev/null; then
+                echo "curl not found, installing..."
+                brew install curl
+            fi
+            if ! command -v sha256sum &> /dev/null; then
+                echo "sha256sum not found, installing..."
+                brew install coreutils
+            fi
+            # Note: dput, copr-cli, dpkg-deb, debuild, and rpmbuild are not typical on macOS
+            ;;
+
+        CYGWIN*|MINGW*|MSYS*)
+            # Ensure tools for Windows (via Chocolatey)
+            if ! command -v choco &> /dev/null; then
+                echo "Chocolatey not found, installing..."
+                Set-ExecutionPolicy Bypass -Scope Process -Force; \
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+                iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+            fi
+            if ! command -v cmake &> /dev/null; then
+                echo "CMake not found, installing..."
+                choco install cmake -y
+            fi
+            if ! command -v ninja &> /dev/null; then
+                echo "Ninja not found, installing..."
+                choco install ninja -y
+            fi
+            if ! command -v curl &> /dev/null; then
+                echo "curl not found, installing..."
+                choco install curl -y
+            fi
+            if ! command -v sha256sum &> /dev/null; then
+                echo "sha256sum not found, installing..."
+                choco install coreutils -y
+            fi
+            # Note: dput, copr-cli, dpkg-deb, debuild, and rpmbuild are not typical on Windows
+            ;;
+    esac
 }
 
 # Create Homebrew Formula
@@ -48,24 +115,25 @@ create_homebrew_formula() {
   echo "Creating Homebrew Formula..."
 
   local formula_name=$1
-  local url_x86_64=$2
-  local url_arm64=$3
+  local version=$2
+  local url_x86_64=$3
+  local url_arm64=$4
 
   # 下载 x86_64 压缩包并计算 SHA-256 校验和
-  curl -L -o release-${VERSION}-macos-x86_64.tar.gz ${url_x86_64}
+  curl -L -o release-${version}-macos-x86_64.tar.gz ${url_x86_64}
   local sha256_x86_64
-  sha256_x86_64=$(shasum -a 256 release-${VERSION}-macos-x86_64.tar.gz | awk '{ print $1 }')
+  sha256_x86_64=$(shasum -a 256 release-${version}-macos-x86_64.tar.gz | awk '{ print $1 }')
 
   # 下载 arm64 压缩包并计算 SHA-256 校验和
-  curl -L -o release-${VERSION}-macos-arm64.tar.gz ${url_arm64}
+  curl -L -o release-${version}-macos-arm64.tar.gz ${url_arm64}
   local sha256_arm64
-  sha256_arm64=$(shasum -a 256 release-${VERSION}-macos-arm64.tar.gz | awk '{ print $1 }')
+  sha256_arm64=$(shasum -a 256 release-${version}-macos-arm64.tar.gz | awk '{ print $1 }')
 
   cat <<EOF > ${formula_name}.rb
 class ${formula_name^} < Formula
   desc "ADI Stable Diffusion"
   homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
-  version "${VERSION}"
+  version "${version}"
   license "${LICENSE}"
 
   if Hardware::CPU.intel?
@@ -90,6 +158,7 @@ class ${formula_name^} < Formula
     lib.install Dir["lib/*"]
 
     # 安装其他文件
+    prefix.install "CHANGELOG.md"
     prefix.install "README.md"
     prefix.install "LICENSE"
   end
@@ -101,135 +170,219 @@ class ${formula_name^} < Formula
 end
 EOF
 
-  echo "Formula ${formula_name}.rb created successfully"
+  echo "Formula made: ${formula_name}.rb"
+  echo "Formula created successfully"
 }
 
 # Create Debian Package
 create_debian_package() {
-    echo "Creating Debian Package..."
-    mkdir -p adi-$VERSION
-    cd adi-$VERSION
-    wget $TARBALL_URL -O v$VERSION.tar.gz
-    tar -xzf v$VERSION.tar.gz --strip-components=1
-    mkdir -p debian
-    cd debian
-    dh_make -s -y -c $LICENSE -p adi_$VERSION
-    cat <<EOF > control
-Source: adi
-Section: utils
-Priority: optional
-Maintainer: $MAINTAINER
-Build-Depends: debhelper (>= 9)
-Standards-Version: 3.9.6
-Homepage: $REPO_URL
+  echo "Creating Debian Package..."
 
-Package: adi
-Architecture: any
-Depends: \${shlibs:Depends}, \${misc:Depends}
-Description: $DESCRIPTION
- $LONG_DESCRIPTION
-EOF
-    cd ..
-    cat <<EOF > debian/rules
+  local package_name=$1
+  local version=$2
+  local url_x86_64=$3
+  local url_aarch64=$4
+
+  # 计算 SHA-256 校验和
+  local sha256_x86_64
+  sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+
+  local sha256_aarch64
+  sha256_aarch64=$(curl -L ${url_aarch64} | sha256sum | awk '{ print $1 }')
+
+  # 创建临时目录结构
+  mkdir -p ${package_name}-${version}/debian
+
+  # 创建 debian/rules 文件
+  cat <<EOF > ${package_name}-${version}/debian/rules
 #!/usr/bin/make -f
+
+# 定义变量
+PACKAGE_NAME := ${package_name}
+VERSION := ${version}
+ARCH := \$(shell dpkg-architecture -qDEB_HOST_ARCH)
+URL_X86_64 := ${url_x86_64}
+URL_AARCH64 := ${url_aarch64}
+SHA256_X86_64 := ${sha256_x86_64}
+SHA256_AARCH64 := ${sha256_aarch64}
 
 %:
 	dh \$@
 
+override_dh_auto_build:
+	if [ "\$(ARCH)" = "amd64" ]; then \
+		curl -L -o release-\$(VERSION)-linux-x86_64.tar.gz \$(URL_X86_64); \
+		echo "\$(SHA256_X86_64)  release-\$(VERSION)-linux-x86_64.tar.gz" | sha256sum -c -; \
+		tar -xzvf release-\$(VERSION)-linux-x86_64.tar.gz; \
+	elif [ "\$(ARCH)" = "arm64" ]; then \
+		curl -L -o release-\$(VERSION)-linux-aarch64.tar.gz \$(URL_AARCH64); \
+		echo "\$(SHA256_AARCH64)  release-\$(VERSION)-linux-aarch64.tar.gz" | sha256sum -c -; \
+		tar -xzvf release-\$(VERSION)-linux-aarch64.tar.gz; \
+	fi
+
 override_dh_auto_install:
-	# Install the executable
-	install -m 755 bin/ort-sd-clitools \$(DESTDIR)/usr/bin/ort-sd-clitools
-	# Install the library files
-	install -d \$(DESTDIR)/usr/lib
-	install -m 644 lib/* \$(DESTDIR)/usr/lib/
-	# Install the header files
-	install -d \$(DESTDIR)/usr/include
-	install -m 644 include/* \$(DESTDIR)/usr/include/
+	mkdir -p \$(DESTDIR)/usr/local/bin
+  mkdir -p \$(DESTDIR)/usr/local/include
+  mkdir -p \$(DESTDIR)/usr/local/lib
+  mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
+  cp -r bin/* \$(DESTDIR)/usr/local/bin/
+  cp -r include/* \$(DESTDIR)/usr/local/include/
+  cp -r lib/* \$(DESTDIR)/usr/local/lib/
+  cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+  cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+  cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
 EOF
-    chmod +x debian/rules
-    cat <<EOF > debian/changelog
-adi ($VERSION-1) unstable; urgency=low
 
-  * $DESCRIPTION
+  chmod +x ${package_name}-${version}/debian/rules
 
-$CHANGELOG
+  # 创建 debian/control 文件
+  cat <<EOF > ${package_name}-${version}/debian/control
+Source: ${package_name}
+Section: base
+Priority: optional
+Maintainer: ${MAINTAINER}
+Build-Depends: debhelper-compat (= 13), curl, sha256sum
+Standards-Version: 4.5.0
+Homepage: ${REPO_URL}
+Rules-Requires-Root: no
 
- -- $MAINTAINER  $(date -R)
+Package: ${package_name}
+Architecture: any
+Depends: \${misc:Depends}
+Description: ${DESCRIPTION}
+ ${LONG_DESCRIPTION}
 EOF
-    debuild -us -uc
-    cd ..
-    mkdir -p ../publish
-    mv ../adi_$VERSION-1_amd64.deb ../publish/
+
+  # 创建空的 bin, include 和 lib 目录
+  mkdir -p ${package_name}-${version}/bin
+  mkdir -p ${package_name}-${version}/include
+  mkdir -p ${package_name}-${version}/lib
+
+  # 打包 debian 包
+  cd ${package_name}-${version}
+  debuild -us -uc
+  cd ..
+
+  # 重命名生成的 deb 文件
+  mv ../${package_name}_${version}_*.deb ${package_name}-${version}.deb
+
+  # 清理临时目录
+  rm -rf ${package_name}-${version}
+
+  echo "Debian packages made: ${package_name}-${version}.deb"
+  echo "Debian packages created successfully"
 }
 
 # Create RPM Package
 create_rpm_package() {
-    echo "Creating RPM Package..."
-    mkdir -p ~/rpmbuild/SOURCES
-    wget $TARBALL_URL -O ~/rpmbuild/SOURCES/adi-$VERSION.tar.gz
-    cat <<EOF > ~/rpmbuild/SPECS/adi.spec
-Name:           adi
-Version:        $VERSION
-Release:        $RELEASE
-Summary:        $DESCRIPTION
+  echo "Creating RPM Package..."
 
-License:        $LICENSE
-URL:            $REPO_URL
-Source0:        %{name}-%{version}.tar.gz
+  local package_name=$1
+  local version=$2
+  local url_x86_64=$3
+  local url_aarch64=$4
 
-BuildRequires:  cmake
-Requires:       cmake
+  # 计算 SHA-256 校验和
+  local sha256_x86_64
+  sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+
+  local sha256_aarch64
+  sha256_aarch64=$(curl -L ${url_aarch64} | sha256sum | awk '{ print $1 }')
+
+  # 创建临时目录
+  mkdir -p ${package_name}-${version}/BUILD
+  mkdir -p ${package_name}-${version}/RPMS
+  mkdir -p ${package_name}-${version}/SOURCES
+  mkdir -p ${package_name}-${version}/SPECS
+  mkdir -p ${package_name}-${version}/SRPMS
+
+  # 创建通用 SPEC 文件
+  cat <<EOF > ${package_name}-${version}/SPECS/${package_name}.spec
+%define name ${package_name}
+%define version ${version}
+%define sha256_x86_64 ${sha256_x86_64}
+%define sha256_aarch64 ${sha256_aarch64}
+
+Name: %{name}
+Version: %{version}
+Release: 1%{?dist}
+Summary: ${DESCRIPTION}
+
+License: ${LICENSE}
+URL: ${REPO_URL}
 
 %description
-$LONG_DESCRIPTION
+${LONG_DESCRIPTION}
+
+%ifarch x86_64
+Source0: ${url_x86_64}
+%endif
+%ifarch aarch64
+Source0: ${url_aarch64}
+%endif
 
 %prep
-%setup -q
+%ifarch x86_64
+%define expected_sha256sum %{sha256_x86_64}
+%endif
+%ifarch aarch64
+%define expected_sha256sum %{sha256_aarch64}
+%endif
+
+curl -L -o %{_sourcedir}/%{name}-%{version}-%{arch}.tar.gz %{SOURCE0}
+echo "%{expected_sha256sum}  %{_sourcedir}/%{name}-%{version}-%{arch}.tar.gz" | sha256sum -c -
+%setup -q -n %{name}-%{version}-%{arch}
 
 %build
-# If there are any build steps needed, they can be added here, currently seems unnecessary
 
 %install
-rm -rf %{buildroot}
-# Install the executable
-install -m 755 bin/ort-sd-clitools %{buildroot}%{_bindir}/ort-sd-clitools
-# Install the library files
-install -d %{buildroot}%{_libdir}
-install -m 644 lib/* %{buildroot}%{_libdir}/
-# Install the header files
-install -d %{buildroot}%{_includedir}
-install -m 644 include/* %{buildroot}%{_includedir}/
+mkdir -p %{buildroot}/usr/local/bin
+mkdir -p %{buildroot}/usr/local/include
+mkdir -p %{buildroot}/usr/local/lib
+cp -r * %{buildroot}/usr/local/
 
 %files
-%license LICENSE
-%doc README.md
-%{_bindir}/ort-sd-clitools
-%{_libdir}/*
-%{_includedir}/*
+/usr/local/bin/*
+/usr/local/include/*
+/usr/local/lib/*
+%doc CHANGELOG.md README.md LICENSE
 
 %changelog
-* $(date "+%a %b %d %Y") $MAINTAINER - $VERSION-1
-- $DESCRIPTION
-
-$CHANGELOG
+* $(date +"%a %b %d %Y") ${MAINTAINER} - ${version}-1
+- See CHANGELOG.md in package
 EOF
 
-    rpmbuild -ba ~/rpmbuild/SPECS/adi.spec
-    mkdir -p ../publish
-    mv ~/rpmbuild/RPMS/x86_64/adi-$VERSION-1.x86_64.rpm ../publish/
+  # 打包 x86_64 rpm
+  rpmbuild --define "_topdir $(pwd)/${package_name}-${version}" --target x86_64 -ba ${package_name}-${version}/SPECS/${package_name}.spec
+  mv ${package_name}-${version}/RPMS/x86_64/${package_name}-${version}-1.x86_64.rpm ${package_name}-${version}-x86_64.rpm
+
+  # 打包 aarch64 rpm
+  rpmbuild --define "_topdir $(pwd)/${package_name}-${version}" --target aarch64 -ba ${package_name}-${version}/SPECS/${package_name}.spec
+  mv ${package_name}-${version}/RPMS/aarch64/${package_name}-${version}-1.aarch64.rpm ${package_name}-${version}-aarch64.rpm
+
+  # 清理临时目录
+  rm -rf ${package_name}-${version}
+
+  echo "RPM packages made: ${package_name}-${version}-x86_64[aarch64].rpm"
+  echo "RPM packages created successfully"
 }
 
 # Main function
 main() {
     ensure_tools
-    read_changelog
 
-    create_homebrew_formula "adi" \
+    create_homebrew_formula "adi" "${VERSION}" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
 
-    create_debian_package
-    create_rpm_package
+    create_debian_package "adi" "${VERSION}" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+
+    create_rpm_package "adi" "${VERSION}" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+
 }
 
 main
