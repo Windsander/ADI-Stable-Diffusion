@@ -85,9 +85,7 @@ ensure_tools() {
             # Ensure tools for Windows (via Chocolatey)
             if ! command -v choco &> /dev/null; then
                 echo "Chocolatey not found, installing..."
-                Set-ExecutionPolicy Bypass -Scope Process -Force; \
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
-                iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+                powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
             fi
             if ! command -v cmake &> /dev/null; then
                 echo "CMake not found, installing..."
