@@ -85,7 +85,7 @@ jobs:
             echo "Target platform is macOS."
           elif [[ "${{ matrix.platform }}" == "windows" ]]; then
             echo "Target platform is Windows."
-            sudo sudo apt-get install mingw-w64
+            sudo apt-get install mingw-w64
           elif [[ "${{ matrix.platform }}" == "linux" ]]; then
             echo "Target platform is Linux"
             if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
@@ -137,6 +137,7 @@ jobs:
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
+        shell: bash
         run: |
           choco install ninja
           choco install llvm
