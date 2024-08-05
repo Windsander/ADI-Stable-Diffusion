@@ -45,27 +45,63 @@ read_changelog() {
 
 # Create Homebrew Formula
 create_homebrew_formula() {
-    echo "Creating Homebrew Formula..."
-    mkdir -p publish
-    cat <<EOF > publish/adi.rb
-class Adi < Formula
-  desc "$DESCRIPTION"
-  homepage "$REPO_URL"
-  url "$TARBALL_URL"
-  sha256 "$TARBALL_SHA256"
-  license "$LICENSE"
+  echo "Creating Homebrew Formula..."
+
+  local formula_name=$1
+  local url_x86_64=$2
+  local url_arm64=$3
+
+  # 下载 x86_64 压缩包并计算 SHA-256 校验和
+  curl -L -o release-${VERSION}-macos-x86_64.tar.gz ${url_x86_64}
+  local sha256_x86_64
+  sha256_x86_64=$(shasum -a 256 release-${VERSION}-macos-x86_64.tar.gz | awk '{ print $1 }')
+
+  # 下载 arm64 压缩包并计算 SHA-256 校验和
+  curl -L -o release-${VERSION}-macos-arm64.tar.gz ${url_arm64}
+  local sha256_arm64
+  sha256_arm64=$(shasum -a 256 release-${VERSION}-macos-arm64.tar.gz | awk '{ print $1 }')
+
+  cat <<EOF > ${formula_name}.rb
+class ${formula_name^} < Formula
+  desc "ADI Stable Diffusion"
+  homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
+  version "${VERSION}"
+  license "${LICENSE}"
+
+  if Hardware::CPU.intel?
+    url "${url_x86_64}"
+    sha256 "${sha256_x86_64}"
+  elsif Hardware::CPU.arm?
+    url "${url_arm64}"
+    sha256 "${sha256_arm64}"
+  else
+    odie "Unsupported architecture"
+  end
+
 
   def install
-    bin.install "bin/ort-sd-clitools"
-    lib.install Dir["lib/*"]
+    # 安装可执行文件和动态库到bin目录
+    bin.install Dir["bin/*"]
+
+    # 安装头文件到include目录
     include.install Dir["include/*"]
+
+    # 安装静态库和动态库到lib目录
+    lib.install Dir["lib/*"]
+
+    # 安装其他文件
+    prefix.install "README.md"
+    prefix.install "LICENSE"
   end
 
   test do
+    # 运行测试来验证安装是否成功
     system "#{bin}/ort-sd-clitools", "--version"
   end
 end
 EOF
+
+  echo "Formula ${formula_name}.rb created successfully"
 }
 
 # Create Debian Package
@@ -187,7 +223,11 @@ EOF
 main() {
     ensure_tools
     read_changelog
-    create_homebrew_formula
+
+    create_homebrew_formula "adi" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
+
     create_debian_package
     create_rpm_package
 }
