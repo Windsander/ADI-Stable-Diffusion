@@ -132,7 +132,7 @@ jobs:
           choco install llvm
           choco install mingw
           # Install MSVC build tools
-          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
+          # choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
           # Install MinGW-w64 for cross-compiling to Linux
           choco install mingw-w64 -y
            
