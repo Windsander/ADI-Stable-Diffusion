@@ -80,16 +80,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build gcc g++
-          if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-          elif [[ "${{ matrix.arch }}" == "x86" ]]; then
-          sudo apt-get install -y gcc-multilib g++-multilib
-          elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
-          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            echo "Target platform is macOS."
+          elif [[ "${{ matrix.platform }}" == "windows" ]]; then
+            echo "Target platform is Windows."
+          elif [[ "${{ matrix.platform }}" == "linux" ]]; then
+            echo "Target platform is Linux"
+            if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
+              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+              sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+            elif [[ "${{ matrix.arch }}" == "x86" ]]; then
+              sudo apt-get install -y gcc-multilib g++-multilib
+            elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
+              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
+              sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+            fi
+          elif [[ "${{ matrix.platform }}" == "android" ]]; then
+            echo "Target platform is Android"
           fi
 
       - name: Install dependencies on macOS
@@ -99,11 +109,13 @@ jobs:
           brew install llvm
           
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
-            echo "Current environment is macOS."
+            echo "Target platform is macOS."
           elif [[ "${{ matrix.platform }}" == "windows" ]]; then
+            echo "Target platform is Windows."
             brew install mingw-w64
             brew install gcc   
-          elif [[ "${{ matrix.platform }}" == "linux" || "${{ matrix.platform }}" == "android" ]]; then
+          elif [[ "${{ matrix.platform }}" == "linux" ]]; then
+            echo "Target platform is Linux"
             brew tap messense/macos-cross-toolchains
             if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
               brew install aarch64-unknown-linux-gnu
@@ -118,11 +130,8 @@ jobs:
             elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
               brew install armv7-unknown-linux-gnueabihf
             fi
-            export PATH="/usr/local/opt/aarch64-unknown-linux-gnu/bin:$PATH"
-            export CC=aarch64-unknown-linux-gnu-gcc
-            export CXX=aarch64-unknown-linux-gnu-g++
-            export AR=aarch64-unknown-linux-gnu-ar
-            export RANLIB=aarch64-unknown-linux-gnu-ranlib
+          elif [[ "${{ matrix.platform }}" == "android" ]]; then
+            echo "Target platform is Android."
           fi
 
       - name: Install dependencies on Windows
@@ -133,39 +142,46 @@ jobs:
           choco install mingw
           # Install MSVC build tools
           # choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive"
-          # Install MinGW-w64 for cross-compiling to Linux
-          choco install mingw-w64 -y
-           
-          if (${{ matrix.arch }} -eq 'x86_64') {
-            # For x86_64 Linux
-            choco install mingw-w64-x86_64-linux-gnu
-            setx CC x86_64-linux-gnu-gcc
-            setx CXX x86_64-linux-gnu-g++
-          } elseif (${{ matrix.arch }} -eq 'aarch64') {
-            # For AArch64 Linux
-            choco install mingw-w64-aarch64-linux-gnu
-            setx CC aarch64-linux-gnu-gcc
-            setx CXX aarch64-linux-gnu-g++
-          } elseif (${{ matrix.arch }} -eq 'arm64') {
-            # For ARM64 Linux
-            choco install mingw-w64-arm-linux-gnueabihf
-            setx CC arm-linux-gnueabihf-gcc
-            setx CXX arm-linux-gnueabihf-g++
-          } elseif (${{ matrix.arch }} -eq 'x86') {
-            # For x86 Linux
-            choco install mingw-w64-i686-linux-gnu
-            setx CC i686-linux-gnu-gcc
-            setx CXX i686-linux-gnu-g++
-          } elseif (${{ matrix.arch }} -eq 'arm64-v8a') {
-            # For ARM64-v8a Linux
-            choco install mingw-w64-aarch64-linux-gnu
-            setx CC aarch64-linux-gnu-gcc
-            setx CXX aarch64-linux-gnu-g++
-          } elseif (${{ matrix.arch }} -eq 'armeabi-v7a') {
-            # For ARMv7-a Linux
-            choco install mingw-w64-arm-linux-gnueabihf
-            setx CC arm-linux-gnueabihf-gcc
-            setx CXX arm-linux-gnueabihf-g++
+          
+          if (${{ matrix.platform }} -eq "macos") {
+            echo "Target platform is macOS."
+          } elseif (${{ matrix.platform }} -eq "windows" ) {
+            echo "Target platform is Windows."
+          } elseif (${{ matrix.platform }} -eq "linux" ) {
+            echo "Target platform is Linux"
+            if (${{ matrix.arch }} -eq 'x86_64') {
+              # For x86_64 Linux
+              choco install mingw-w64-x86_64-linux-gnu
+              setx CC x86_64-linux-gnu-gcc
+              setx CXX x86_64-linux-gnu-g++
+            } elseif (${{ matrix.arch }} -eq 'aarch64') {
+              # For AArch64 Linux
+              choco install mingw-w64-aarch64-linux-gnu
+              setx CC aarch64-linux-gnu-gcc
+              setx CXX aarch64-linux-gnu-g++
+            } elseif (${{ matrix.arch }} -eq 'arm64') {
+              # For ARM64 Linux
+              choco install mingw-w64-arm-linux-gnueabihf
+              setx CC arm-linux-gnueabihf-gcc
+              setx CXX arm-linux-gnueabihf-g++
+            } elseif (${{ matrix.arch }} -eq 'x86') {
+              # For x86 Linux
+              choco install mingw-w64-i686-linux-gnu
+              setx CC i686-linux-gnu-gcc
+              setx CXX i686-linux-gnu-g++
+            } elseif (${{ matrix.arch }} -eq 'arm64-v8a') {
+              # For ARM64-v8a Linux
+              choco install mingw-w64-aarch64-linux-gnu
+              setx CC aarch64-linux-gnu-gcc
+              setx CXX aarch64-linux-gnu-g++
+            } elseif (${{ matrix.arch }} -eq 'armeabi-v7a') {
+              # For ARMv7-a Linux
+              choco install mingw-w64-arm-linux-gnueabihf
+              setx CC arm-linux-gnueabihf-gcc
+              setx CXX arm-linux-gnueabihf-g++
+            }
+          } elseif (${{ matrix.platform }} -eq "android" ) {
+            echo "Target platform is Android."
           }
 
       - name: Set up Android SDK and NDK

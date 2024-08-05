@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <cstdint>
 
 #define LOG_PARAMS_UNUSED(x) (void)x
 
