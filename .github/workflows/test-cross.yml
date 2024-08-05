@@ -97,19 +97,32 @@ jobs:
         run: |
           brew install ninja
           brew install llvm
-          brew tap messense/macos-cross-toolchains
-          if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
-            brew install aarch64-unknown-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-            brew install arm-unknown-linux-gnueabihf
-          elif [[ "${{ matrix.arch }}" == "x86" ]]; then
-            brew install i686-unknown-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "x86_64" ]]; then
-            brew install x86_64-unknown-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
-            brew install aarch64-unknown-linux-gnu
-          elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
-            brew install armv7-unknown-linux-gnueabihf
+          
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            echo "Current environment is macOS."
+          elif [[ "${{ matrix.platform }}" == "windows" ]]; then
+            brew install mingw-w64
+            brew install gcc   
+          elif [[ "${{ matrix.platform }}" == "linux" || "${{ matrix.platform }}" == "android" ]]; then
+            brew tap messense/macos-cross-toolchains
+            if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
+              brew install aarch64-unknown-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+              brew install arm-unknown-linux-gnueabihf
+            elif [[ "${{ matrix.arch }}" == "x86" ]]; then
+              brew install i686-unknown-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+              brew install x86_64-unknown-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "arm64-v8a" ]]; then
+              brew install aarch64-unknown-linux-gnu
+            elif [[ "${{ matrix.arch }}" == "armeabi-v7a" ]]; then
+              brew install armv7-unknown-linux-gnueabihf
+            fi
+            export PATH="/usr/local/opt/aarch64-unknown-linux-gnu/bin:$PATH"
+            export CC=aarch64-unknown-linux-gnu-gcc
+            export CXX=aarch64-unknown-linux-gnu-g++
+            export AR=aarch64-unknown-linux-gnu-ar
+            export RANLIB=aarch64-unknown-linux-gnu-ranlib
           fi
 
       - name: Install dependencies on Windows
