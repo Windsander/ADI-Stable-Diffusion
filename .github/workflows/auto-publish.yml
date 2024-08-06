@@ -6,7 +6,65 @@ on:
       - 'release/release-v*'
 
 jobs:
-  release:
+  extract_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Extract version number
+        id: extract_version
+        run: |
+          VERSION="${GITHUB_REF#refs/heads/release/release-}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+        shell: bash
+
+      - name: Check if release tag exists
+        id: tag_exists
+        shell: bash
+        run: |
+          if git rev-parse "refs/tags/release-${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_ENV
+          else
+            echo "exists=false" >> $GITHUB_ENV
+          fi
+
+  create_release:
+    needs: extract_version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Read CHANGELOG.md
+        id: read_changelog
+        if: env.exists == 'false'
+        shell: bash
+        run: |
+          CHANGELOG=$(cat CHANGELOG.md | base64)
+          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        id: create_release
+        if: env.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          body: $(echo ${{ env.CHANGELOG }} | base64 --decode)
+
+      - name: Save assets upload URL
+        if: env.exists == 'false'
+        shell: bash
+        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
+
+  upload_assets:
+    needs: create_release
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -176,43 +234,6 @@ jobs:
         if: matrix.platform == 'android'
         run: |
           zip -r release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
-
-      - name: Check if release tag exists
-        id: tag_exists
-        shell: bash
-        run: |
-          if git rev-parse "refs/tags/release-${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_ENV
-          else
-            echo "exists=false" >> $GITHUB_ENV
-          fi
-
-      - name: Read changelog
-        id: read_changelog
-        if: env.exists == 'false'
-        shell: bash
-        run: |
-          CHANGELOG=$(cat CHANGELOG.md)
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
-
-      - name: Create GitHub Release
-        id: create_release
-        if: env.exists == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: release-${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
-          body: ${{ env.CHANGELOG }}
-
-      - name: Save assets upload URL
-        if: env.exists == 'false'
-        shell: bash
-        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
       - name: Upload release asset (Linux)
         if: matrix.os == 'ubuntu-latest'
