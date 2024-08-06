@@ -140,7 +140,6 @@ jobs:
                                --build-type ${{ matrix.build_type }} \
                                --arch-abi ${{ matrix.arch }} \
                                --jobs 4 \
-                               --android-sdk "$ANDROID_SDK_ROOT" \
                                --android-ndk "$ANDROID_NDK_HOME" \
                                --android-ver 27 \
                                -c
@@ -194,9 +193,9 @@ jobs:
         shell: bash
         run: |
           CHANGELOG=$(cat CHANGELOG.md)
-          CHANGELOG="${CHANGELOG//'%'/%25}"
-          CHANGELOG="${CHANGELOG//$'\n'/ %0A }"
-          CHANGELOG="${CHANGELOG//$'\r'/ %0D }"
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
 
       - name: Create GitHub Release
