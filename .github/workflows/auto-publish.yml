@@ -183,35 +183,40 @@ jobs:
         shell: bash
         run: |
           if git rev-parse "refs/tags/release-${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "::set-output name=exists::true"
+            echo "exists=true" >> $GITHUB_ENV
           else
-            echo "::set-output name=exists::false"
+            echo "exists=false" >> $GITHUB_ENV
           fi
 
       - name: Read changelog
         id: read_changelog
-        if: steps.tag_exists.outputs.exists == 'false'
+        if: env.exists == 'false'
         shell: bash
         run: |
-          CHANGELOG=$(awk '{printf "%s\\n", $0}' CHANGELOG.md)
-          echo "::set-output name=changelog::$CHANGELOG"
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          cat CHANGELOG.md >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_release
-        if: steps.tag_exists.outputs.exists == 'false'
+        if: env.exists == 'false'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: release-${{ env.VERSION }}
           release_name: Release ${{ env.VERSION }}
-          body: ${{ steps.read_changelog.outputs.changelog }}
+          body: ${{ env.CHANGELOG }}
+        shell: bash
+        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
       - name: Upload release asset (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_content_type: application/gzip
@@ -219,8 +224,10 @@ jobs:
       - name: Upload release asset (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_content_type: application/gzip
@@ -228,8 +235,10 @@ jobs:
       - name: Upload release asset (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_content_type: application/zip
@@ -237,8 +246,10 @@ jobs:
       - name: Upload release asset (Android)
         if: matrix.platform == 'android'
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_content_type: application/zip
