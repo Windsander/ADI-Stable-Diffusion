@@ -193,7 +193,10 @@ jobs:
         if: env.exists == 'false'
         shell: bash
         run: |
-          CHANGELOG=$(cat CHANGELOG.md | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+          CHANGELOG=$(cat CHANGELOG.md)
+          CHANGELOG="${CHANGELOG//'%'/%25}"
+          CHANGELOG="${CHANGELOG//$'\n'/ %0A }"
+          CHANGELOG="${CHANGELOG//$'\r'/ %0D }"
           echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
 
       - name: Create GitHub Release
