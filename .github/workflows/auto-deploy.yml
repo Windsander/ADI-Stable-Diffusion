@@ -5,6 +5,8 @@ on:
     workflows: ["01 Auto publish packages (Release)"]
     types:
       - completed
+    branches:
+      - release/release-*
 
 jobs:
   deploy:
