@@ -56,6 +56,9 @@ jobs:
         shell: bash
         run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
+    outputs:
+      upload_url: ${{ steps.save_upload_url.outputs.upload_url }}
+
   upload_assets:
     needs: create_release
     runs-on: ${{ matrix.os }}
@@ -234,7 +237,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_content_type: application/gzip
@@ -245,7 +248,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
           asset_content_type: application/gzip
@@ -256,7 +259,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_content_type: application/zip
@@ -267,7 +270,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
           asset_content_type: application/zip
