@@ -90,12 +90,13 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Extract version number
+      - name: Extract version from branch name
         id: extract_version
+        shell: bash
         run: |
-          VERSION=$(echo "${GITHUB_REF}" | sed 's|refs/heads/release/release-||')
-          echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-          echo "Extracted version: ${{ env.VERSION }}"
+          VERSION="${GITHUB_REF#refs/heads/release/release-}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -179,8 +180,12 @@ jobs:
 
       - name: Read changelog
         id: read_changelog
+        shell: bash
         run: |
           CHANGELOG=$(cat CHANGELOG.md)
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
           echo "::set-output name=changelog::$CHANGELOG"
 
       - name: Create GitHub Release

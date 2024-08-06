@@ -23,8 +23,9 @@ jobs:
 
       - name: Extract version from branch name
         id: extract_version
+        shell: bash
         run: |
-          VERSION=$(echo "${GITHUB_REF#refs/heads/release-}")
+          VERSION="${GITHUB_REF#refs/heads/release/release-}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
 
