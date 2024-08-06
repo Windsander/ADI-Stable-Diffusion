@@ -151,11 +151,9 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_NNAPI_STATE ON)
     set(CURRENT_PLATFORM android-${CMAKE_ANDROID_ARCH_ABI})
     set(SD_ORT_ONLINE_AVAIL ON)
-    set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
 #    set(ORT_COMPILED_ONLINE OFF)
-    set(ORT_BUILD_COMMAND_LINE OFF)
     set(ENGINE_NAME "ORT-CPU-NNAPI")
     set(MINSDK_MESSAGE " minsdk ${Cyan}${CMAKE_SYSTEM_VERSION}${ColourReset}")
 endif ()
