@@ -151,6 +151,7 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_NNAPI_STATE ON)
     set(CURRENT_PLATFORM android-${CMAKE_ANDROID_ARCH_ABI})
     set(SD_ORT_ONLINE_AVAIL ON)
+    #set(SD_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
 #    set(ORT_COMPILED_ONLINE OFF)
@@ -175,6 +176,10 @@ option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate 
 option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
 option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 
+if(ANDROID AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(ORT_BUILD_COMMAND_LINE OFF) # when in Windows, compile Android clitools request Processor equals, so default OFF
+endif ()
+
 if (ORT_BUILD_COMBINE_BASE)
     set(ORT_BUILD_SHARED_ORT OFF)  # in this mode, we will never use ORT_BUILD_SHARED_ORT option
     set(ORT_COMPILED_ONLINE OFF)
@@ -184,7 +189,7 @@ if (ORT_COMPILED_ONLINE)            # pure ORT-static(with pure onnxruntime-stat
     set(ORT_BUILD_SHARED_ORT ON)
 endif ()
 
-if(NOT ORT_BUILD_SHARED_ORT)       # when build static, auto choose ARCHIVER_PATH if user not set.
+if(NOT ORT_BUILD_SHARED_ORT)        # when build static, auto choose ARCHIVER_PATH if user not set.
     auto_choose_archiver_for_ort()  # only onnxruntime.a needs arvhiver to generate, we merge a bunch of [ort.a] series into one
     if (NOT ARCHIVER_PATH)          # if Archiver not found, then setback to shared-ort
         message("[onnx.runtime.sd][I] onnxruntime ${Blue}ARCHIVER_PATH:NaN (Unset)${ColourReset} ${Red}disable ort.static lib${ColourReset} ")
