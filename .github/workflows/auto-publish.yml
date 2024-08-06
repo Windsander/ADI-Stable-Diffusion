@@ -207,6 +207,9 @@ jobs:
           tag_name: release-${{ env.VERSION }}
           release_name: Release ${{ env.VERSION }}
           body: ${{ env.CHANGELOG }}
+
+      - name: Save assets upload URL
+        if: env.exists == 'false'
         shell: bash
         run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
