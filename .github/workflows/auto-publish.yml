@@ -32,14 +32,6 @@ jobs:
           fi
           echo "env.exists=$(cat $GITHUB_ENV | grep exists | cut -d '=' -f2)"
 
-      - name: Read CHANGELOG.md
-        id: read_changelog
-        if: env.exists == 'false'
-        shell: bash
-        run: |
-          CHANGELOG=$(cat CHANGELOG.md | base64)
-          echo "CHANGELOG=$CHANGELOG" >> $GITHUB_ENV
-
       - name: Create GitHub Release
         id: create_release
         if: env.exists == 'false'
@@ -49,7 +41,7 @@ jobs:
         with:
           tag_name: release-${{ env.VERSION }}
           release_name: Release ${{ env.VERSION }}
-          body: $(echo ${{ env.CHANGELOG }} | base64 --decode)
+          body_path: CHANGELOG.md
 
       - name: Save assets upload URL
         if: env.exists == 'false'
