@@ -166,6 +166,7 @@ jobs:
 
       - name: Build project (Linux, macOS, Windows)
         if: matrix.platform != 'android'
+        shell: bash
         run: |
           bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                --build-type ${{ matrix.build_type }} \
@@ -174,6 +175,7 @@ jobs:
 
       - name: Build project (Android)
         if: matrix.platform == 'android'
+        shell: bash
         run: |
           bash ./auto_build.sh --platform android \
                                --cmake "cmake" \
@@ -186,10 +188,12 @@ jobs:
                                -c
 
       - name: Create release directory
+        shell: bash
         run: |
           mkdir -p release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
       - name: Copy files to release directory
+        shell: bash
         run: |
           cp -r include release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
           cp -r cmake-build-${{ matrix.build_type }}-${{ matrix.platform }}-${{ matrix.arch }}/bin release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
@@ -199,27 +203,31 @@ jobs:
           cp LICENSE release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}/
 
       - name: Create zip archive (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
+        shell: bash
         run: |
           tar -czvf release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
       - name: Create zip archive (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'macos'
+        shell: bash
         run: |
           tar -czvf release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
       - name: Create zip archive (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
+        shell: bash
         run: |
           zip -r release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
       - name: Create zip archive (Android)
         if: matrix.platform == 'android'
+        shell: bash
         run: |
           zip -r release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
       - name: Upload release asset (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -230,7 +238,7 @@ jobs:
           asset_content_type: application/gzip
 
       - name: Upload release asset (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.platform == 'macos'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -241,7 +249,7 @@ jobs:
           asset_content_type: application/gzip
 
       - name: Upload release asset (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
