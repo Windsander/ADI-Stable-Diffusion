@@ -43,13 +43,8 @@ jobs:
           release_name: Release ${{ env.VERSION }}
           body_path: CHANGELOG.md
 
-      - name: Save assets upload URL
-        if: env.exists == 'false'
-        shell: bash
-        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
-
     outputs:
-      upload_url: ${{ steps.save_upload_url.outputs.upload_url }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
 
   upload_assets:
     needs: create_release
