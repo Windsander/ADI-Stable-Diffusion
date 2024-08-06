@@ -6,7 +6,8 @@ on:
       - 'release/release-v*'
 
 jobs:
-  extract_version:
+  create_release:
+    needs: extract_version
     runs-on: ubuntu-latest
 
     steps:
@@ -15,11 +16,11 @@ jobs:
 
       - name: Extract version number
         id: extract_version
+        shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/heads/release/release-}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
-        shell: bash
 
       - name: Check if release tag exists
         id: tag_exists
@@ -30,14 +31,7 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_ENV
           fi
-
-  create_release:
-    needs: extract_version
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+          echo "env.exists=$(cat $GITHUB_ENV | grep exists | cut -d '=' -f2)"
 
       - name: Read CHANGELOG.md
         id: read_changelog
