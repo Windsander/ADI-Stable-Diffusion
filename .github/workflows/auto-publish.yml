@@ -178,18 +178,27 @@ jobs:
         run: |
           zip -r release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
-      - name: Read changelog
-        id: read_changelog
+      - name: Check if release tag exists
+        id: tag_exists
         shell: bash
         run: |
-          CHANGELOG=$(cat CHANGELOG.md)
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          if git rev-parse "refs/tags/release-${{ env.VERSION }}" >/dev/null 2>&1; then
+            echo "::set-output name=exists::true"
+          else
+            echo "::set-output name=exists::false"
+          fi
+
+      - name: Read changelog
+        id: read_changelog
+        if: steps.tag_exists.outputs.exists == 'false'
+        shell: bash
+        run: |
+          CHANGELOG=$(awk '{printf "%s\\n", $0}' CHANGELOG.md)
           echo "::set-output name=changelog::$CHANGELOG"
 
       - name: Create GitHub Release
         id: create_release
+        if: steps.tag_exists.outputs.exists == 'false'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
