@@ -5,10 +5,12 @@ on:
     workflows: ["01 Auto publish packages (Release)"]
     types:
       - completed
+    branches:
+      - 'release/release-v*'
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'release/release-') }}
+    if: ${{ github.event.workflow_run.conclusion == 'success'}}
     runs-on: ubuntu-latest
 
     steps:
@@ -27,9 +29,14 @@ jobs:
         id: extract_version
         shell: bash
         run: |
-          VERSION="${GITHUB_REF#refs/heads/release/release-}"
+          VERSION="${{ github.event.workflow_run.head_branch#release/release- }}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
+
+      - name: Switch to release branch
+        run: |
+          git checkout release/release-${{ env.VERSION }}
+          echo "Switched to branch: release/release-${{ env.VERSION }}"
 
       - name: Run deploy script
         run: |
