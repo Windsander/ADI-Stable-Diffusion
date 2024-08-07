@@ -19,6 +19,12 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
+      - name: Switch to release branch
+        run: |
+          git checkout ${{ github.event.workflow_run.head_branch }}
+          echo "TARGET_BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
+          echo "Switched to branch: ${{ env.TARGET_BRANCH }}"
+
       - name: Set up environment
         run: |
           sudo apt-get update
@@ -29,14 +35,9 @@ jobs:
         id: extract_version
         shell: bash
         run: |
-          VERSION="${GITHUB_REF#refs/heads/release/release-}"
+          VERSION=$(echo "${{ env.TARGET_BRANCH }}" | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
-
-      - name: Switch to release branch
-        run: |
-          git checkout release/release-${{ env.VERSION }}
-          echo "Switched to branch: release/release-${{ env.VERSION }}"
 
       - name: Run deploy script
         run: |
