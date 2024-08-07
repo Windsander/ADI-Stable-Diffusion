@@ -62,7 +62,7 @@ ensure_tools() {
             fi
             if ! command -v copr-cli &> /dev/null; then
                 echo "copr-cli not found, installing..."
-                sudo dnf install -y copr-cli || sudo yum install -y copr-cli
+                sudo pip3 install copr-cli
             fi
             if ! command -v curl &> /dev/null; then
                 echo "curl not found, installing..."
@@ -82,7 +82,7 @@ ensure_tools() {
             fi
             if ! command -v rpmbuild &> /dev/null; then
                 echo "rpmbuild not found, installing..."
-                sudo yum install -y rpm-build || sudo dnf install -y rpm-build
+                sudo apt-get install -y rpm
             fi
             ;;
 

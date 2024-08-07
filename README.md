@@ -1,7 +1,7 @@
 <h1 align="center">Agile Diffusers Inference (ADI) </h1>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/Open_Source-❤️-FDA599?"/></a>
+  <a href="https://opensource.org"><img src="https://img.shields.io/badge/Open_Source-❤️-FDA599?"/></a>
   <a href="/LICENSE"><img src="https://img.shields.io/badge/License-GNU_GPLv3-F4E28D"/></a>
   <a href="https://onnxruntime.ai"><img src="https://img.shields.io/badge/Powered%20by-ONNXRuntime-blue"/></a>
   <a href="https://github.com/Windsander/ADI-Stable-Diffusion/actions">
@@ -11,7 +11,7 @@
 
 <br>
 
-Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion.
+Agile Diffusers Inference (ADI) is a C++ library, which also offers a suite of command line tools. Its purpose is to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion. with extremely lightweight package size & high performance. 
 
 ## Why choose ONNXRuntime as our Inference Engine?
 
