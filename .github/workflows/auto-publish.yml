@@ -40,7 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: release-${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
+          release_name: ADI ${{ env.VERSION }}
           body_path: CHANGELOG.md
 
     outputs:
