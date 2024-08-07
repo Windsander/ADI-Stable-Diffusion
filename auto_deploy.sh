@@ -35,7 +35,7 @@ echo "Deploying version: $VERSION"
 REPO_URL="https://github.com/Windsander/ADI-Stable-Diffusion"
 DESCRIPTION="Agile Diffusers Inference (ADI) Command Line Tool"
 LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion."
-MAINTAINER="Arikan.Li<https://github.com/Windsander/ADI-Stable-Diffusion/issues>"
+MAINTAINER="Arikan.Li <https://github.com/Windsander/ADI-Stable-Diffusion/issues>"
 LICENSE="GPL-3.0 license"
 
 # Ensure necessary tools are installed
@@ -62,6 +62,7 @@ ensure_tools() {
             fi
             if ! command -v copr-cli &> /dev/null; then
                 echo "copr-cli not found, installing..."
+                sudo apt-get install -y python3-pip
                 sudo pip3 install copr-cli
             fi
             if ! command -v curl &> /dev/null; then
@@ -195,7 +196,7 @@ EOF
 
   # 创建指向最新版本公式文件的符号链接，并覆盖上一个版本的链接 (以求方便用户直接安装最新版)
   ln -sf ${formula_name}-${version}.rb ${formula_name}.rb
-  echo "Linking last: ${formula_name}.rb -> ${formula_name}-${version}.rb"
+  echo "Formula link: ${formula_name}.rb -> ${formula_name}-${version}.rb"
 
   echo "Formula created successfully"
 }
@@ -205,7 +206,7 @@ create_debian_package() {
   echo "Creating Debian Package..."
 
   local package_name=$1
-  local version=$2
+  local version=${2#v}
   local url_x86_64=$3
   local url_aarch64=$4
 
@@ -225,7 +226,7 @@ ${package_name} (${version}-1) stable; urgency=low
 
   * See CHANGELOG.md in package
 
- -- $MAINTAINER  $(date +"%a, %d %b %Y %H:%M:%S %z")
+ -- $MAINTAINER  $(date -R)
 EOF
 
   # 创建 debian/rules 文件
