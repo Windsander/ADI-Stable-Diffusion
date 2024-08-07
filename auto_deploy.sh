@@ -135,6 +135,8 @@ ensure_tools() {
             fi
             ;;
     esac
+
+    echo "Ensuring necessary tools are installed [Finish]"
 }
 
 
@@ -244,6 +246,7 @@ URL_X86_64 := ${url_x86_64}
 URL_AARCH64 := ${url_aarch64}
 SHA256_X86_64 := ${sha256_x86_64}
 SHA256_AARCH64 := ${sha256_aarch64}
+RELEASE_DIR := ""
 
 %:
 	dh \$@
@@ -253,10 +256,12 @@ override_dh_auto_build:
 		curl -L -o release-\$(VERSION)-linux-x86_64.tar.gz \$(URL_X86_64); \
 		echo "\$(SHA256_X86_64)  release-\$(VERSION)-linux-x86_64.tar.gz" | sha256sum -c -; \
 		tar -xzvf release-\$(VERSION)-linux-x86_64.tar.gz; \
+		RELEASE_DIR=release-\$(VERSION)-linux-x86_64; \
 	elif [ "\$(ARCH)" = "arm64" ]; then \
 		curl -L -o release-\$(VERSION)-linux-aarch64.tar.gz \$(URL_AARCH64); \
 		echo "\$(SHA256_AARCH64)  release-\$(VERSION)-linux-aarch64.tar.gz" | sha256sum -c -; \
 		tar -xzvf release-\$(VERSION)-linux-aarch64.tar.gz; \
+		RELEASE_DIR=release-\$(VERSION)-linux-aarch64; \
 	fi
 
 override_dh_auto_install:
@@ -264,12 +269,12 @@ override_dh_auto_install:
 	mkdir -p \$(DESTDIR)/usr/local/include
 	mkdir -p \$(DESTDIR)/usr/local/lib
 	mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
-	cp -r bin/* \$(DESTDIR)/usr/local/bin/
-	cp -r include/* \$(DESTDIR)/usr/local/include/
-	cp -r lib/* \$(DESTDIR)/usr/local/lib/
-	cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
-	cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
-	cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+	cp -r \$(RELEASE_DIR)/bin/* \$(DESTDIR)/usr/local/bin/ || true
+	cp -r \$(RELEASE_DIR)/include/* \$(DESTDIR)/usr/local/include/ || true
+	cp -r \$(RELEASE_DIR)/lib/* \$(DESTDIR)/usr/local/lib/ || true
+	cp \$(RELEASE_DIR)/CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	cp \$(RELEASE_DIR)/README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	cp \$(RELEASE_DIR)/LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
