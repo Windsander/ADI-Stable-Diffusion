@@ -59,6 +59,7 @@ jobs:
           sudo pip3 install copr-cli
 
       - name: Run deploy script
+        shell: bash
         run: |
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
           chmod +x auto_deploy.sh
@@ -91,6 +92,7 @@ jobs:
           brew install cmake ninja coreutils
 
       - name: Run deploy script
+        shell: bash
         run: |
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
           chmod +x auto_deploy.sh
@@ -119,9 +121,10 @@ jobs:
           choco install cmake -y
           choco install ninja -y
           choco install curl -y
-          choco install coreutils -y
+          choco install git -y
 
       - name: Run deploy script
+        shell: bash
         run: |
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
           chmod +x auto_deploy.sh

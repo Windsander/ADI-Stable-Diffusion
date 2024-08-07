@@ -131,7 +131,7 @@ ensure_tools() {
             fi
             if ! command -v sha256sum &> /dev/null; then
                 echo "sha256sum not found, installing..."
-                choco install coreutils -y
+                choco install git -y
             fi
             ;;
     esac
@@ -155,7 +155,7 @@ create_homebrew_formula() {
   sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
 
   cat <<EOF > ${formula_name}-${version}.rb
-class ${formula_name^} < Formula
+class ${formula_name} < Formula
   desc "ADI Stable Diffusion"
   homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
   version "${version}"
@@ -261,15 +261,15 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	mkdir -p \$(DESTDIR)/usr/local/bin
-  mkdir -p \$(DESTDIR)/usr/local/include
-  mkdir -p \$(DESTDIR)/usr/local/lib
-  mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
-  cp -r bin/* \$(DESTDIR)/usr/local/bin/
-  cp -r include/* \$(DESTDIR)/usr/local/include/
-  cp -r lib/* \$(DESTDIR)/usr/local/lib/
-  cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
-  cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
-  cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+	mkdir -p \$(DESTDIR)/usr/local/include
+	mkdir -p \$(DESTDIR)/usr/local/lib
+	mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
+	cp -r bin/* \$(DESTDIR)/usr/local/bin/
+	cp -r include/* \$(DESTDIR)/usr/local/include/
+	cp -r lib/* \$(DESTDIR)/usr/local/lib/
+	cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+	cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
+	cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
