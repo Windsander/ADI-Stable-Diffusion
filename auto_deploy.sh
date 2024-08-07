@@ -85,6 +85,23 @@ ensure_tools() {
                 echo "rpmbuild not found, installing..."
                 sudo apt-get install -y rpm
             fi
+            if ! command -v wine &> /dev/null; then
+                echo "Wine not found, installing..."
+                sudo dpkg --add-architecture i386
+                sudo apt-get update
+                sudo apt-get install -y wine64 wine32
+            fi
+            if ! command -v pwsh &> /dev/null; then
+                echo "PowerShell not found, installing..."
+                wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+                sudo dpkg -i packages-microsoft-prod.deb
+                sudo apt-get update
+                sudo apt-get install -y powershell
+            fi
+            if ! command -v choco &> /dev/null; then
+                echo "Chocolatey not found, installing..."
+                pwsh -command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+            fi
             ;;
 
         Darwin*)
@@ -403,6 +420,91 @@ EOF
   echo "RPM packages created successfully"
 }
 
+# 创建 Chocolatey 包
+create_choco_package() {
+  echo "Creating Chocolatey Package..."
+
+  local package_name=$1
+  local version=$2
+  local url_x86_64=$3
+  local url_x86=$4
+  local url_arm64=$5
+
+  # 创建临时目录
+  mkdir -p ${package_name}-${version}/tools
+
+  # 计算 SHA-256 校验和
+  local sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+  local sha256_x86=$(curl -L ${url_x86} | sha256sum | awk '{ print $1 }')
+  local sha256_arm64=$(curl -L ${url_arm64} | sha256sum | awk '{ print $1 }')
+
+  # 创建 .nuspec 文件
+  cat <<EOF > ${package_name}-${version}/${package_name}.nuspec
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>${package_name}</id>
+    <version>${version}</version>
+    <authors>${MAINTAINER}</authors>
+    <owners>${MAINTAINER}</owners>
+    <description>${DESCRIPTION}</description>
+    <licenseUrl>${LICENSE}</licenseUrl>
+    <projectUrl>${REPO_URL}</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+  </metadata>
+</package>
+EOF
+
+  # 创建 install.ps1 脚本
+  cat <<EOF > ${package_name}-${version}/tools/chocolateyInstall.ps1
+# Download and install the software
+\$ErrorActionPreference = 'Stop'
+
+\$packageName = '${package_name}'
+\$checksumType = 'sha256'
+
+if (\$env:PROCESSOR_ARCHITECTURE -eq 'AMD64') {
+  \$url = '${url_x86_64}'
+  \$checksum = '${sha256_x86_64}'
+} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'x86') {
+  \$url = '${url_x86}'
+  \$checksum = '${sha256_x86}'
+} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
+  \$url = '${url_arm64}'
+  \$checksum = '${sha256_arm64}'
+} else {
+  throw "Unsupported architecture: \$env:PROCESSOR_ARCHITECTURE"
+}
+
+Install-ChocolateyPackage "\$packageName" 'exe' "\$url" --checksum "\$checksum" --checksumType "\$checksumType"
+EOF
+
+  # 创建 uninstall.ps1 脚本
+  cat <<EOF > ${package_name}-${version}/tools/chocolateyUninstall.ps1
+# Uninstall the software
+\$ErrorActionPreference = 'Stop'
+\$packageName = '${package_name}'
+Remove-Item -Recurse -Force "\$env:ChocolateyInstall\lib\$packageName"
+EOF
+
+  # 创建 CHANGELOG.md 文件
+  cat <<EOF > ${package_name}-${version}/CHANGELOG.md
+# Changelog
+
+## ${version}
+- See CHANGELOG.md in package
+EOF
+
+  # 打包 choco 包，获取 ./${package_name}-${version}.nupkg
+  pwsh -command "choco pack ${package_name}-${version}/${package_name}.nuspec"
+
+  # 清理临时目录
+  rm -rf ${package_name}-${version}
+
+  echo "Chocolatey packages made: ${package_name}-${version}.nupkg"
+  echo "Chocolatey package created successfully"
+}
+
 # Main function
 main() {
     ensure_tools
@@ -424,6 +526,13 @@ main() {
     create_rpm_package "adi" "${VERSION}" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+
+    echo "==========================================================="
+
+    create_choco_package "adi" "${VERSION}" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86_64.zip" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86.zip" \
+      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-arm64.zip"
 
 }
 

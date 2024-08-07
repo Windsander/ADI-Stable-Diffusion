@@ -32,6 +32,20 @@ jobs:
           sudo apt-get install -y cmake ninja-build curl coreutils dput dpkg
           sudo apt-get install -y python3-pip
           sudo pip3 install copr-cli
+          
+          # 安装 Wine
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y wine64 wine32
+          
+          # 安装 PowerShell
+          wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y powershell
+          
+          # 安装 Chocolatey
+          pwsh -command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
 
       - name: Extract version from branch name
         id: extract_version
@@ -62,7 +76,7 @@ jobs:
       - name: Copy and rename deployment files
         run: |
           cd $GITHUB_WORKSPACE
-          cp *.rb *.deb *.rpm README.md LICENSE .
+          cp *.rb *.deb *.rpm *.nupkg README.md LICENSE .
           if [ -f CHANGELOG.md ]; then
             cp CHANGELOG.md CHANGELOG-${VERSION}.md
           fi
@@ -73,6 +87,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add *.rb *.deb *.rpm README.md LICENSE CHANGELOG-${VERSION}.md
+          git add *.rb *.deb *.rpm *.nupkg README.md LICENSE CHANGELOG-${VERSION}.md
           git commit -m "Deploy version $VERSION"
           git push origin deploy
