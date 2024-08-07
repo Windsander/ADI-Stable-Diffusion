@@ -294,7 +294,7 @@ Source: ${package_name}
 Section: base
 Priority: optional
 Maintainer: ${MAINTAINER}
-Build-Depends: debhelper-compat (= 13), curl, sha256sum
+Build-Depends: debhelper-compat (= 13), curl, coreutils
 Standards-Version: 4.5.0
 Homepage: ${REPO_URL}
 Rules-Requires-Root: no
@@ -310,6 +310,9 @@ EOF
   mkdir -p ${package_name}-${version}/bin
   mkdir -p ${package_name}-${version}/include
   mkdir -p ${package_name}-${version}/lib
+
+  # 生成原始源文件 tarball
+  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}
 
   # 打包 debian 包
   cd ${package_name}-${version}
