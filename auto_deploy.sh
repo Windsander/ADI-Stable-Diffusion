@@ -228,7 +228,7 @@ create_debian_package() {
 
   # 创建 debian/changelog 文件
   cat <<EOF > ${package_name}-${version}/debian/changelog
-${package_name} (${version}-1) stable; urgency=low
+${package_name} (${version}-1) unstable; urgency=low
 
   * See CHANGELOG.md in package
 
@@ -239,43 +239,20 @@ EOF
   cat <<EOF > ${package_name}-${version}/debian/rules
 #!/usr/bin/make -f
 
-# 定义变量
-PACKAGE_NAME := ${package_name}
-VERSION := ${version}
-ARCH := \$(shell dpkg-architecture -qDEB_HOST_ARCH)
-URL_X86_64 := ${url_x86_64}
-URL_AARCH64 := ${url_aarch64}
-SHA256_X86_64 := ${sha256_x86_64}
-SHA256_AARCH64 := ${sha256_aarch64}
-RELEASE_DIR := ""
-
 %:
 	dh \$@
-
-override_dh_auto_build:
-	if [ "\$(ARCH)" = "amd64" ]; then \
-		curl -L -o release-\$(VERSION)-linux-x86_64.tar.gz \$(URL_X86_64); \
-		echo "\$(SHA256_X86_64)  release-\$(VERSION)-linux-x86_64.tar.gz" | sha256sum -c -; \
-		tar -xzvf release-\$(VERSION)-linux-x86_64.tar.gz; \
-		RELEASE_DIR=release-\$(VERSION)-linux-x86_64; \
-	elif [ "\$(ARCH)" = "arm64" ]; then \
-		curl -L -o release-\$(VERSION)-linux-aarch64.tar.gz \$(URL_AARCH64); \
-		echo "\$(SHA256_AARCH64)  release-\$(VERSION)-linux-aarch64.tar.gz" | sha256sum -c -; \
-		tar -xzvf release-\$(VERSION)-linux-aarch64.tar.gz; \
-		RELEASE_DIR=release-\$(VERSION)-linux-aarch64; \
-	fi
 
 override_dh_auto_install:
 	mkdir -p \$(DESTDIR)/usr/local/bin
 	mkdir -p \$(DESTDIR)/usr/local/include
 	mkdir -p \$(DESTDIR)/usr/local/lib
 	mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
-	cp -r \$(RELEASE_DIR)/bin/* \$(DESTDIR)/usr/local/bin/ || true
-	cp -r \$(RELEASE_DIR)/include/* \$(DESTDIR)/usr/local/include/ || true
-	cp -r \$(RELEASE_DIR)/lib/* \$(DESTDIR)/usr/local/lib/ || true
-	cp \$(RELEASE_DIR)/CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
-	cp \$(RELEASE_DIR)/README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
-	cp \$(RELEASE_DIR)/LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	cp -r bin/* \$(DESTDIR)/usr/local/bin/ || true
+	cp -r include/* \$(DESTDIR)/usr/local/include/ || true
+	cp -r lib/* \$(DESTDIR)/usr/local/lib/ || true
+	cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
@@ -283,10 +260,10 @@ EOF
   # 创建 debian/control 文件
   cat <<EOF > ${package_name}-${version}/debian/control
 Source: ${package_name}
-Section: base
+Section: utils
 Priority: optional
 Maintainer: ${MAINTAINER}
-Build-Depends: debhelper-compat (= 13), curl, coreutils
+Build-Depends: debhelper-compat (= 13), curl
 Standards-Version: 4.5.0
 Homepage: ${REPO_URL}
 Rules-Requires-Root: no
@@ -298,26 +275,68 @@ Description: ${DESCRIPTION}
  ${LONG_DESCRIPTION}
 EOF
 
-  # 创建空的 bin, include 和 lib 目录
-  mkdir -p ${package_name}-${version}/bin
-  mkdir -p ${package_name}-${version}/include
-  mkdir -p ${package_name}-${version}/lib
+  # 创建 debian/source/format 文件
+  mkdir -p ${package_name}-${version}/debian/source
+  cat <<EOF > ${package_name}-${version}/debian/source/format
+3.0 (quilt)
+EOF
 
-  # 生成原始源文件 tarball
-  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}
+  # 创建 debian/copyright 文件
+  cat <<EOF > ${package_name}-${version}/debian/copyright
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ${package_name}
+Source: ${REPO_URL}
 
-  # 打包 debian 包
-  cd ${package_name}-${version}
-  debuild -us -uc
+Files: *
+Copyright: 2023 Arikan.Li
+License: GPL-3.0
+ This package is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this package; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+EOF
+
+  # 打包 x86_64 架构
+  mkdir -p ${package_name}-${version}-x86_64
+  cp -r ${package_name}-${version}/debian ${package_name}-${version}-x86_64/
+  curl -L -o ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz ${url_x86_64}
+  echo "${sha256_x86_64}  ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz" | sha256sum -c -
+  tar -xzvf ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz -C ${package_name}-${version}-x86_64
+  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}-x86_64
+
+  cd ${package_name}-${version}-x86_64
+  fakeroot debuild -us -uc
   cd ..
 
-  # 重命名生成的 deb 文件
-  mv ../${package_name}_${version}_*.deb ${package_name}-${version}.deb
+  mv ../${package_name}_${version}_*.deb ${package_name}-${version}-x86_64.deb
 
-  # 清理临时目录
-  rm -rf ${package_name}-${version}
+  rm -rf ${package_name}-${version}-x86_64
 
-  echo "Debian packages made: ${package_name}-${version}.deb"
+  # 打包 aarch64 架构
+  mkdir -p ${package_name}-${version}-aarch64
+  cp -r ${package_name}-${version}/debian ${package_name}-${version}-aarch64/
+  curl -L -o ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz ${url_aarch64}
+  echo "${sha256_aarch64}  ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz" | sha256sum -c -
+  tar -xzvf ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz -C ${package_name}-${version}-aarch64
+  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}-aarch64
+
+  cd ${package_name}-${version}-aarch64
+  fakeroot debuild -us -uc
+  cd ..
+
+  mv ../${package_name}_${version}_*.deb ${package_name}-${version}-aarch64.deb
+
+  rm -rf ${package_name}-${version}-aarch64
+
   echo "Debian packages created successfully"
 }
 
