@@ -37,6 +37,7 @@ DESCRIPTION="Agile Diffusers Inference (ADI) Command Line Tool"
 LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion."
 MAINTAINER="Arikan.Li <https://github.com/Windsander/ADI-Stable-Diffusion/issues>"
 LICENSE="GPL-3.0 license"
+LICENSE_URL="https://www.gnu.org/licenses/gpl-3.0.en.html"
 
 # Ensure necessary tools are installed
 ensure_tools() {
@@ -419,10 +420,13 @@ create_choco_package() {
   echo "Creating Chocolatey Package..."
 
   local package_name=$1
-  local version=$2
+  local version=${2#v}
   local url_x86_64=$3
   local url_x86=$4
   local url_arm64=$5
+
+  # Extract the name part from MAINTAINER
+  MAINTAINER_NAME=$(echo $MAINTAINER | sed 's/ <.*//')
 
   # 创建临时目录
   mkdir -p ${package_name}-${version}/tools
@@ -444,10 +448,10 @@ create_choco_package() {
   <metadata>
     <id>${package_name}</id>
     <version>${version}</version>
-    <authors>${MAINTAINER}</authors>
-    <owners>${MAINTAINER}</owners>
+    <authors>${MAINTAINER_NAME}</authors>
+    <owners>${MAINTAINER_NAME}</owners>
     <description>${DESCRIPTION}</description>
-    <licenseUrl>${LICENSE}</licenseUrl>
+    <licenseUrl>${LICENSE_URL}</licenseUrl>
     <projectUrl>${REPO_URL}</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
   </metadata>
@@ -499,8 +503,7 @@ EOF
 EOF
 
   # 打包 choco 包，获取 ./${package_name}-${version}.nupkg
-  path="${package_name}-${version}\\${package_name}.nuspec"
-  pwsh -Command "choco pack \"$path\""
+  choco pack ${package_name}-${version}/${package_name}.nuspec
 
   # 清理临时目录
   rm -rf ${package_name}-${version}
