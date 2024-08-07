@@ -219,6 +219,15 @@ create_debian_package() {
   # 创建临时目录结构
   mkdir -p ${package_name}-${version}/debian
 
+  # 创建 debian/changelog 文件
+  cat <<EOF > ${package_name}-${version}/debian/changelog
+${package_name} (${version}-1) stable; urgency=low
+
+  * See CHANGELOG.md in package
+
+ -- $MAINTAINER  $(date +"%a, %d %b %Y %H:%M:%S %z")
+EOF
+
   # 创建 debian/rules 文件
   cat <<EOF > ${package_name}-${version}/debian/rules
 #!/usr/bin/make -f
@@ -397,13 +406,19 @@ EOF
 main() {
     ensure_tools
 
+    echo "==========================================================="
+
     create_homebrew_formula "adi" "${VERSION}" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
 
+    echo "==========================================================="
+
     create_debian_package "adi" "${VERSION}" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+
+    echo "==========================================================="
 
     create_rpm_package "adi" "${VERSION}" \
       "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
