@@ -29,7 +29,7 @@ jobs:
         id: extract_version
         shell: bash
         run: |
-          VERSION="${{ github.event.workflow_run.head_branch#release/release- }}"
+          VERSION="${GITHUB_REF#refs/heads/release/release-}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Extracted version: $VERSION"
 
