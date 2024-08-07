@@ -11,7 +11,7 @@
 
 <br>
 
-Agile Diffusers Inference (ADI) is a C++ library, which also offers a suite of command line tools. Its purpose is to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion. with extremely lightweight package size & high performance. 
+Agile Diffusers Inference (ADI) is a C++ library with CLI tool. Purpose to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion, with suitable package size & high performance. 
 
 ## Why choose ONNXRuntime as our Inference Engine?
 
