@@ -85,23 +85,6 @@ ensure_tools() {
                 echo "rpmbuild not found, installing..."
                 sudo apt-get install -y rpm
             fi
-            if ! command -v wine &> /dev/null; then
-                echo "Wine not found, installing..."
-                sudo dpkg --add-architecture i386
-                sudo apt-get update
-                sudo apt-get install -y wine64 wine32
-            fi
-            if ! command -v pwsh &> /dev/null; then
-                echo "PowerShell not found, installing..."
-                wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
-                sudo dpkg -i packages-microsoft-prod.deb
-                sudo apt-get update
-                sudo apt-get install -y powershell
-            fi
-            if ! command -v choco &> /dev/null; then
-                echo "Chocolatey not found, installing..."
-                pwsh -command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-            fi
             ;;
 
         Darwin*)
@@ -122,7 +105,10 @@ ensure_tools() {
                 echo "sha256sum not found, installing..."
                 brew install coreutils
             fi
-            # Note: dput, copr-cli, dpkg-deb, debuild, and rpmbuild are not typical on macOS
+            if ! command -v brew &> /dev/null; then
+                echo "Homebrew not found, please install Homebrew first."
+                exit 1
+            fi
             ;;
 
         CYGWIN*|MINGW*|MSYS*)
@@ -147,10 +133,10 @@ ensure_tools() {
                 echo "sha256sum not found, installing..."
                 choco install coreutils -y
             fi
-            # Note: dput, copr-cli, dpkg-deb, debuild, and rpmbuild are not typical on Windows
             ;;
     esac
 }
+
 
 # Create Homebrew Formula
 create_homebrew_formula() {
@@ -508,37 +494,48 @@ EOF
   echo "Chocolatey package created successfully"
 }
 
-# Main function
-main() {
-    ensure_tools
+package() {
+    OS=$(uname -s)
 
-    echo "==========================================================="
+    case "$OS" in
+        Linux*)
+            echo "==========================================================="
+            create_debian_package "adi" "${VERSION}" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
 
-    create_homebrew_formula "adi" "${VERSION}" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
+            echo "==========================================================="
+            create_rpm_package "adi" "${VERSION}" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+            echo "==========================================================="
+            ;;
 
-    echo "==========================================================="
+        Darwin*)
+            echo "==========================================================="
+            create_homebrew_formula "adi" "${VERSION}" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
+            echo "==========================================================="
+            ;;
 
-    create_debian_package "adi" "${VERSION}" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
+        CYGWIN*|MINGW*|MSYS*)
+            echo "==========================================================="
+            create_choco_package "adi" "${VERSION}" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86_64.zip" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86.zip" \
+              "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-arm64.zip"
+            echo "==========================================================="
+            ;;
 
-    echo "==========================================================="
-
-    create_rpm_package "adi" "${VERSION}" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
-
-    echo "==========================================================="
-
-    create_choco_package "adi" "${VERSION}" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86_64.zip" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86.zip" \
-      "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-arm64.zip"
-
+        *)
+            echo "Unsupported operating system: $OS"
+            exit 1
+            ;;
+    esac
 }
 
-main
+ensure_tools
+package
 
 echo "Deployment completed successfully."

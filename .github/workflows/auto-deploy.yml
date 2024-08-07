@@ -9,7 +9,7 @@ on:
       - 'release/release-v*'
 
 jobs:
-  deploy:
+  setup_environment:
     if: ${{ github.event.workflow_run.conclusion == 'success'}}
     runs-on: ubuntu-latest
 
@@ -20,10 +20,35 @@ jobs:
           ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Switch to release branch
+        id: switch_branch
         run: |
           git checkout ${{ github.event.workflow_run.head_branch }}
           echo "TARGET_BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
+          echo "::set-output name=target_branch::${{ github.event.workflow_run.head_branch }}"
           echo "Switched to branch: ${{ env.TARGET_BRANCH }}"
+
+      - name: Extract version from branch name
+        id: extract_version
+        shell: bash
+        run: |
+          VERSION=$(echo "${{ github.event.workflow_run.head_branch }}" | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "::set-output name=version::$VERSION"
+          echo "Extracted version: $VERSION"
+
+    outputs:
+      target_branch: ${{ steps.extract_version.outputs.target_branch }}
+      version: ${{ steps.extract_version.outputs.version }}
+
+  deploy_linux:
+    needs: setup_environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.setup_environment.outputs.target_branch }}
 
       - name: Set up environment
         run: |
@@ -32,61 +57,128 @@ jobs:
           sudo apt-get install -y cmake ninja-build curl coreutils dput dpkg
           sudo apt-get install -y python3-pip
           sudo pip3 install copr-cli
-          
-          # 安装 Wine
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y wine64 wine32
-          
-          # 安装 PowerShell
-          wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y powershell
-          
-          # 安装 Chocolatey
-          pwsh -command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-
-      - name: Extract version from branch name
-        id: extract_version
-        shell: bash
-        run: |
-          VERSION=$(echo "${{ env.TARGET_BRANCH }}" | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Extracted version: $VERSION"
 
       - name: Run deploy script
         run: |
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
           chmod +x auto_deploy.sh
-          ./auto_deploy.sh --version $VERSION
+          ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
 
-      - name: Checkout or create deploy branch
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-artifacts
+          path: |
+            *.deb
+            *.rpm
+
+  deploy_macos:
+    needs: setup_environment
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.setup_environment.outputs.target_branch }}
+
+      - name: Set up environment
         run: |
-          git fetch origin
-          if git rev-parse --verify origin/deploy; then
-            git checkout deploy
-          else
-            git checkout --orphan deploy
-            git reset --hard
-            git commit --allow-empty -m "Initializing deploy branch"
-            git push origin deploy
+          if ! command -v brew &> /dev/null; then
+            echo "Homebrew not found, please install Homebrew first."
+            exit 1
           fi
+          brew install cmake ninja coreutils
 
-      - name: Copy and rename deployment files
+      - name: Run deploy script
+        run: |
+          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+          chmod +x auto_deploy.sh
+          ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos-artifacts
+          path: |
+            *.rb
+
+  deploy_windows:
+    needs: setup_environment
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.setup_environment.outputs.target_branch }}
+
+      - name: Set up environment
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+          choco install cmake -y
+          choco install ninja -y
+          choco install curl -y
+          choco install coreutils -y
+
+      - name: Run deploy script
+        run: |
+          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+          chmod +x auto_deploy.sh
+          ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-artifacts
+          path: |
+            *.nupkg
+
+  finalize_deploy:
+    needs: [setup_environment, deploy_linux, deploy_macos, deploy_windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.setup_environment.outputs.target_branch }}
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-artifacts
+          path: ./artifacts/linux
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: macos-artifacts
+          path: ./artifacts/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-artifacts
+          path: ./artifacts/windows
+
+      - name: Copy and rename changelog file
         run: |
           cd $GITHUB_WORKSPACE
-          cp *.rb *.deb *.rpm *.nupkg README.md LICENSE .
           if [ -f CHANGELOG.md ]; then
-            cp CHANGELOG.md CHANGELOG-${VERSION}.md
+            cp CHANGELOG.md CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
           fi
 
       - name: Commit and push changes
         env:
           GITHUB_TOKEN: ${{ secrets.ADI_DEPLOY_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add *.rb *.deb *.rpm *.nupkg README.md LICENSE CHANGELOG-${VERSION}.md
-          git commit -m "Deploy version $VERSION"
+          git config --global user.name "github-actions[deploy-bot]"
+          git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
+          git checkout -b deploy
+          cp ./artifacts/linux/* .
+          cp ./artifacts/macos/* .
+          cp ./artifacts/windows/* .
+          git add *.rb *.deb *.rpm *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
+          git commit -m "Deploy version ${{ needs.setup_environment.outputs.version }}"
           git push origin deploy
