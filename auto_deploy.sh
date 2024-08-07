@@ -414,7 +414,7 @@ EOF
   echo "RPM packages created successfully"
 }
 
-# 创建 Chocolatey 包
+# Create Chocolatey Package
 create_choco_package() {
   echo "Creating Chocolatey Package..."
 
@@ -428,9 +428,14 @@ create_choco_package() {
   mkdir -p ${package_name}-${version}/tools
 
   # 计算 SHA-256 校验和
-  local sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
-  local sha256_x86=$(curl -L ${url_x86} | sha256sum | awk '{ print $1 }')
-  local sha256_arm64=$(curl -L ${url_arm64} | sha256sum | awk '{ print $1 }')
+  local sha256_x86_64
+  sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+
+  local sha256_x86
+  sha256_x86=$(curl -L ${url_x86} | sha256sum | awk '{ print $1 }')
+
+  local sha256_arm64
+  sha256_arm64=$(curl -L ${url_arm64} | sha256sum | awk '{ print $1 }')
 
   # 创建 .nuspec 文件
   cat <<EOF > ${package_name}-${version}/${package_name}.nuspec
@@ -446,6 +451,10 @@ create_choco_package() {
     <projectUrl>${REPO_URL}</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
   </metadata>
+  <files>
+    <file src="tools\chocolateyInstall.ps1" target="tools\chocolateyInstall.ps1" />
+    <file src="tools\chocolateyUninstall.ps1" target="tools\chocolateyUninstall.ps1" />
+  </files>
 </package>
 EOF
 
@@ -490,7 +499,8 @@ EOF
 EOF
 
   # 打包 choco 包，获取 ./${package_name}-${version}.nupkg
-  pwsh -command "choco pack ${package_name}-${version}/${package_name}.nuspec"
+  path="${package_name}-${version}\\${package_name}.nuspec"
+  pwsh -Command "choco pack \"$path\""
 
   # 清理临时目录
   rm -rf ${package_name}-${version}

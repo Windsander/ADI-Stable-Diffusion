@@ -24,7 +24,6 @@ jobs:
         run: |
           git checkout ${{ github.event.workflow_run.head_branch }}
           echo "TARGET_BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
-          echo "::set-output name=target_branch::${{ github.event.workflow_run.head_branch }}"
           echo "Switched to branch: ${{ env.TARGET_BRANCH }}"
 
       - name: Extract version from branch name
@@ -33,12 +32,11 @@ jobs:
         run: |
           VERSION=$(echo "${{ github.event.workflow_run.head_branch }}" | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "::set-output name=version::$VERSION"
           echo "Extracted version: $VERSION"
 
     outputs:
-      target_branch: ${{ steps.extract_version.outputs.target_branch }}
-      version: ${{ steps.extract_version.outputs.version }}
+      target_branch: ${{ env.TARGET_BRANCH }}
+      version: ${{ env.VERSION }}
 
   deploy_linux:
     needs: setup_environment
