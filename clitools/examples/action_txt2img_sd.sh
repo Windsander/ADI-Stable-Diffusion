@@ -2,7 +2,7 @@
 
 # 默认路径
 DEFAULT_MODEL_FILE_PATH="../../sd/sd-base-model/onnx-sd-turbo"
-DEFAULT_EXECUTABLE_PATH="../../cmake-build-debug/bin/ort-sd-clitools"
+DEFAULT_EXECUTABLE_PATH="../../cmake-build-debug/bin/adi-cli"
 
 # 初始化路径
 MODEL_FILE_PATH=$DEFAULT_MODEL_FILE_PATH

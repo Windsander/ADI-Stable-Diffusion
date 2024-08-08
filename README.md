@@ -31,7 +31,7 @@ Agile Diffusers Inference (ADI) is a C++ library with CLI tool. Purpose to lever
 
 ### Example: 1-step Euler_A img2img latent space visualized
 
-- **1. build [ort-sd-clitools] for local using**
+- **1. build [adi-cli] for local using**
 
 by simply executing script [auto_build.sh](auto_build.sh):
 ```bash
@@ -65,16 +65,16 @@ bash ./auto_build.sh [params] \
 
 currently, this project provide below [Options]:
 ```cmake
-option(ORT_COMPILED_ONLINE           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
-option(ORT_COMPILED_HEAVY            "ort-sd: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
-option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
-option(ORT_BUILD_COMBINE_BASE        "ort-sd: build combine code together to build a single output lib" OFF)
-option(ORT_BUILD_SHARED_ADI          "ort-sd: build ADI project shared libs" OFF)
-option(ORT_BUILD_SHARED_ORT          "ort-sd: build ORT in shared libs" OFF)
-option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
-option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
-option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
-option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
+option(ORT_COMPILED_ONLINE           "adi: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
+option(ORT_COMPILED_HEAVY            "adi: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
+option(ORT_BUILD_COMMAND_LINE        "adi: build command line tools" ${SD_STANDALONE})
+option(ORT_BUILD_COMBINE_BASE        "adi: build combine code together to build a single output lib" OFF)
+option(ORT_BUILD_SHARED_ADI          "adi: build ADI project shared libs" OFF)
+option(ORT_BUILD_SHARED_ORT          "adi: build ORT in shared libs" OFF)
+option(ORT_ENABLE_TENSOR_RT          "adi: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
+option(ORT_ENABLE_CUDA               "adi: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
+option(ORT_ENABLE_COREML             "adi: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
+option(ORT_ENABLE_NNAPI              "adi: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 
 ```
 enable if you have to **(ONLY FOR YOU TRULY NEEDS, UNRECOMMENDED)**.
@@ -88,7 +88,7 @@ cd ./cmake-build-debug/bin/
 
 # and here is an example of using this tool:
 # sd-turbo, img2img, positive, inference_steps=1, guide=1.0, euler_a(for 1-step purpose)
-./ort-sd-clitools -p "A cat in the water at sunset" -m img2img -i ../../sd/io-test/input-test.png -o ../../sd/io-test/output.png -w 512 -h 512 -c 3 --seed 15.0 --dims 1024 --clip ../../sd/sd-base-model/onnx-sd-turbo/text_encoder/model.onnx --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx --dict ../../sd/sd-dictionary/vocab.txt --beta-start 0.00085 --beta-end 0.012 --beta scaled_linear --alpha cos --scheduler euler_a --predictor epsilon --tokenizer bpe --train-steps 1000 --token-idx-num 49408 --token-length 77 --token-border 1.0 --gain 1.1 --decoding 0.18215 --guidance 1.0 --steps 1 -v
+./adi-cli -p "A cat in the water at sunset" -m img2img -i ../../sd/io-test/input-test.png -o ../../sd/io-test/output.png -w 512 -h 512 -c 3 --seed 15.0 --dims 1024 --clip ../../sd/sd-base-model/onnx-sd-turbo/text_encoder/model.onnx --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx --dict ../../sd/sd-dictionary/vocab.txt --beta-start 0.00085 --beta-end 0.012 --beta scaled_linear --alpha cos --scheduler euler_a --predictor epsilon --tokenizer bpe --train-steps 1000 --token-idx-num 49408 --token-length 77 --token-border 1.0 --gain 1.1 --decoding 0.18215 --guidance 1.0 --steps 1 -v
 ```
 
 - **Below show What actually happened in [Example: 1-step img2img inference] in Latent Space (Skip All Models):**

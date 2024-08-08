@@ -193,7 +193,7 @@ class ${formula_name} < Formula
 
   test do
     # 运行测试来验证安装是否成功
-    system "#{bin}/ort-sd-clitools", "--version"
+    system "#{bin}/adi-cli", "--version"
   end
 end
 EOF
@@ -243,13 +243,13 @@ EOF
 	dh \$@
 
 override_dh_auto_install:
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/bin
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/include
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/lib
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/bin
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/include
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/lib
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
-	cp -r \$(CURDIR)/bin/* \$(CURDIR)/debian/${package_name}/usr/local/bin/ || true
-	cp -r \$(CURDIR)/include/* \$(CURDIR)/debian/${package_name}/usr/local/include/ || true
-	cp -r \$(CURDIR)/lib/* \$(CURDIR)/debian/${package_name}/usr/local/lib/ || true
+	cp \$(CURDIR)/bin/${package_name} \$(CURDIR)/debian/${package_name}/usr/bin/ || true
+	cp -r \$(CURDIR)/include/* \$(CURDIR)/debian/${package_name}/usr/include/ || true
+	cp -r \$(CURDIR)/lib/* \$(CURDIR)/debian/${package_name}/usr/lib/ || true
 	cp \$(CURDIR)/CHANGELOG.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
 	cp \$(CURDIR)/README.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
 	cp \$(CURDIR)/LICENSE \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
@@ -422,15 +422,15 @@ echo "%{expected_sha256sum}  %{_sourcedir}/%{name}-%{version}-%{arch}.tar.gz" | 
 %build
 
 %install
-mkdir -p %{buildroot}/usr/local/bin
-mkdir -p %{buildroot}/usr/local/include
-mkdir -p %{buildroot}/usr/local/lib
-cp -r * %{buildroot}/usr/local/
+mkdir -p %{buildroot}/usr/bin
+mkdir -p %{buildroot}/usr/include
+mkdir -p %{buildroot}/usr/lib
+cp -r * %{buildroot}/usr/
 
 %files
-/usr/local/bin/*
-/usr/local/include/*
-/usr/local/lib/*
+/usr/bin/*
+/usr/include/*
+/usr/lib/*
 %doc CHANGELOG.md README.md LICENSE
 
 %changelog

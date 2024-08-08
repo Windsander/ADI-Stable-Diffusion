@@ -5,9 +5,9 @@
 #ifndef ORT_SD_CONTEXT_IMPLEMENT_
 #define ORT_SD_CONTEXT_IMPLEMENT_
 
-#include "ort_sd_context.cc"
+#include "adi_context.cc"
 
-#include "ort_sd.h"
+#include "adi.h"
 
 namespace ortsd {
     ORT_ENTRY void generate_context(IOrtSDContext_ptr *ctx_pp_, struct IOrtSDConfig ctx_config_) {

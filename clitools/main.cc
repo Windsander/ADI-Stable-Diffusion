@@ -14,7 +14,7 @@
 #include <cstring>
 #include <ctime>
 
-#include "ort_sd.h"
+#include "adi.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION

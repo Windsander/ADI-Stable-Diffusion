@@ -165,16 +165,16 @@ message("[onnx.runtime.sd][I] target building set to ${Red}${CMAKE_BUILD_TYPE}${
 
 message("${Cyan}<############################ ${ENGINE_NAME}-Config ############################>${ColourReset}")
 # 1. Option list
-option(ORT_COMPILED_ONLINE           "ort-sd: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
-option(ORT_COMPILED_HEAVY            "ort-sd: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
-option(ORT_BUILD_COMMAND_LINE        "ort-sd: build command line tools" ${SD_STANDALONE})
-option(ORT_BUILD_COMBINE_BASE        "ort-sd: build combine code together to build a single output lib" OFF)
-option(ORT_BUILD_SHARED_ADI          "ort-sd: build ADI project shared libs" OFF)
-option(ORT_BUILD_SHARED_ORT          "ort-sd: build ORT in shared libs" OFF)
-option(ORT_ENABLE_TENSOR_RT          "ort-sd: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
-option(ORT_ENABLE_CUDA               "ort-sd: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
-option(ORT_ENABLE_COREML             "ort-sd: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
-option(ORT_ENABLE_NNAPI              "ort-sd: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
+option(ORT_COMPILED_ONLINE           "adi: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
+option(ORT_COMPILED_HEAVY            "adi: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
+option(ORT_BUILD_COMMAND_LINE        "adi: build command line tools" ${SD_STANDALONE})
+option(ORT_BUILD_COMBINE_BASE        "adi: build combine code together to build a single output lib" OFF)
+option(ORT_BUILD_SHARED_ADI          "adi: build ADI project shared libs" OFF)
+option(ORT_BUILD_SHARED_ORT          "adi: build ORT in shared libs" OFF)
+option(ORT_ENABLE_TENSOR_RT          "adi: using TensorRT provider to accelerate inference" ${DEFAULT_TRT_STATE})
+option(ORT_ENABLE_CUDA               "adi: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
+option(ORT_ENABLE_COREML             "adi: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
+option(ORT_ENABLE_NNAPI              "adi: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
 
 if(ANDROID AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
     set(ORT_BUILD_COMMAND_LINE OFF) # when in Windows, compile Android clitools request Processor equals, so default OFF
@@ -321,10 +321,10 @@ message("${Cyan}<############################# ${ENGINE_NAME}-Done #############
 
 message("${Cyan}<############################# ${PROJECT_NAME}-Make #############################>${ColourReset}")
 
-set(library_name ort-sd)
+set(library_name adi)
 
 set(library_data_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/outlet/ort_sd.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/outlet/adi.cc
 )
 
 if (ORT_COMPILED_HEAVY)
