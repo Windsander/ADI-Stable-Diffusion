@@ -309,24 +309,24 @@ EOF
 
   curl -L -o release-${version}-linux-x86_64.tar.gz ${url_x86_64}
   echo "${sha256_x86_64}  release-${version}-linux-x86_64.tar.gz" | sha256sum -c -
-  mkdir -p ${package_name}_${version}-x86_64.orig
-  tar -xzvf release-${version}-linux-x86_64.tar.gz -C ${package_name}_${version}-x86_64.orig --strip-components=1
+  mkdir -p ${package_name}-${version}-x86_64.orig
+  tar -xzvf release-${version}-linux-x86_64.tar.gz -C ${package_name}-${version}-x86_64.orig --strip-components=1
 
   curl -L -o release-${version}-linux-aarch64.tar.gz ${url_aarch64}
   echo "${sha256_aarch64}  release-${version}-linux-aarch64.tar.gz" | sha256sum -c -
-  mkdir -p ${package_name}_${version}-aarch64.orig
-  tar -xzvf release-${version}-linux-aarch64.tar.gz -C ${package_name}_${version}-aarch64.orig --strip-components=1
+  mkdir -p ${package_name}-${version}-aarch64.orig
+  tar -xzvf release-${version}-linux-aarch64.tar.gz -C ${package_name}-${version}-aarch64.orig --strip-components=1
 
   # 环境准备
   ls -la
 
   mkdir -p ${package_name}-${version}-x86_64
   cp -r ${package_name}-${version}/debian ${package_name}-${version}-x86_64/
-  cp -r ${package_name}_${version}-x86_64.orig/* ${package_name}-${version}-x86_64/
+  cp -r ${package_name}-${version}-x86_64.orig/* ${package_name}-${version}-x86_64/
 
   mkdir -p ${package_name}-${version}-aarch64
   cp -r ${package_name}-${version}/debian ${package_name}-${version}-aarch64/
-  cp -r ${package_name}_${version}-aarch64.orig/* ${package_name}-${version}-aarch64/
+  cp -r ${package_name}-${version}-aarch64.orig/* ${package_name}-${version}-aarch64/
 
   # 打包 x86_64 架构
   echo "enter: ${package_name}-${version}-x86_64"
