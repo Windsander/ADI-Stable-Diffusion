@@ -34,7 +34,7 @@ echo "Deploying version: $VERSION"
 # Static variables
 REPO_URL="https://github.com/Windsander/ADI-Stable-Diffusion"
 DESCRIPTION="Agile Diffusers Inference (ADI) Command Line Tool"
-LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion."
+LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ library and CLI tool that leverages ONNXRuntime for efficient deployment of Stable Diffusion models, offering high performance and compact size."
 MAINTAINER="Arikan.Li <arikanli@cyberfederal.io>"
 LICENSE="GPL-3.0 license"
 LICENSE_URL="https://www.gnu.org/licenses/gpl-3.0.en.html"
@@ -272,6 +272,7 @@ Package: ${package_name}
 Architecture: any
 Depends: \${misc:Depends}
 Description: ${DESCRIPTION}
+ ${LONG_DESCRIPTION}
 EOF
 
   # 创建 debian/source/format 文件
