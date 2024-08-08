@@ -304,38 +304,49 @@ License: GPL-3.0+
  version 3 can be found in '/usr/share/common-licenses/GPL-3'.
 EOF
 
-  # 打包 x86_64 架构
-  mkdir -p ${package_name}-${version}-x86_64
-  cp -r ${package_name}-${version}/debian ${package_name}-${version}-x86_64/
-  curl -L -o ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz ${url_x86_64}
-  echo "${sha256_x86_64}  ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz" | sha256sum -c -
-  tar -xzvf ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz -C ${package_name}-${version}-x86_64 --strip-components=1
-  echo "enter: ${package_name}-${version}-x86_64"
-  ls -la
-  cd ${package_name}-${version}-x86_64
-  mv release-${version}-linux-x86_64.tar.gz ${package_name}_${version}.orig.tar.gz
-  fakeroot debuild -us -uc
-  cd ..
-  echo "back to buildroot"
-  mv ${package_name}-${version}-x86_64/debian/${package_name}_${version}-1_amd64.deb ${package_name}-${version}-x86_64.deb
-  rm -rf ${package_name}-${version}-x86_64
+  # 数据准备
   ls -la
 
-  # 打包 aarch64 架构
+  curl -L -o release-${version}-linux-x86_64.tar.gz ${url_x86_64}
+  echo "${sha256_x86_64}  release-${version}-linux-x86_64.tar.gz" | sha256sum -c -
+  tar -xzvf release-${version}-linux-x86_64.tar.gz -C ${package_name}_${version}-x86_64.orig--strip-components=1
+
+  curl -L -o release-${version}-linux-aarch64.tar.gz ${url_aarch64}
+  echo "${sha256_aarch64}  release-${version}-linux-aarch64.tar.gz" | sha256sum -c -
+  tar -xzvf release-${version}-linux-aarch64.tar.gz -C ${package_name}_${version}-aarch64.orig --strip-components=1
+
+  # 环境准备
+  ls -la
+
+  mkdir -p ${package_name}-${version}-x86_64
+  cp -r ${package_name}-${version}/debian ${package_name}-${version}-x86_64/
+  cp -r ${package_name}_${version}-x86_64.orig/* ${package_name}-${version}-x86_64/
+
   mkdir -p ${package_name}-${version}-aarch64
   cp -r ${package_name}-${version}/debian ${package_name}-${version}-aarch64/
-  curl -L -o ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz ${url_aarch64}
-  echo "${sha256_aarch64}  ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz" | sha256sum -c -
-  tar -xzvf ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz -C ${package_name}-${version}-aarch64 --strip-components=1
-  echo "enter: ${package_name}-${version}-aarch64"
-  ls -la
-  cd ${package_name}-${version}-aarch64
-  mv release-${version}-linux-aarch64.tar.gz ${package_name}_${version}.orig.tar.gz
-  fakeroot debuild -us -uc
+  cp -r ${package_name}_${version}-aarch64.orig/* ${package_name}-${version}-aarch64/
+
+  # 打包 x86_64 架构
+  echo "enter: ${package_name}-${version}-x86_64"
+  cd ${package_name}-${version}-x86_64
+  fakeroot debuild -us -uc && ls -la
   cd ..
   echo "back to buildroot"
-  mv ${package_name}-${version}-aarch64/debian/${package_name}_${version}-1_arm64.deb ${package_name}-${version}-aarch64.deb
+
+  # 打包 aarch64 架构
+  echo "enter: ${package_name}-${version}-aarch64"
+  cd ${package_name}-${version}-aarch64
+  fakeroot debuild -us -uc && ls -la
+  cd ..
+  echo "back to buildroot"
+
+  # 重命名 & 清理过程资源
+  mv ${package_name}_${version}-1_amd64.deb ${package_name}-${version}-x86_64.deb
+  rm -rf ${package_name}-${version}-x86_64
+
+  mv ${package_name}_${version}-1_arm64.deb ${package_name}-${version}-aarch64.deb
   rm -rf ${package_name}-${version}-aarch64
+
   ls -la
 
   echo "Debian packages created successfully"
