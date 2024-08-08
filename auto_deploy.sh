@@ -243,7 +243,6 @@ EOF
 	dh \$@
 
 override_dh_auto_install:
-  ls -la
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/bin
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/include
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/lib
