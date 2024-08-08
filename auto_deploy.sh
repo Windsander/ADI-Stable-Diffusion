@@ -35,7 +35,7 @@ echo "Deploying version: $VERSION"
 REPO_URL="https://github.com/Windsander/ADI-Stable-Diffusion"
 DESCRIPTION="Agile Diffusers Inference (ADI) Command Line Tool"
 LONG_DESCRIPTION="Agile Diffusers Inference (ADI) is a C++ project. Its purpose is to leverage the acceleration capabilities of ONNXRuntime and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion."
-MAINTAINER="Arikan.Li <https://github.com/Windsander/ADI-Stable-Diffusion/issues>"
+MAINTAINER="Arikan.Li <arikanli@cyberfederal.io>"
 LICENSE="GPL-3.0 license"
 LICENSE_URL="https://www.gnu.org/licenses/gpl-3.0.en.html"
 
@@ -243,16 +243,16 @@ EOF
 	dh \$@
 
 override_dh_auto_install:
-	mkdir -p \$(DESTDIR)/usr/local/bin
-	mkdir -p \$(DESTDIR)/usr/local/include
-	mkdir -p \$(DESTDIR)/usr/local/lib
-	mkdir -p \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)
-	cp -r bin/* \$(DESTDIR)/usr/local/bin/ || true
-	cp -r include/* \$(DESTDIR)/usr/local/include/ || true
-	cp -r lib/* \$(DESTDIR)/usr/local/lib/ || true
-	cp CHANGELOG.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
-	cp README.md \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
-	cp LICENSE \$(DESTDIR)/usr/share/doc/\$(PACKAGE_NAME)/ || true
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/bin
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/include
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/lib
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
+	cp -r \$(CURDIR)/bin/* \$(CURDIR)/debian/${package_name}/usr/local/bin/ || true
+	cp -r \$(CURDIR)/include/* \$(CURDIR)/debian/${package_name}/usr/local/include/ || true
+	cp -r \$(CURDIR)/lib/* \$(CURDIR)/debian/${package_name}/usr/local/lib/ || true
+	cp \$(CURDIR)/CHANGELOG.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp \$(CURDIR)/README.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp \$(CURDIR)/LICENSE \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
@@ -263,10 +263,10 @@ Source: ${package_name}
 Section: utils
 Priority: optional
 Maintainer: ${MAINTAINER}
-Build-Depends: debhelper-compat (= 13), curl
+Build-Depends: debhelper (>= 13), curl
 Standards-Version: 4.5.0
-Homepage: ${REPO_URL}
 Rules-Requires-Root: no
+Homepage: ${REPO_URL}
 
 Package: ${package_name}
 Architecture: any
@@ -317,8 +317,7 @@ EOF
   fakeroot debuild -us -uc
   cd ..
 
-  mv ../${package_name}_${version}_*.deb ${package_name}-${version}-x86_64.deb
-
+  mv ${package_name}-${version}-x86_64/debian/${package_name}_${version}-1_amd64.deb ${package_name}-${version}-x86_64.deb
   rm -rf ${package_name}-${version}-x86_64
 
   # 打包 aarch64 架构
@@ -333,8 +332,7 @@ EOF
   fakeroot debuild -us -uc
   cd ..
 
-  mv ../${package_name}_${version}_*.deb ${package_name}-${version}-aarch64.deb
-
+  mv ${package_name}-${version}-aarch64/debian/${package_name}_${version}-1_arm64.deb ${package_name}-${version}-aarch64.deb
   rm -rf ${package_name}-${version}-aarch64
 
   echo "Debian packages created successfully"
