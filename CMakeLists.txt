@@ -43,16 +43,16 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if (WIN32)
-    # Windows 不支持 RPATH，使用相对路径或设置 PATH 环境变量
+    # Windows not support RPATH
     message(STATUS "Configuring for Windows")
 elseif (APPLE)
-    # macOS 使用 @loader_path
+    # macOS use @loader_path
     set(CMAKE_BUILD_RPATH "@loader_path;@loader_path/../lib")
     set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     message(STATUS "Configuring for macOS")
 elseif (LINUX)
-    # Linux 和其他 Unix-like 系统使用 $ORIGIN
+    # Linux and Unix-like use $ORIGIN
     set(CMAKE_BUILD_RPATH "$ORIGIN;$ORIGIN/../lib")
     set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
