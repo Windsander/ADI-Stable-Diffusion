@@ -228,7 +228,7 @@ create_debian_package() {
 
   # 创建 debian/changelog 文件
   cat <<EOF > ${package_name}-${version}/debian/changelog
-${package_name} (${version}-1) unstable; urgency=low
+${package_name} (${version}-1) UNRELEASED; urgency=low
 
   * See CHANGELOG.md in package
 
@@ -243,6 +243,7 @@ EOF
 	dh \$@
 
 override_dh_auto_install:
+  ls -la
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/bin
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/include
 	mkdir -p \$(CURDIR)/debian/${package_name}/usr/local/lib
@@ -270,9 +271,8 @@ Homepage: ${REPO_URL}
 
 Package: ${package_name}
 Architecture: any
-Depends: \${misc:Depends}
+Depends: \${shlibs:Depends}, \${misc:Depends}
 Description: ${DESCRIPTION}
- ${LONG_DESCRIPTION}
 EOF
 
   # 创建 debian/source/format 文件
@@ -283,13 +283,13 @@ EOF
 
   # 创建 debian/copyright 文件
   cat <<EOF > ${package_name}-${version}/debian/copyright
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: ${package_name}
 Source: ${REPO_URL}
 
 Files: *
 Copyright: 2023 Arikan.Li
-License: GPL-3.0
+License: GPL-3.0+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation; either version 3 of the License, or
@@ -300,9 +300,8 @@ License: GPL-3.0
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
  .
- You should have received a copy of the GNU General Public License
- along with this package; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in '/usr/share/common-licenses/GPL-3'.
 EOF
 
   # 打包 x86_64 架构
@@ -310,30 +309,34 @@ EOF
   cp -r ${package_name}-${version}/debian ${package_name}-${version}-x86_64/
   curl -L -o ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz ${url_x86_64}
   echo "${sha256_x86_64}  ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz" | sha256sum -c -
-  tar -xzvf ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz -C ${package_name}-${version}-x86_64
-  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}-x86_64
-
+  tar -xzvf ${package_name}-${version}-x86_64/release-${version}-linux-x86_64.tar.gz -C ${package_name}-${version}-x86_64 --strip-components=1
+  echo "enter: ${package_name}-${version}-x86_64"
+  ls -la
   cd ${package_name}-${version}-x86_64
+  mv release-${version}-linux-x86_64.tar.gz ${package_name}_${version}.orig.tar.gz
   fakeroot debuild -us -uc
   cd ..
-
+  echo "back to buildroot"
   mv ${package_name}-${version}-x86_64/debian/${package_name}_${version}-1_amd64.deb ${package_name}-${version}-x86_64.deb
   rm -rf ${package_name}-${version}-x86_64
+  ls -la
 
   # 打包 aarch64 架构
   mkdir -p ${package_name}-${version}-aarch64
   cp -r ${package_name}-${version}/debian ${package_name}-${version}-aarch64/
   curl -L -o ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz ${url_aarch64}
   echo "${sha256_aarch64}  ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz" | sha256sum -c -
-  tar -xzvf ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz -C ${package_name}-${version}-aarch64
-  tar czf ${package_name}_${version}.orig.tar.gz ${package_name}-${version}-aarch64
-
+  tar -xzvf ${package_name}-${version}-aarch64/release-${version}-linux-aarch64.tar.gz -C ${package_name}-${version}-aarch64 --strip-components=1
+  echo "enter: ${package_name}-${version}-aarch64"
+  ls -la
   cd ${package_name}-${version}-aarch64
+  mv release-${version}-linux-aarch64.tar.gz ${package_name}_${version}.orig.tar.gz
   fakeroot debuild -us -uc
   cd ..
-
+  echo "back to buildroot"
   mv ${package_name}-${version}-aarch64/debian/${package_name}_${version}-1_arm64.deb ${package_name}-${version}-aarch64.deb
   rm -rf ${package_name}-${version}-aarch64
+  ls -la
 
   echo "Debian packages created successfully"
 }
