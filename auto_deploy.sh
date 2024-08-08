@@ -329,23 +329,29 @@ EOF
 
   # 打包 x86_64 架构
   echo "enter: ${package_name}-${version}-x86_64"
+  tar -czf ${package_name}_${version}.orig.tar.gz -C ${package_name}-${version}-x86_64.orig .
   cd ${package_name}-${version}-x86_64
   fakeroot debuild -us -uc && ls -la
   cd ..
+  rm -f ${package_name}_${version}.orig.tar.gz
   echo "back to buildroot"
 
   # 打包 aarch64 架构
   echo "enter: ${package_name}-${version}-aarch64"
+  tar -czf ${package_name}_${version}.orig.tar.gz -C ${package_name}-${version}-aarch64.orig .
   cd ${package_name}-${version}-aarch64
   fakeroot debuild -us -uc && ls -la
   cd ..
+  rm -f ${package_name}_${version}.orig.tar.gz
   echo "back to buildroot"
 
   # 重命名 & 清理过程资源
   mv ${package_name}_${version}-1_amd64.deb ${package_name}-${version}-x86_64.deb
+  rm -rf ${package_name}-${version}-x86_64.orig
   rm -rf ${package_name}-${version}-x86_64
 
   mv ${package_name}_${version}-1_arm64.deb ${package_name}-${version}-aarch64.deb
+  rm -rf ${package_name}-${version}-aarch64.orig
   rm -rf ${package_name}-${version}-aarch64
 
   ls -la
