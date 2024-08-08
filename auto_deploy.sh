@@ -263,7 +263,7 @@ Source: ${package_name}
 Section: utils
 Priority: optional
 Maintainer: ${MAINTAINER}
-Build-Depends: debhelper (>= 13), curl
+Build-Depends: debhelper-compat (= 13), curl
 Standards-Version: 4.5.0
 Rules-Requires-Root: no
 Homepage: ${REPO_URL}
