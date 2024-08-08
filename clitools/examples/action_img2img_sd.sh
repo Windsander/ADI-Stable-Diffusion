@@ -11,7 +11,7 @@ find . -name "._*" -type f -print
 find . -name "._*" -type f -delete
 
 # 执行Stable Diffusion
-../../cmake-build-debug/bin/adi-cli\
+../../cmake-build-debug/bin/adi\
  -p "\
  best quality, extremely detailed,\
  (keep main character),\

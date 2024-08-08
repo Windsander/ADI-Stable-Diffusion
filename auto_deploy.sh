@@ -193,7 +193,7 @@ class ${formula_name} < Formula
 
   test do
     # 运行测试来验证安装是否成功
-    system "#{bin}/adi-cli", "--version"
+    system "#{bin}/adi", "--version"
   end
 end
 EOF
