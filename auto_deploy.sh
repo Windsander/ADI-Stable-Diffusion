@@ -270,7 +270,7 @@ Homepage: ${REPO_URL}
 
 Package: ${package_name}
 Architecture: any
-Depends: \${shlibs:Depends}, \${misc:Depends}
+Depends: \${misc:Depends}
 Description: ${DESCRIPTION}
 EOF
 

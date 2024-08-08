@@ -51,14 +51,14 @@ elseif (APPLE)
     set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     message(STATUS "Configuring for macOS")
-elseif (UNIX)
+elseif (LINUX)
     # Linux 和其他 Unix-like 系统使用 $ORIGIN
     set(CMAKE_BUILD_RPATH "$ORIGIN;$ORIGIN/../lib")
     set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     message(STATUS "Configuring for Unix-like system")
-else()
-    message(FATAL_ERROR "Unsupported platform")
+elseif (ANDROID)
+    message(STATUS "Android RPATH unavailable")
 endif()
 
 # Set the output directory for executable files
