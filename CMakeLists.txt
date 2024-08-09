@@ -22,14 +22,18 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)     # Ensure all targets are compiled wi
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# do prepare project header
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_colors.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_static.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_ortenv.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex/project_cmake_utils.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/apex-toolchain/generic-toolchain.cmake)
+set(MAJOR_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
+set(MAJOR_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
 
-PROJECT("onnxruntime-sd")
+# do prepare project header
+set(CMAKE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+include(${CMAKE_PROJECT_DIR}/apex/project_cmake_colors.cmake)
+include(${CMAKE_PROJECT_DIR}/apex/project_cmake_static.cmake)
+include(${CMAKE_PROJECT_DIR}/apex/project_cmake_ortenv.cmake)
+include(${CMAKE_PROJECT_DIR}/apex/project_cmake_utils.cmake)
+include(${CMAKE_PROJECT_DIR}/apex-toolchain/generic-toolchain.cmake)
+
+PROJECT("adi-sd")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET undefined)
 SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
@@ -370,8 +374,8 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} outlet PRIVATE)
 auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 
 #link references
-auto_link_reference_library(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH})
 auto_copy_reference_dynamic(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+auto_link_reference_library(${library_name} onnxruntime ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 
@@ -381,6 +385,24 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Done ############
 # check command line available
 if (ORT_BUILD_COMMAND_LINE)
     message("[onnx.runtime.sd][I] build command line tools at ${Red}${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${ColourReset}")
-    add_subdirectory(clitools)
+    include(ExternalProject)
+
+    # 添加特定的 CMake 参数
+    list(APPEND CMAKE_CACHE_ARGS
+            "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}"
+            "-DMAJOR_SYSTEM_PATH=${CMAKE_BINARY_DIR}"
+            "-DMAJOR_SYSTEM_NAME=${MAJOR_SYSTEM_NAME}"
+            "-DMAJOR_SYSTEM_PROCESSOR=${MAJOR_SYSTEM_PROCESSOR}"
+            "-DORT_BUILD_SHARED_ORT=${ORT_BUILD_SHARED_ORT}"
+    )
+
+    # 将主项目接收到的所有 CMake 参数传递给子项目
+    ExternalProject_Add(
+            clitools
+            SOURCE_DIR ${CMAKE_SOURCE_DIR}/clitools
+            CMAKE_ARGS ${CMAKE_CACHE_ARGS}
+            BUILD_ALWAYS 1
+            DEPENDS adi
+    )
 endif()
 

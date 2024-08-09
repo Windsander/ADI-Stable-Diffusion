@@ -115,12 +115,20 @@ function(auto_copy_reference_dynamic target_lib lib_name ref_lib_path target_dir
 
     # compatible caused by NDK find error
     if (WIN32)
+        set(LIBRARY_NAME "${lib_name}.dll")
+        set(LIBRARY_TRUE "${lib_name}.dll")
         set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.dll")
     elseif (APPLE)
+        set(LIBRARY_NAME "lib${lib_name}.dylib")
+        set(LIBRARY_TRUE "lib${lib_name}.${ONNX_INFERENCE_VERSION}.dylib")
         set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.${ONNX_INFERENCE_VERSION}.dylib")
     elseif (LINUX)
+        set(LIBRARY_NAME "lib${lib_name}.so")
+        set(LIBRARY_TRUE "lib${lib_name}.so.${ONNX_INFERENCE_VERSION}")
         set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so.${ONNX_INFERENCE_VERSION}")
     elseif (ANDROID)
+        set(LIBRARY_NAME "lib${lib_name}.so")
+        set(LIBRARY_TRUE "lib${lib_name}.so")
         set(LIBRARY_PATH "${ref_lib_path}/lib${lib_name}.so")
     else()
         message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
@@ -129,15 +137,18 @@ function(auto_copy_reference_dynamic target_lib lib_name ref_lib_path target_dir
     if (NOT LIBRARY_PATH)
         message(FATAL_ERROR "${lib_name} library not found in ${ref_lib_path}")
     else()
-        message(\ ${PROJECT_NAME}=>\ "Add post-copy ${lib_name} library from ${LIBRARY_PATH} to ${target_dir}")
+        message(\ ${PROJECT_NAME}=>\ "Add post-copy ${lib_name} library from ${LIBRARY_PATH} to ${target_dir}/${LIBRARY_NAME}")
     endif()
 
-    add_custom_command(TARGET ${target_lib} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "Copying ${LIBRARY_PATH} to ${target_dir}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${LIBRARY_PATH}
-        ${target_dir}
-    )
+    file(COPY ${LIBRARY_PATH} DESTINATION ${target_dir})
+    file(RENAME ${target_dir}/${LIBRARY_TRUE} ${target_dir}/${LIBRARY_NAME})
+
+#    add_custom_command(TARGET ${target_lib} POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E echo "Copying ${LIBRARY_PATH} to ${target_dir}/${LIBRARY_NAME}"
+#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#        ${LIBRARY_PATH}
+#        ${target_dir}/${LIBRARY_NAME}
+#    )
 
     message(\ ${PROJECT_NAME}=>\ ${Blue}auto_copy_reference_dynamic${ColourReset}\ done)
 endfunction()
