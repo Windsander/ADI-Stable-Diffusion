@@ -390,17 +390,21 @@ create_rpm_package() {
   local url_x86_64=$3
   local url_aarch64=$4
 
-  # 计算 SHA-256 校验和
+  # 计算 SHA-256 校验和并下载文件
   local sha256_x86_64
-  sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
-
   local sha256_aarch64
-  sha256_aarch64=$(curl -L ${url_aarch64} | sha256sum | awk '{ print $1 }')
+
+  mkdir -p ${package_name}-${version}/SOURCES
+
+  curl -L ${url_x86_64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz
+  sha256_x86_64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz | awk '{ print $1 }')
+
+  curl -L ${url_aarch64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz
+  sha256_aarch64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz | awk '{ print $1 }')
 
   # 创建临时目录
   mkdir -p ${package_name}-${version}/BUILD
   mkdir -p ${package_name}-${version}/RPMS
-  mkdir -p ${package_name}-${version}/SOURCES
   mkdir -p ${package_name}-${version}/SPECS
   mkdir -p ${package_name}-${version}/SRPMS
 
@@ -408,8 +412,6 @@ create_rpm_package() {
   cat <<EOF > ${package_name}-${version}/SPECS/${package_name}.spec
 %define name ${package_name}
 %define version ${version}
-%define sha256_x86_64 ${sha256_x86_64}
-%define sha256_aarch64 ${sha256_aarch64}
 
 Name: %{name}
 Version: %{version}
@@ -423,22 +425,21 @@ URL: ${REPO_URL}
 ${LONG_DESCRIPTION}
 
 %ifarch x86_64
-Source0: ${url_x86_64}
+Source0: %{name}-%{version}-x86_64.tar.gz
 %endif
 %ifarch aarch64
-Source0: ${url_aarch64}
+Source0: %{name}-%{version}-aarch64.tar.gz
 %endif
 
 %prep
 %ifarch x86_64
-%define expected_sha256sum %{sha256_x86_64}
+%define expected_sha256sum ${sha256_x86_64}
 %endif
 %ifarch aarch64
-%define expected_sha256sum %{sha256_aarch64}
+%define expected_sha256sum ${sha256_aarch64}
 %endif
 
-curl -L -o %{_sourcedir}/%{name}-%{version}-%{arch}.tar.gz %{SOURCE0}
-echo "%{expected_sha256sum}  %{_sourcedir}/%{name}-%{version}-%{arch}.tar.gz" | sha256sum -c -
+echo "%{expected_sha256sum}  %{_sourcedir}/%{SOURCE0}" | sha256sum -c -
 %setup -q -n %{name}-%{version}-%{arch}
 
 %build
