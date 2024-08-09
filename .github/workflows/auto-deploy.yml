@@ -160,9 +160,10 @@ jobs:
       - name: Copy and rename changelog file
         run: |
           cd $GITHUB_WORKSPACE
-          if [ -f CHANGELOG.md ]; then
-            cp CHANGELOG.md CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
-          fi
+          mkdir -p ./artifacts/temp
+          if [ -f README.md ]; then cp README.md ./artifacts/temp/; fi
+          if [ -f LICENSE ]; then cp LICENSE ./artifacts/temp/; fi
+          if [ -f CHANGELOG.md ]; then cp CHANGELOG.md ./artifacts/temp/CHANGELOG-${{ needs.setup_environment.outputs.version }}.md; fi
 
       - name: Commit and push changes
         env:
@@ -174,6 +175,7 @@ jobs:
           git rm -rf . 
           cp ./artifacts/macos/* .
           cp ./artifacts/windows/* .
+          cp ./artifacts/temp/* .
           git add *.rb *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
           git commit -m "Deploy version ${{ needs.setup_environment.outputs.version }}"
           git push origin deploy --force
