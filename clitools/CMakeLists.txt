@@ -146,11 +146,13 @@ elseif (ANDROID)
     )
 endif()
 
-install(FILES ${ORT_LIB_PATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-install(TARGETS ${TARGET} RUNTIME)
+if (ADI_AUTO_INSTALL)
+    install(FILES ${ORT_LIB_PATH} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+    install(TARGETS ${TARGET} RUNTIME)
 
-message(STATUS "Install ort-lib to: ${CMAKE_INSTALL_PREFIX}/lib")
-message(STATUS "Install adi-cli to: ${CMAKE_INSTALL_PREFIX}/bin")
+    message(STATUS "Install ort-lib to: ${CMAKE_INSTALL_PREFIX}/lib")
+    message(STATUS "Install adi-cli to: ${CMAKE_INSTALL_PREFIX}/bin")
+endif ()
 
 install(TARGETS ${TARGET} RUNTIME DESTINATION ${CMAKE_CLITOOL_DIR})
 

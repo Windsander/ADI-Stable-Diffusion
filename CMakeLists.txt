@@ -196,6 +196,7 @@ option(ORT_ENABLE_TENSOR_RT          "adi: using TensorRT provider to accelerate
 option(ORT_ENABLE_CUDA               "adi: using CUDA provider to accelerate inference" ${DEFAULT_CUDA_STATE})
 option(ORT_ENABLE_COREML             "adi: using CoreML provider to accelerate inference" ${DEFAULT_COREML_STATE})
 option(ORT_ENABLE_NNAPI              "adi: using NNAPI provider to accelerate inference" ${DEFAULT_NNAPI_STATE})
+option(ADI_AUTO_INSTALL              "adi: auto-install ADI-CLI to current system when build finish, request admin permission" OFF)
 
 if(ANDROID AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
     set(ORT_BUILD_COMMAND_LINE OFF) # when in Windows, compile Android clitools request Processor equals, so default OFF
@@ -390,6 +391,7 @@ if (ORT_BUILD_COMMAND_LINE)
             "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_NAME=${MAJOR_SYSTEM_NAME}"
+            "-DADI_AUTO_INSTALL=${ADI_AUTO_INSTALL}"
             "-DMAJOR_SYSTEM_PROCESSOR=${MAJOR_SYSTEM_PROCESSOR}"
             "-DONNX_INFERENCE_VERSION=${ONNX_INFERENCE_VERSION}"
             "-DORT_BUILD_SHARED_ADI=${ORT_BUILD_SHARED_ADI}"
