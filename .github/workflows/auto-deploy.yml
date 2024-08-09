@@ -170,9 +170,10 @@ jobs:
         run: |
           git config --global user.name "github-actions[deploy-bot]"
           git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
-          git checkout -b deploy
+          git checkout --orphan deploy
+          git rm -rf . 
           cp ./artifacts/macos/* .
           cp ./artifacts/windows/* .
           git add *.rb *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
           git commit -m "Deploy version ${{ needs.setup_environment.outputs.version }}"
-          git push origin deploy
+          git push origin deploy --force
