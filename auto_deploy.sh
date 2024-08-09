@@ -243,16 +243,30 @@ EOF
 	dh \$@
 
 override_dh_auto_install:
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/bin
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/include
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/lib
-	mkdir -p \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
-	cp \$(CURDIR)/bin/${package_name} \$(CURDIR)/debian/${package_name}/usr/bin/ || true
-	cp -r \$(CURDIR)/include/* \$(CURDIR)/debian/${package_name}/usr/include/ || true
-	cp -r \$(CURDIR)/lib/* \$(CURDIR)/debian/${package_name}/usr/lib/ || true
-	cp \$(CURDIR)/CHANGELOG.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
-	cp \$(CURDIR)/README.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
-	cp \$(CURDIR)/LICENSE \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	# 创建必要的目录
+	mkdir -p $(CURDIR)/debian/${package_name}/usr/bin
+	mkdir -p $(CURDIR)/debian/${package_name}/usr/include
+	mkdir -p $(CURDIR)/debian/${package_name}/usr/lib
+	mkdir -p $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
+
+	# 复制二进制文件
+	cp -r $(CURDIR)/bin/* $(CURDIR)/debian/${package_name}/usr/bin/ || true
+
+	# 复制头文件
+	cp -r $(CURDIR)/include/* $(CURDIR)/debian/${package_name}/usr/include/ || true
+
+	# 复制库文件
+	cp -r $(CURDIR)/lib/* $(CURDIR)/debian/${package_name}/usr/lib/ || true
+
+	# 复制文档
+	cp $(CURDIR)/CHANGELOG.md $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp $(CURDIR)/README.md $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp $(CURDIR)/LICENSE $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+
+	# 安装库文件并创建符号链接
+	install -D -m 644 $(CURDIR)/lib/libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so
+	ln -sf libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1
+	ln -sf libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1.18.0
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
@@ -279,6 +293,13 @@ EOF
   mkdir -p ${package_name}-${version}/debian/source
   cat <<EOF > ${package_name}-${version}/debian/source/format
 3.0 (quilt)
+EOF
+
+  # 创建 debian/source/include-binaries 文件
+  cat <<EOF > ${package_name}-${version}/debian/source/include-binaries
+bin/${package_name}
+lib/lib${package_name}.a
+lib/libonnxruntime.so
 EOF
 
   # 创建 debian/copyright 文件
