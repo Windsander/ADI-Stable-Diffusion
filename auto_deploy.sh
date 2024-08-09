@@ -390,23 +390,19 @@ create_rpm_package() {
   local url_x86_64=$3
   local url_aarch64=$4
 
-  # 计算 SHA-256 校验和并下载文件
-  local sha256_x86_64
-  local sha256_aarch64
-
-  mkdir -p ${package_name}-${version}/SOURCES
-
-  curl -L ${url_x86_64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz
-  sha256_x86_64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz | awk '{ print $1 }')
-
-  curl -L ${url_aarch64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz
-  sha256_aarch64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz | awk '{ print $1 }')
-
-  # 创建临时目录
   mkdir -p ${package_name}-${version}/BUILD
   mkdir -p ${package_name}-${version}/RPMS
   mkdir -p ${package_name}-${version}/SPECS
   mkdir -p ${package_name}-${version}/SRPMS
+  mkdir -p ${package_name}-${version}/SOURCES
+
+  local sha256_x86_64
+  curl -L ${url_x86_64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz
+  sha256_x86_64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-x86_64.tar.gz | awk '{ print $1 }')
+
+  local sha256_aarch64
+  curl -L ${url_aarch64} -o ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz
+  sha256_aarch64=$(sha256sum ${package_name}-${version}/SOURCES/${package_name}-${version}-aarch64.tar.gz | awk '{ print $1 }')
 
   # 创建通用 SPEC 文件
   cat <<EOF > ${package_name}-${version}/SPECS/${package_name}.spec
@@ -440,7 +436,7 @@ Source0: %{name}-%{version}-aarch64.tar.gz
 %endif
 
 echo "%{expected_sha256sum}  %{_sourcedir}/%{SOURCE0}" | sha256sum -c -
-%setup -q -n %{name}-%{version}-%{arch}
+%setup -q -n %{name}-%{version}-%{_target_cpu}
 
 %build
 

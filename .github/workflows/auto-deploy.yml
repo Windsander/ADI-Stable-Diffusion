@@ -136,7 +136,7 @@ jobs:
             *.nupkg
 
   finalize_deploy:
-    needs: [setup_environment, deploy_linux, deploy_macos, deploy_windows]
+    needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux, is temporary exclude
     runs-on: ubuntu-latest
 
     steps:
