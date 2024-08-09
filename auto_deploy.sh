@@ -244,29 +244,29 @@ EOF
 
 override_dh_auto_install:
 	# 创建必要的目录
-	mkdir -p $(CURDIR)/debian/${package_name}/usr/bin
-	mkdir -p $(CURDIR)/debian/${package_name}/usr/include
-	mkdir -p $(CURDIR)/debian/${package_name}/usr/lib
-	mkdir -p $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/bin
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/include
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/lib
+	mkdir -p \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}
 
 	# 复制二进制文件
-	cp -r $(CURDIR)/bin/* $(CURDIR)/debian/${package_name}/usr/bin/ || true
+	cp -r \$(CURDIR)/bin/* \$(CURDIR)/debian/${package_name}/usr/bin/ || true
 
 	# 复制头文件
-	cp -r $(CURDIR)/include/* $(CURDIR)/debian/${package_name}/usr/include/ || true
+	cp -r \$(CURDIR)/include/* \$(CURDIR)/debian/${package_name}/usr/include/ || true
 
 	# 复制库文件
-	cp -r $(CURDIR)/lib/* $(CURDIR)/debian/${package_name}/usr/lib/ || true
+	cp -r \$(CURDIR)/lib/* \$(CURDIR)/debian/${package_name}/usr/lib/ || true
 
 	# 复制文档
-	cp $(CURDIR)/CHANGELOG.md $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
-	cp $(CURDIR)/README.md $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
-	cp $(CURDIR)/LICENSE $(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp \$(CURDIR)/CHANGELOG.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp \$(CURDIR)/README.md \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
+	cp \$(CURDIR)/LICENSE \$(CURDIR)/debian/${package_name}/usr/share/doc/${package_name}/ || true
 
 	# 安装库文件并创建符号链接
-	install -D -m 644 $(CURDIR)/lib/libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so
-	ln -sf libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1
-	ln -sf libonnxruntime.so $(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1.18.0
+	install -D -m 644 \$(CURDIR)/lib/libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so
+	ln -sf libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1
+	ln -sf libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1.18.0
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules
@@ -578,12 +578,12 @@ package() {
     case "$OS" in
         Linux*)
             echo "==========================================================="
-            create_debian_package "adi" "${VERSION}" \
+            create_rpm_package "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
 
             echo "==========================================================="
-            create_rpm_package "adi" "${VERSION}" \
+            create_debian_package "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
             echo "==========================================================="
