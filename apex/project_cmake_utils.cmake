@@ -118,6 +118,7 @@ function(auto_copy_reference_dynamic target_lib lib_name ref_lib_path target_dir
         set(LIBRARY_NAME "${lib_name}.dll")
         set(LIBRARY_TRUE "${lib_name}.dll")
         set(LIBRARY_PATH "${ref_lib_path}/${lib_name}.dll")
+        set(LIBRARY_STUB "${ref_lib_path}/${lib_name}.lib")
     elseif (APPLE)
         set(LIBRARY_NAME "lib${lib_name}.dylib")
         set(LIBRARY_TRUE "lib${lib_name}.${ONNX_INFERENCE_VERSION}.dylib")
@@ -142,6 +143,9 @@ function(auto_copy_reference_dynamic target_lib lib_name ref_lib_path target_dir
 
     file(COPY ${LIBRARY_PATH} DESTINATION ${target_dir})
     file(RENAME ${target_dir}/${LIBRARY_TRUE} ${target_dir}/${LIBRARY_NAME})
+    if(DEFINED LIBRARY_STUB)
+        file(COPY ${LIBRARY_STUB} DESTINATION ${target_dir})
+    endif()
 
 #    add_custom_command(TARGET ${target_lib} POST_BUILD
 #        COMMAND ${CMAKE_COMMAND} -E echo "Copying ${LIBRARY_PATH} to ${target_dir}/${LIBRARY_NAME}"
