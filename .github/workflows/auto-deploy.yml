@@ -173,6 +173,6 @@ jobs:
           git checkout -b deploy
           cp ./artifacts/macos/* .
           cp ./artifacts/windows/* .
-          git add *.rb *.deb *.rpm *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
+          git add *.rb *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
           git commit -m "Deploy version ${{ needs.setup_environment.outputs.version }}"
           git push origin deploy
