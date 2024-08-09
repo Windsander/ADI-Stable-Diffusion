@@ -103,23 +103,28 @@ add_executable(${TARGET} main.cc)
 target_link_libraries(${TARGET} PRIVATE ${ADI_LIB} ${LIBRARY_PATH})
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
 
-if (APPLE)
+if (WIN32)
+    add_custom_command(
+            TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Windows"
+            COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_LIB_PATH}/${ORT_LIB}.dll" "$<TARGET_FILE_DIR:${TARGET}>"
+    )
+elseif (APPLE)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for macOS"
             COMMAND install_name_tool -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib" "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
-elseif (UNIX)
+elseif (LINUX)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Linux"
             COMMAND patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} ${ORT_LIB}.so "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
-elseif (WIN32)
+elseif (ANDROID)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Windows"
-            COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_LIB_PATH}/${ORT_LIB}.dll" "$<TARGET_FILE_DIR:${TARGET}>"
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Android (nothing need to change)"
     )
 endif()
 
