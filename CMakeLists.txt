@@ -53,13 +53,11 @@ elseif (APPLE)
     # macOS use @loader_path
     set(CMAKE_BUILD_RPATH "@loader_path;@loader_path/../lib;../lib")
     set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib;../lib")
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     message(STATUS "Configuring for macOS")
 elseif (LINUX)
     # Linux and Unix-like use $ORIGIN
     set(CMAKE_BUILD_RPATH "$ORIGIN;$ORIGIN/../lib;../lib")
     set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib;../lib")
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     message(STATUS "Configuring for Unix-like system")
 elseif (ANDROID)
     message(STATUS "Android RPATH unavailable")
