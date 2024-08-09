@@ -311,6 +311,13 @@ void print_usage(int argc, const char* argv[]) {
     }()
 
 void parse_args(int argc, const char** argv, CommandLineInput& params) {
+    // check params base requests
+    if (argc <= 1) {
+        std::cerr << "Error: No parameters provided. Usage: adi -p <parameter> ..." << std::endl;
+        print_usage(argc, argv);
+        exit(1);
+    }
+
     bool invalid_arg = false;
     std::string arg;
     for (int i = 1; i < argc; i++) {

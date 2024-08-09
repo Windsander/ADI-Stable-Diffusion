@@ -56,6 +56,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/lib)
 message(STATUS ${MAJOR_SYSTEM_PROCESSOR} => ${CMAKE_SYSTEM_PROCESSOR})
 message(STATUS ${MAJOR_SYSTEM_PATH})
 
+if (ANDROID_NDK)
+    message(STATUS "ANDROID_NDK: ${ANDROID_NDK}")
+endif ()
+
 PROJECT("adi-cli")
 
 # do prepare project header
@@ -70,64 +74,54 @@ set(ORT_LIB onnxruntime)
 
 # Set library extensions and paths
 if (WIN32)
-    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/${ORT_LIB}.lib")
     set(ADI_LIB_PATH "${GENERATED_LIB_PATH}/${ADI_LIB}.lib")
+    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/${ORT_LIB}.lib")
 elseif (APPLE)
-    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:dylib>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
     set(ADI_LIB_PATH "${GENERATED_LIB_PATH}/lib${ADI_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ADI}>:dylib>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ADI}>>:a>")
+    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:dylib>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
 elseif (LINUX)
-    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
     set(ADI_LIB_PATH "${GENERATED_LIB_PATH}/lib${ADI_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ADI}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ADI}>>:a>")
+    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
 elseif (ANDROID)
-    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
     set(ADI_LIB_PATH "${GENERATED_LIB_PATH}/lib${ADI_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ADI}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ADI}>>:a>")
+    set(ORT_LIB_PATH "${GENERATED_LIB_PATH}/lib${ORT_LIB}.$<$<BOOL:${ORT_BUILD_SHARED_ORT}>:so>$<$<NOT:$<BOOL:${ORT_BUILD_SHARED_ORT}>>:a>")
 else()
     message(FATAL_ERROR "[onnx.runtime.sd][E] Unsupported platform!")
 endif()
 
-# Use find_library to locate library files
-find_library(FOUND_ADI_LIB NAMES ${ADI_LIB} PATHS ${GENERATED_LIB_PATH} NO_DEFAULT_PATH)
-if (NOT FOUND_ADI_LIB)
-    message(FATAL_ERROR "Could not find ${ADI_LIB} at ${GENERATED_LIB_PATH} ")
-endif()
-
-find_library(FOUND_ORT_LIB NAMES ${ORT_LIB} PATHS ${GENERATED_LIB_PATH} NO_DEFAULT_PATH)
-if (NOT FOUND_ORT_LIB)
-    message(FATAL_ERROR "Could not find ${ORT_LIB} at ${GENERATED_LIB_PATH} ")
-endif()
-
-message(STATUS "ORT_LIB_PATH: ${ORT_LIB_PATH}")
-message(STATUS "ADI_LIB_PATH: ${ADI_LIB_PATH}")
+message(STATUS "FOUND_ADI_LIB: ${ADI_LIB_PATH}")
+message(STATUS "FOUND_ORT_LIB: ${ORT_LIB_PATH}")
 
 add_executable(${TARGET} main.cc)
-target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH})
+target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
 
 if (WIN32)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Windows"
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Windows"
             COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_LIB_PATH}/${ORT_LIB}.dll" "$<TARGET_FILE_DIR:${TARGET}>"
     )
 elseif (APPLE)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for macOS"
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for macOS"
             COMMAND install_name_tool -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib" "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
 elseif (LINUX)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Linux"
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Linux"
             COMMAND patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} ${ORT_LIB}.so "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
 elseif (ANDROID)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E echo "Modifying library path for Android (nothing need to change)"
+            COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Android, nothing need to change"
     )
 endif()
 
+install(TARGETS ${TARGET} RUNTIME)
 install(TARGETS ${TARGET} RUNTIME DESTINATION ${CMAKE_CLITOOL_DIR})
 
 # auto_copy_reference_dynamic(${TARGET} onnxruntime ${GENERATED_LIB_PATH} ${CMAKE_CLITOOL_DIR})
