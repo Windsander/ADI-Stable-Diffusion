@@ -48,7 +48,7 @@ You can find the latest available version from the **[Release Assets](https://gi
 --bin
     --adi
 --lib
-    --[Corresponding platform's SD_ORT library, e.g., libadi.a]
+    --[Corresponding platform's ADI library, e.g., libadi.a]
     --[Corresponding platform's ORT library, e.g., libonnxruntime.dylib]
 --include
     --adi.h
