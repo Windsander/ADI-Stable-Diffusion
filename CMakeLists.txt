@@ -94,9 +94,9 @@ message(STATUS "CMAKE_ARCHIVE_OUTPUT_DIRECTORY: ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 
 # do prepare option auto enable, based on paltform
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    set(SD_STANDALONE ON)
+    set(CMAKE_STANDALONE ON)
 else()
-    set(SD_STANDALONE OFF)
+    set(CMAKE_STANDALONE OFF)
 endif()
 
 # Warning: Cuda & TensorRT can only available in local-build mode
@@ -172,7 +172,7 @@ elseif (ANDROID)                    # for Android
     set(DEFAULT_NNAPI_STATE ON)
     set(CURRENT_PLATFORM android-${CMAKE_ANDROID_ARCH_ABI})
     set(SD_ORT_ONLINE_AVAIL ON)
-    #set(SD_STANDALONE OFF)
+    #set(CMAKE_STANDALONE OFF)
 
     # force close Online-compiled for Android currently dont have such things
 #    set(ORT_COMPILED_ONLINE OFF)
@@ -188,7 +188,7 @@ message("${Cyan}<############################ ${ENGINE_NAME}-Config ############
 # 1. Option list
 option(ORT_COMPILED_ONLINE           "adi: using online onnxruntime(ort), otherwise local build" ${SD_ORT_ONLINE_AVAIL})
 option(ORT_COMPILED_HEAVY            "adi: using HEAVY compile, ${Red}only for debug, default OFF${ColourReset}" OFF)
-option(ORT_BUILD_COMMAND_LINE        "adi: build command line tools" ${SD_STANDALONE})
+option(ORT_BUILD_COMMAND_LINE        "adi: build command line tools" ${CMAKE_STANDALONE})
 option(ORT_BUILD_COMBINE_BASE        "adi: build combine code together to build a single output lib" OFF)
 option(ORT_BUILD_SHARED_ADI          "adi: build ADI project shared libs" OFF)
 option(ORT_BUILD_SHARED_ORT          "adi: build ORT in shared libs" OFF)
