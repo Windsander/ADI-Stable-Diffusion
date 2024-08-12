@@ -158,7 +158,7 @@ create_homebrew_formula() {
   sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
 
   cat <<EOF > ${formula_name}-${version}.rb
-class ${formula_name} < Formula
+class ${formula_name^} < Formula
   desc "ADI Stable Diffusion"
   homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
   version "${version}"
@@ -568,12 +568,12 @@ package() {
     case "$OS" in
         Linux*)
             echo "==========================================================="
-            create_rpm_package "Adi" "${VERSION}" \
+            create_rpm_package "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
 
             echo "==========================================================="
-            create_debian_package "Adi" "${VERSION}" \
+            create_debian_package "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
             echo "==========================================================="
@@ -581,7 +581,7 @@ package() {
 
         Darwin*)
             echo "==========================================================="
-            create_homebrew_formula "Adi" "${VERSION}" \
+            create_homebrew_formula "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
             echo "==========================================================="
@@ -589,7 +589,7 @@ package() {
 
         CYGWIN*|MINGW*|MSYS*)
             echo "==========================================================="
-            create_choco_package "Adi" "${VERSION}" \
+            create_choco_package "adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86_64.zip" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86.zip" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-arm64.zip"

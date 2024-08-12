@@ -35,6 +35,10 @@
 ## macOS (Homebrew):
 brew tap windsander/adi-stable-diffusion
 brew install adi
+
+## Windows (git-Bash + Chocolatey):
+curl -L -o adi.1.0.1.nupkg "https://raw.githubusercontent.com/Windsander/ADI-Stable-Diffusion/deploy/adi.1.0.1.nupkg"
+choco install adi.1.0.1.nupkg -y
 ```
 
 ### Method 2: Download from the Released Version
@@ -42,12 +46,12 @@ brew install adi
 You can find the latest available version from the **[Release Assets](https://github.com/Windsander/ADI-Stable-Diffusion/releases)**. The file tree of the package will look like this:
 ```
 --bin
-    --ort-sd-clitools
+    --adi
 --lib
-    --[Corresponding platform's SD_ORT library, e.g., libort-sd.a]
+    --[Corresponding platform's SD_ORT library, e.g., libadi.a]
     --[Corresponding platform's ORT library, e.g., libonnxruntime.dylib]
 --include
-    --ort_sd.h
+    --adi.h
 --CHANGELOG.md
 --README.md
 --LICENSE
