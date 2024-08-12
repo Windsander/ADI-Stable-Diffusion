@@ -235,6 +235,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("\n");
     printf("arguments (necessary):\n");
     printf("  --help                             show this help message and exit\n");
+    printf("  --version                          show local ADI version and exit\n");
     printf("  -t, --type [TYPE]                  execution type (default cpu) [cpu / gpu (core_ml/tensor_rt/cuda/nnapi)]\n");
     printf("  -m, --mode [MODE]                  run mode [txt2img / img2img]\n");
     printf("  -i, --input [IMAGE]                path to the input image (default input.png) [img2img]\n");
@@ -568,6 +569,9 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
             params.verbose = true;
         } else if (arg == "--help") {
             print_usage(argc, argv);
+            exit(1);
+        } else if (arg == "--version") {
+            printf("local ADI version is: %s \n", CURRENT_ADI_VERSION);
             exit(1);
         } else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
