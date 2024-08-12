@@ -176,23 +176,16 @@ class ${formula_name} < Formula
 
 
   def install
-    # 安装可执行文件和动态库到bin目录
     bin.install Dir["bin/*"]
-
-    # 安装头文件到include目录
+    lib.install Dir["lib/*"]
     include.install Dir["include/*"]
 
-    # 安装静态库和动态库到lib目录
-    lib.install Dir["lib/*"]
-
-    # 安装其他文件
     prefix.install "CHANGELOG.md"
     prefix.install "README.md"
     prefix.install "LICENSE"
   end
 
   test do
-    # 运行测试来验证安装是否成功
     system "#{bin}/adi", "--version"
   end
 end
@@ -575,12 +568,12 @@ package() {
     case "$OS" in
         Linux*)
             echo "==========================================================="
-            create_rpm_package "adi" "${VERSION}" \
+            create_rpm_package "Adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
 
             echo "==========================================================="
-            create_debian_package "adi" "${VERSION}" \
+            create_debian_package "Adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-linux-aarch64.tar.gz"
             echo "==========================================================="
@@ -588,7 +581,7 @@ package() {
 
         Darwin*)
             echo "==========================================================="
-            create_homebrew_formula "adi" "${VERSION}" \
+            create_homebrew_formula "Adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-x86_64.tar.gz" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-macos-arm64.tar.gz"
             echo "==========================================================="
@@ -596,7 +589,7 @@ package() {
 
         CYGWIN*|MINGW*|MSYS*)
             echo "==========================================================="
-            create_choco_package "adi" "${VERSION}" \
+            create_choco_package "Adi" "${VERSION}" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86_64.zip" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-x86.zip" \
               "https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${VERSION}/release-${VERSION}-windows-arm64.zip"

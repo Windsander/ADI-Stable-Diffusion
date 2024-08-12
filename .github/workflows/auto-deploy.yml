@@ -179,3 +179,26 @@ jobs:
           git add *.rb *.nupkg README.md LICENSE CHANGELOG-${{ needs.setup_environment.outputs.version }}.md
           git commit -m "Deploy version ${{ needs.setup_environment.outputs.version }}"
           git push origin deploy --force
+
+  update_homebrew_formula:
+    needs: finalize_deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout homebrew repository
+        uses: actions/checkout@v2
+        with:
+          repository: Windsander/homebrew-ADI-Stable-Diffusion
+          token: ${{ secrets.ADI_DEPLOY_TOKEN }}
+          ref: main
+
+      - name: Copy and commit homebrew formula
+        run: |
+          mkdir -p Formula
+          cp ./artifacts/macos/*.rb Formula/
+          cp ./artifacts/temp/README.md .
+          git add Formula/*.rb README.md
+          git config --global user.name "github-actions[deploy-bot]"
+          git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
+          git commit -m "Update Homebrew formula for version ${{ needs.setup_environment.outputs.version }}"
+          git push origin main
