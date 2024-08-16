@@ -386,7 +386,7 @@ if (ORT_BUILD_COMMAND_LINE)
     message("[onnx.runtime.sd][I] build command line tools at ${Red}${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}${ColourReset}")
     include(ExternalProject)
 
-    # 添加特定的 CMake 参数
+    # add specific CMake parameters
     list(APPEND CMAKE_CACHE_ARGS
             "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_PATH=${CMAKE_BINARY_DIR}"
@@ -400,7 +400,7 @@ if (ORT_BUILD_COMMAND_LINE)
             "-DANDROID_NDK=${ANDROID_NDK}"
     )
 
-    # 将主项目接收到的所有 CMake 参数传递给子项目
+    # pass all CMake parameters received by the main project to the sub-project
     ExternalProject_Add(
             clitools
             SOURCE_DIR ${CMAKE_SOURCE_DIR}/clitools
