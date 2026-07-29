@@ -203,7 +203,7 @@ And now, you can have a try~ (0w0 )
     - [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
     - [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
     - [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
-    - [ ] Unified Predictor-Corrector (uni_pc)
+    - [x] Unified Predictor-Corrector (uni_pc) <span style="color:green;">_(after 2026/07/29 ✅tested)_</span>
     - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
     - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
     - [ ] Diffusion Exponential Integrator Sampler Multistep (deis_m)

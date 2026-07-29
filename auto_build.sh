@@ -76,7 +76,12 @@ if [ -z "$TARGET_ABI" ] || [ "$TARGET_ABI" == "default" ]; then
             TARGET_ABI="x86_64"
             ;;
         aarch64 | arm64)
-            TARGET_ABI="aarch64"
+            # Apple 工具链约定使用 arm64，Linux/Android 使用 aarch64
+            if [ "$PLATFORM" == "macos" ]; then
+                TARGET_ABI="arm64"
+            else
+                TARGET_ABI="aarch64"
+            fi
             ;;
         i386 | i686)
             TARGET_ABI="x86"
