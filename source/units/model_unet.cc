@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_UNet - Arikan.Li
  * Created by Arikan.Li on 2024/05/14.
  */
@@ -90,6 +90,20 @@ Tensor UNet::inference(
     const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
     const uint64_t working_steps_ = sd_scheduler_p->init(sd_unet_config.sd_inference_steps);
 
+    // adapt timestep tensor to the UNet's declared input signature:
+    // legacy exports take int64 {1}; newer exports (e.g. SD v2.x via optimum)
+    // declare float scalar. Feeding a mismatched tensor makes ORT throw inside
+    // ModelBase::execute, which is caught and logged — the UNet output then
+    // silently stays zero and the whole trajectory decodes to pure noise.
+    ONNXTensorElementDataType timestep_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
+    size_t timestep_rank_ = 1;
+    {
+        ONNXTensorElementDataType declared_type_ = model_input_element_type(1, &timestep_rank_);
+        if (declared_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
+            timestep_type_ = declared_type_;
+        }
+    }
+
     TensorShape latent_shape_{1, c_, h_, w_};
     std::vector<float> latent_empty_(c_ * h_ * w_, 0.0f);
     Tensor latents_ = (TensorHelper::have_data(encoded_img_)) ?
@@ -101,13 +115,22 @@ Tensor UNet::inference(
     for (int i = 0; i < working_steps_; ++i) {
         Tensor model_latent_ = sd_scheduler_p->scale(latents_, i);
         Tensor timestep_ = sd_scheduler_p->time(i);
+        if (timestep_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+            float timestep_value_ = float(timestep_.GetTensorData<int64_t>()[0]);
+            TensorShape timestep_shape_ = (timestep_rank_ == 0) ? TensorShape{} : TensorShape{1};
+            timestep_ = TensorHelper::create<float>(timestep_shape_, std::vector<float>{timestep_value_});
+        }
+        auto clone_timestep_ = [&](const Tensor& t_) -> Tensor {
+            return (timestep_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) ?
+                   TensorHelper::clone<float_t>(t_) : TensorHelper::clone<int64_t>(t_);
+        };
 
         // do positive N_pos_embed_num times
         Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         if (TensorHelper::have_data(embs_positive_)) {
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
-            input_tensors.emplace_back(TensorHelper::clone<int64_t>(timestep_));
+            input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
@@ -120,7 +143,7 @@ Tensor UNet::inference(
         if (TensorHelper::have_data(embs_negative_) && need_guidance_) {
             std::vector<Tensor> input_tensors;
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
-            input_tensors.emplace_back(TensorHelper::clone<int64_t>(timestep_));
+            input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);

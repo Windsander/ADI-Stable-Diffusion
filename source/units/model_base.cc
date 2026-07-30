@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_ModelBase - Arikan.Li
  * Created by Arikan.Li on 2024/05/14.
  */
@@ -36,6 +36,19 @@ private:
 protected:
     void print_model_detail(const Ort::AllocatorWithDefaultOptions& allocator, bool is_input);
     void execute(std::vector<Tensor>& input_tensors_, std::vector<Tensor>& output_tensors_);
+
+    // query the declared element type (and rank) of a model input; UNDEFINED when unavailable
+    ONNXTensorElementDataType model_input_element_type(size_t index_, size_t* rank_ = nullptr) {
+        if (!model_session || index_ >= model_meta.tensor_count_i) {
+            return ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+        }
+        // NOTE: keep the TypeInfo alive for the whole query — the
+        // TensorTypeAndShapeInfo is an unowned view into it
+        Ort::TypeInfo type_info_ = model_session->GetInputTypeInfo(index_);
+        auto tensor_info_ = type_info_.GetTensorTypeAndShapeInfo();
+        if (rank_) *rank_ = tensor_info_.GetShape().size();
+        return tensor_info_.GetElementType();
+    }
 
 protected:
     virtual void generate_output(std::vector<Tensor>& output_tensors_) = 0;

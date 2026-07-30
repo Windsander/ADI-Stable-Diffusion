@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Clip - Arikan.Li
  * Created by Arikan.Li on 2024/05/14.
  */
@@ -84,13 +84,22 @@ Tensor Clip::embedding(const std::string& prompts_) {
     // tokenize prompts
     PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
+    // adapt token tensor dtype to the text encoder's declared input:
+    // tokenizer emits int32 (legacy exports expect that), newer exports
+    // (e.g. SD v2.x via optimum) declare int64 input_ids
+    ONNXTensorElementDataType ids_type_ = model_input_element_type(0);
+
     std::vector<Tensor> merged_hidden_;
     for (auto &tw_pair_: tokenizer_output_) {           // major_hidden_dim = 768 in SD, 1280 in SDXL
         Tensor &tokens_ = tw_pair_.first;               // [1, 77]
         Tensor &weight_ = tw_pair_.second;              // [1, 77]
 
         std::vector<Tensor> input_tensors;
-        input_tensors.emplace_back(std::move(tokens_)); // [vocab_size, major_hidden_dim]
+        if (ids_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64) {
+            input_tensors.emplace_back(TensorHelper::cast<int64_t, int32_t>(tokens_));
+        } else {
+            input_tensors.emplace_back(std::move(tokens_)); // [vocab_size, major_hidden_dim]
+        }
         std::vector<Tensor> output_tensors;             // [1, 77, major_hidden_dim]
         generate_output(output_tensors);
         execute(input_tensors, output_tensors);

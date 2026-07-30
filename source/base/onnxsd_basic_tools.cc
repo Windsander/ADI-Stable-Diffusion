@@ -1,4 +1,4 @@
-﻿/*
+/*
  * BasicTools
  * Definition: put simple tools we used in here
  * Created by Arikan.Li on 2022/03/11.
@@ -355,6 +355,27 @@ public:
         Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_.GetTensorMemoryInfo(), result_data_, input_size_ * 2,
             result_shape_.data(), result_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
+    template<class T, class F>
+    static Tensor cast(const Tensor &input_) {
+        auto *input_data_ = input_.GetTensorData<F>();
+        TensorShape input_shape_ = input_.GetTensorTypeAndShapeInfo().GetShape();
+        size_t input_size_ = input_.GetTensorTypeAndShapeInfo().GetElementCount();
+        T* result_data_ = new T[input_size_];
+
+        for (size_t i = 0; i < input_size_; i++) {
+            result_data_[i] = static_cast<T>(input_data_[i]);
+        }
+
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            Ort::MemoryInfo::CreateCpu(
+                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault
+            ), result_data_, int64_t(input_size_),
+            input_shape_.data(), input_shape_.size()
         );
 
         return result_tensor_;
