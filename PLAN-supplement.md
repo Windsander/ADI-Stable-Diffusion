@@ -52,6 +52,8 @@
 | 参数坑位记录 | sd-v15 CLIP 需 `--dims 768`，sd-turbo 需 `--dims 1024`；用错会导致 CLIP/UNet 维度报错且**静默输出零张量**（图像纯噪声）。阶段 2 文档/校验需覆盖 |
 | 1.1 Karras sigma 策略（2026-07-30） | ✅ 全链路落地：公开枚举 `AvailableSigmaType`（adi.h，追加式）→ 内部 `SigmaType` → `SchedulerBase::init()` karras 分支（ρ=7，σ→t 二分反查）→ CLI `--sigma`。sigma 序列与 diffusers `use_karras_sigmas` **逐值一致**（14.6146/3.1686/0.4469/0.0292 @4步）；turbo 4 步 euler_a/unipc + default 对照三组推理全绿。验证环境：conda base（torch 2.13 CPU + diffusers 0.39 已装，供阶段 1.2 参考比对） |
 | 1.2 dpm_m（2026-07-30） | ✅ DPM-Solver++ 2M（midpoint）移植自 diffusers 0.39 源码并翻译到 EDM 样本空间（坐标映射 x_vp=α·x_edm，与 diffusers 数值对比误差 2.4e-07）；末步零 σ 走 order-1（同 diffusers lower_order_final+zero）。turbo 4 步 ✓、v15 20 步 ✓、**DPM++ 2M Karras 组合** ✓。diffusers 关键机制备查：末步用 first_order_update 规避 h=∞（`final_sigmas_type=="zero"` 条件分支） |
+| 1.2 dpm_sde（2026-07-30） | ✅ DPM-Solver-SDE 二阶中点法：复用 heun 式 correction_steps 加倍结构，但**奇数位存真实中点 σ/t**（保持 base scale/time/x0 转换自洽）；共享 ancestral 更新 + euler_a 式内置 RandomGenerator。turbo 4 步 ✓（少步场景明显干净）、v15 20 步+karras ✓ |
+| 1.2 dpm_s（2026-07-30） | ✅ DPM-Solver++ 2S（midpoint）：同样的两评估结构，偶数位 order-1 半步 + 奇数位全区间 2S 校正（x_t = (σ_t/σ_A)x + (1-e^{-h})m1 + 0.5(1-e^{-h})(m0-m1)/r0，EDM 翻译）。turbo 4 步 ✓、v15 20 步+karras ✓。DPM++ 家族全数落地 |
 
 ## 阶段 1：采样器与 Sigma 策略补全（v1.1.0，纯增量低风险）
 

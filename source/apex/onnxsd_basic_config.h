@@ -72,6 +72,7 @@ typedef enum SchedulerType {
     SCHEDULER_UNIPC             = 7,
     SCHEDULER_DPM_M             = 8,
     SCHEDULER_DPM_SDE           = 9,
+    SCHEDULER_DPM_S             = 10,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
