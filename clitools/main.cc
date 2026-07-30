@@ -58,6 +58,12 @@ const char* scheduler_sampler_fuc_str[] = {
     "unipc",
 };
 
+// below order match AvailableSigmaType order
+const char* scheduler_sigma_type_str[] = {
+    "default",
+    "karras",
+};
+
 // below order match AvailablePredictionType order
 const char* tokenizer_series_str[] = {
     "bpe",
@@ -112,6 +118,7 @@ struct CommandLineInput {
     AvailableBetaType scheduler_beta_type = BETA_TYPE_LINEAR;               // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
     AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
+    AvailableSigmaType scheduler_sigma_type = SIGMA_TYPE_DEFAULT;           // Scheduler: Sigma Schedule Style (Default, Karras)
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
@@ -212,6 +219,7 @@ void print_params(const CommandLineInput& params) {
     printf("    scheduler_beta_type:            %s\n", scheduler_beta_type_str[params.scheduler_beta_type]);
     printf("    scheduler_alpha_type:           %s\n", scheduler_alpha_type_str[params.scheduler_alpha_type]);
     printf("    scheduler_prediction:           %s\n", scheduler_prediction_str[params.scheduler_predict_type]);
+    printf("    scheduler_sigma_schedule:       %s\n", scheduler_sigma_type_str[params.scheduler_sigma_type]);
     printf("    tokenizer_series:               %s\n", tokenizer_series_str[params.sd_tokenizer_type]);
 
     printf("  Static (by Models [const]): \n");
@@ -270,6 +278,7 @@ void print_usage(int argc, const char* argv[]) {
 
     printf("arguments (optional, unrecommended):\n");
     printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc] (default euler_a) \n");
+    printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
@@ -495,6 +504,13 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_scheduler_type = (AvailableSchedulerType)schedule_found;
+        } else if (arg == "--sigma") {
+            int sigma_found = GET_TYPE_FROM_STR(scheduler_sigma_type_str, AVAILABLE_SIGMA_COUNT);
+            if (sigma_found == -1) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_type = (AvailableSigmaType)sigma_found;
         } else if (arg == "--beta") {
             int betae_found = GET_TYPE_FROM_STR(scheduler_beta_type_str, BETA_COUNT);
             if (betae_found == -1) {
@@ -650,6 +666,7 @@ static std::string get_image_params(const CommandLineInput &params) {
                         "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type]) +
                         "], " + "\n";
     parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type]) + ", " + "\n";
+    parameter_string += "Sigma: " + std::string(scheduler_sigma_type_str[params.scheduler_sigma_type]) + ", " + "\n";
     parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type]) + ", " + "\n";
     parameter_string += "Version: ONNXRuntime-Stable-Diffusion";
     return parameter_string;
@@ -765,7 +782,8 @@ int main(int argc, const char *argv[]) {
                 params.scheduler_seed,
                 params.scheduler_beta_type,
                 params.scheduler_alpha_type,
-                params.scheduler_predict_type
+                params.scheduler_predict_type,
+                params.scheduler_sigma_type
             },
             {
                 params.sd_tokenizer_type,

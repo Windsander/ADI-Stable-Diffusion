@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 ORT_SD_Context Interface - Arikan.Li
  * Created by Arikan.Li on 2024/05/22.
  */
@@ -56,6 +56,13 @@ enum AvailablePredictionType {
     AVAILABLE_PREDICTOR_COUNT,
 };
 
+/* Scheduler Sigma Schedule Provide */
+enum AvailableSigmaType {
+    SIGMA_TYPE_DEFAULT          = 0x00,
+    SIGMA_TYPE_KARRAS           = 0x01,
+    AVAILABLE_SIGMA_COUNT,
+};
+
 /* Scheduler Type Provide */
 enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_EULER       = 0x00,
@@ -109,6 +116,7 @@ typedef struct IOrtSDConfig {
         enum AvailableBetaType scheduler_beta_type;     // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
         enum AvailableAlphaType scheduler_alpha_type;   // Scheduler: Alpha(Beta) Method (Cos, Exp)
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
+        enum AvailableSigmaType scheduler_sigma_type;          // Scheduler: Sigma Schedule Style (Default, Karras)
     } sd_scheduler_config;
 
     struct {

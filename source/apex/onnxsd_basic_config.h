@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ORT Stable-Diffusion Basic Core Config 基础
  * Definition: Stable-Diffusion 的过程中基础能力配置
  *
@@ -89,6 +89,11 @@ typedef enum PredictionType {
     PREDICT_TYPE_SAMPLE         = 2,
 } PredictionType;
 
+typedef enum SigmaScheduleType {
+    SIGMA_TYPE_DEFAULT          = 0,
+    SIGMA_TYPE_KARRAS           = 1,
+} SigmaType;
+
 #define DEFAULT_SCHEDULER_CONFIG                             \
     {                                                        \
         /*scheduler_type*/              SCHEDULER_EULER_A,   \
@@ -99,7 +104,8 @@ typedef enum PredictionType {
         /*scheduler_seed*/              42,                  \
         /*scheduler_beta_type*/         BETA_TYPE_LINEAR,    \
         /*scheduler_alpha_type*/        ALPHA_TYPE_COSINE,   \
-        /*scheduler_predict_type*/      PREDICT_TYPE_EPSILON \
+        /*scheduler_predict_type*/      PREDICT_TYPE_EPSILON,\
+        /*scheduler_sigma_type*/        SIGMA_TYPE_DEFAULT   \
     }
 
 typedef struct SchedulerConfig {
@@ -112,6 +118,7 @@ typedef struct SchedulerConfig {
     BetaType scheduler_beta_type;
     AlphaType scheduler_alpha_type;
     PredictionType scheduler_predict_type;
+    SigmaType scheduler_sigma_type;
 } SchedulerConfig;
 
 /* Diffusion Tokenizer Settings ===========================================*/

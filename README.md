@@ -195,7 +195,7 @@ And now, you can have a try~ (0w0 )
 **Scheduler Abilities**
 - [ ] **Strategy**
     - [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
-    - [ ] Karras (karras)
+    - [x] Karras (karras) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
 
 - [ ] **Sampling Methods**
     - [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span> 
