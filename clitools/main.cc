@@ -59,6 +59,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "dpm_m",
     "dpm_sde",
     "dpm_s",
+    "pndm",
 };
 
 // below order match AvailableSigmaType order
@@ -280,7 +281,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s] (default euler_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm] (default euler_a) \n");
     printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
