@@ -204,9 +204,9 @@ And now, you can have a try~ (0w0 )
     - [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
     - [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
     - [x] Unified Predictor-Corrector (uni_pc) <span style="color:green;">_(after 2026/07/29 ✅tested)_</span>
-    - [ ] Pseudo Numerical Diffusion Model Scheduler (pndm)
-    - [ ] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm)
-    - [ ] Diffusion Exponential Integrator Sampler Multistep (deis_m)
+    - [x] Pseudo Numerical Diffusion Model Scheduler (pndm) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
+    - [x] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
+    - [x] Diffusion Exponential Integrator Sampler Multistep (deis_m) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
     - [x] Denoising Diffusion Implicit Models (ddim) <span style="color:green;">_(after 2024/07/12 ✅tested)_</span>
     - [x] Denoising Diffusion Probabilistic Models (ddpm) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
     - [x] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
