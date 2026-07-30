@@ -18,6 +18,7 @@
 #include "scheduler_discrete_dpm_sde.cc"
 #include "scheduler_discrete_dpm_s.cc"
 #include "scheduler_discrete_pndm.cc"
+#include "scheduler_discrete_ipndm.cc"
 
 namespace onnx {
 namespace sd {
@@ -79,6 +80,10 @@ public:
             }
             case SCHEDULER_PNDM: {
                 result_ptr_ = new PNDMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_IPNDM: {
+                result_ptr_ = new IPNDMDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
