@@ -178,9 +178,9 @@ And now, you can have a try~ (0w0 )
     - **v1.5** [(HuggingFace)](https://huggingface.co/runwayml/stable-diffusion-v1-5): Final optimized version ✅
     - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, faster and efficiency ✅
 
-- [ ] **[SD_v2] Stable-Diffusion (v2.0, v2.1)**
+- [x] **[SD_v2] Stable-Diffusion (v2.0, v2.1)** <span style="color:green;">_(v2.1 768px after 2026/07/31 ✅tested)_</span>
     - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency
-    - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects
+    - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects ✅
 
 - [ ] **[SD_v3] Stable-Diffusion (v3.0)**
     - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3): Anticipated next-generation version with more improvements and new features

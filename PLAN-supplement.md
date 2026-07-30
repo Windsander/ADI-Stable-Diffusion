@@ -58,6 +58,12 @@
 | 1.3 ipndm（2026-07-30） | ✅ 落地为**论文形式**（AB4 eps 外推 + DDIM 式更新，模型自身 σ 网格，纯 execute_method 实现，karras 组合免适配）。关键实证排坑（三轮对照实验）：①diffusers `IPNDMScheduler` 硬编码 ADM 的 sin²(πs/2) 连续网格 + [0,1) 时间条件，**对 SD 模型不可用**（sd-turbo/sd-v15 任意步数输出糊状/碎片，已实证）；②初版移植期间一度误判"参考图干净"——后查实该参考实际走的是默认 euler（未赋值 `pipe.scheduler`），记录此坑防止后人复踩；③C++ RNG（Box-Muller + default_random_engine）经偏度/峰度/自相关检验统计性质正常，排除噪声源嫌疑。验证矩阵：turbo 4 步 ✓、turbo 4 步+karras ✓、v15 20 步 CFG7.5 ✓（质量与 unipc 金图相当） |
 | 1.3 deis_m（2026-07-30） | ✅ DEIS 多步（log-rho Lagrange 指数积分器，order 1→2→3 爬坡）：关键代数事实——diffusers DEIS 的 ρ = σ_t/α_t **恰等于框架 σ**，故更新式在 EDM 空间直接成立（order-1 退化为 DDIM `x+(σ_t−σ_s)·eps`；高阶为 `x+Σc_k·m_k`，c 由 ind2/ind3 在 log-σ 上的 Lagrange 基积分给出）；末步 σ=0 强制 order-1 精确落在 x0（规避 log ρ 奇异）。数值对照 diffusers `DEISMultistepScheduler`(solver_order=3) 同 σ 网格同模型输出，同状态点 max dev 3.1e-05（对照时注意 diffusers 末位追加 σ(0) 空步、框架追加精确 0，比较点需对齐）。验证：turbo 4 步 ✓、turbo 4 步+karras ✓、v15 20 步 CFG7.5 ✓。**至此阶段 1 全部 14 采样器 + karras 落地** |
 
+## 阶段 2 执行记录（进行中）
+
+| 项 | 结果 |
+|---|---|
+| 2.1 SD v2.1 适配（2026-07-31） | ✅ 全链路打通。**模型获取**：stabilityai 官方仓库已全部 gated，改用 `sd2-community/stable-diffusion-2-1` 镜像（diffusers 格式 fp32），经 ModelScope 通道下载（HF 直连 ~25MB/min 且 SSL 频繁断，ModelScope 并发 ~57MB/min/流）；optimum `ORTStableDiffusionPipeline(export=True)` 导出至 `sd/sd-base-model/onnx-sd-v21-768`（4.8GB，布局与既有模型一致）。**penultimate 疑点实证排除**：diffusers v2 默认 `clip_skip=None` 走 `last_hidden_state`（含 final_layer_norm），optimum 导出一致，无需特殊处理。**发现并修复 3 个运行时 bug**（接手时 v2.1 输出纯噪声，python onnxruntime 对照证明 ONNX 本身完好）：①新版导出 UNet timestep 为 float 标量（旧为 int64 {1}），dtype 不匹配 → ORT 抛异常；②text_encoder input_ids 新版为 int64，分词器输出 int32 → 同样抛异常；③**`ModelBase::execute` 吞异常只打印**——模型输出保持预分配零值，CLIP/UNet 全部静默失效解码出纯噪声（这是"纯噪声"故障的通用放大器，后续金图回归应把 stderr 异常计数纳入门禁）。修复方式：`ModelBase::model_input_element_type` 按声明 dtype/rank 适配（新增 `TensorHelper::cast`）；期间还踩中 ORT cxx `TypeInfo` 临时对象悬垂导致 `GetShape` 读已释放内存（进程卡死 memmove 数 GB），已按"查询期间保持 TypeInfo 存活"修正。验证矩阵：v2.1 768px euler_a+v_prediction 20 步 ✓（零异常，出图优）、512px dpm_m+v_prediction ✓、turbo 回归 ✓（与既有金图一致）。v2.0 未测（模型未下载） |
+
 ## 阶段 1：采样器与 Sigma 策略补全（v1.1.0，纯增量低风险）
 
 > 目标：14 个采样器全部可用（含 unipc 补全）+ Karras 策略，覆盖社区主流用法。
