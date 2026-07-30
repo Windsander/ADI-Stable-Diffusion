@@ -15,6 +15,7 @@
 #include "scheduler_discrete_ddim.cc"
 #include "scheduler_discrete_unipc.cc"
 #include "scheduler_discrete_dpm_m.cc"
+#include "scheduler_discrete_dpm_sde.cc"
 
 namespace onnx {
 namespace sd {
@@ -64,6 +65,10 @@ public:
             }
             case SCHEDULER_DPM_M: {
                 result_ptr_ = new DpmMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DPM_SDE: {
+                result_ptr_ = new DpmSDEDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
