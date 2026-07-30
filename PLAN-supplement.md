@@ -51,6 +51,7 @@
 | 1.0 unipc 补全（2026-07-29） | ✅ 完整实现 UniPC 预测-校正数学（λ 空间指数积分器 + Lagrange 插值，EDM 约定与 `scale()`/`find_predict_params_at` 一致），修复空壳 segfault。两个关键实证：①样本空间是 EDM x=x0+σ·ε 而非 VP 归一化（初版公式坐标系错误致纯噪声）；②末步 λ 跳变（Δλ≈3.5）需降阶保护（`SD_LAMBDA_JUMP_CAP=1.25`，推广 diffusers lower_order_final）。合成场仿真验证校正器精确度达 1e-11。验证矩阵：turbo t2i 1/4/8 步 ✓、i2i ✓、CFG7.5 ✓、v15 20步 ✓ |
 | 参数坑位记录 | sd-v15 CLIP 需 `--dims 768`，sd-turbo 需 `--dims 1024`；用错会导致 CLIP/UNet 维度报错且**静默输出零张量**（图像纯噪声）。阶段 2 文档/校验需覆盖 |
 | 1.1 Karras sigma 策略（2026-07-30） | ✅ 全链路落地：公开枚举 `AvailableSigmaType`（adi.h，追加式）→ 内部 `SigmaType` → `SchedulerBase::init()` karras 分支（ρ=7，σ→t 二分反查）→ CLI `--sigma`。sigma 序列与 diffusers `use_karras_sigmas` **逐值一致**（14.6146/3.1686/0.4469/0.0292 @4步）；turbo 4 步 euler_a/unipc + default 对照三组推理全绿。验证环境：conda base（torch 2.13 CPU + diffusers 0.39 已装，供阶段 1.2 参考比对） |
+| 1.2 dpm_m（2026-07-30） | ✅ DPM-Solver++ 2M（midpoint）移植自 diffusers 0.39 源码并翻译到 EDM 样本空间（坐标映射 x_vp=α·x_edm，与 diffusers 数值对比误差 2.4e-07）；末步零 σ 走 order-1（同 diffusers lower_order_final+zero）。turbo 4 步 ✓、v15 20 步 ✓、**DPM++ 2M Karras 组合** ✓。diffusers 关键机制备查：末步用 first_order_update 规避 h=∞（`final_sigmas_type=="zero"` 条件分支） |
 
 ## 阶段 1：采样器与 Sigma 策略补全（v1.1.0，纯增量低风险）
 

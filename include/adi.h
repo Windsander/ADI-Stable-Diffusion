@@ -73,6 +73,7 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_DDPM        = 0x05,
     AVAILABLE_SCHEDULER_DDIM        = 0x06,
     AVAILABLE_SCHEDULER_UNIPC       = 0x07,
+    AVAILABLE_SCHEDULER_DPM_M       = 0x08,
     AVAILABLE_SCHEDULER_COUNT,
 };
 

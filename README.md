@@ -210,7 +210,7 @@ And now, you can have a try~ (0w0 )
     - [x] Denoising Diffusion Implicit Models (ddim) <span style="color:green;">_(after 2024/07/12 ✅tested)_</span>
     - [x] Denoising Diffusion Probabilistic Models (ddpm) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
     - [ ] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde)
-    - [ ] Diffusion Probabilistic Models Solver in Multistep (dpm_m)
+    - [x] Diffusion Probabilistic Models Solver in Multistep (dpm_m) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
     - [ ] Diffusion Probabilistic Models Solver in Singlestep (dpm_s)
 
 **Tokenizer Type**

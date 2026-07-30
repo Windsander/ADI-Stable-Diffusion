@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Scheduler - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
@@ -14,6 +14,7 @@
 #include "scheduler_discrete_ddpm.cc"
 #include "scheduler_discrete_ddim.cc"
 #include "scheduler_discrete_unipc.cc"
+#include "scheduler_discrete_dpm_m.cc"
 
 namespace onnx {
 namespace sd {
@@ -59,6 +60,10 @@ public:
             }
             case SCHEDULER_UNIPC: {
                 result_ptr_ = new UniPCDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DPM_M: {
+                result_ptr_ = new DpmMDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
