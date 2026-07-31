@@ -31,6 +31,9 @@
 
 ### Method 1: Install the Command Line Tool Using a Package Manager
 
+> **Note:** published packages are currently **v1.0.1**; v1.1.0/v1.2.0 packages will be
+> produced by the automated release chain (see `release/release-v*` branches).
+
 ```bash
 ## macOS (Homebrew):
 brew tap windsander/adi-stable-diffusion
@@ -139,7 +142,8 @@ adi \
  --unet ../../sd/sd-base-model/onnx-sd-turbo/unet/model.onnx \
  --vae-encoder ../../sd/sd-base-model/onnx-sd-turbo/vae_encoder/model.onnx \
  --vae-decoder ../../sd/sd-base-model/onnx-sd-turbo/vae_decoder/model.onnx \
- --dict ../../sd/sd-dictionary/vocab.txt \
+ --dict ../../sd/sd-base-model/onnx-sd-turbo/tokenizer/vocab.json \
+ --merges ../../sd/sd-base-model/onnx-sd-turbo/tokenizer/merges.txt \
  --beta-start 0.00085 \
  --beta-end 0.012 \
  --beta scaled_linear \
@@ -160,6 +164,50 @@ adi \
 
 And now, you can have a try~ (0w0 )
 
+### More verified examples (v1.2.0)
+
+```bash
+# SD v2.1 @ 768px, v_prediction, 20 steps:
+adi -p "A cat in the water at sunset" -m txt2img -o output.png \
+ -w 768 -h 768 -c 3 --seed 15.0 --dims 1024 \
+ --clip  <onnx-sd-v21-768>/text_encoder/model.onnx \
+ --unet  <onnx-sd-v21-768>/unet/model.onnx \
+ --vae-encoder <onnx-sd-v21-768>/vae_encoder/model.onnx \
+ --vae-decoder <onnx-sd-v21-768>/vae_decoder/model.onnx \
+ --dict  <onnx-sd-v21-768>/tokenizer/vocab.json \
+ --merges <onnx-sd-v21-768>/tokenizer/merges.txt \
+ --beta scaled_linear --scheduler euler_a --predictor v_prediction \
+ --guidance 7.5 --steps 20
+
+# SDXL-turbo: dual text encoders via --clip2 (VAE scaling 0.13025):
+adi -p "A cat in the water at sunset" -m txt2img -o output.png \
+ -w 512 -h 512 -c 3 --seed 15.0 --dims 768 \
+ --clip  <onnx-sdxl-turbo>/text_encoder/model.onnx \
+ --clip2 <onnx-sdxl-turbo>/text_encoder_2/model.onnx \
+ --unet  <onnx-sdxl-turbo>/unet/model.onnx \
+ --vae-encoder <onnx-sdxl-turbo>/vae_encoder/model.onnx \
+ --vae-decoder <onnx-sdxl-turbo>/vae_decoder/model.onnx \
+ --dict  <onnx-sdxl-turbo>/tokenizer/vocab.json \
+ --merges <onnx-sdxl-turbo>/tokenizer/merges.txt \
+ --beta scaled_linear --scheduler euler_a --predictor epsilon \
+ --decoding 0.13025 --guidance 1.0 --steps 4
+
+# Karras sigma schedule (composable with any scheduler):
+adi ... --scheduler dpm_m --sigma karras ...
+
+# All 14 schedulers:
+# euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc
+# dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m
+```
+
+**Model-specific parameter notes:**
+| Model | `--dims` | `--predictor` | `--decoding` | typical |
+|---|---|---|---|---|
+| sd v1.x / turbo | 768 (v1.x) / 1024 (turbo) | epsilon | 0.18215 | turbo: guidance 1.0, 1~4 steps |
+| sd v2.x | 1024 | v_prediction (v2.1-768) | 0.18215 | 768px for v2.1-768 |
+| SDXL / SDXL-turbo | 768 | epsilon | **0.13025** | requires `--clip2` |
+
+
 ## Extra intelligence：
 
 - **Manually Prepare Inference Engine, see at: [Engine's README.md](engine%2FREADME.md)**
@@ -179,25 +227,25 @@ And now, you can have a try~ (0w0 )
     - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, faster and efficiency ✅
 
 - [x] **[SD_v2] Stable-Diffusion (v2.0, v2.1)** <span style="color:green;">_(v2.1 768px after 2026/07/31 ✅tested)_</span>
-    - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency
+    - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency <span style="color:gray;">_(untested)_</span>
     - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects ✅
 
 - [ ] **[SD_v3] Stable-Diffusion (v3.0)**
     - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3): Anticipated next-generation version with more improvements and new features
 
 - [x] **[SDXL] Stable-Diffusion-XL** <span style="color:green;">_(SDXL-turbo after 2026/07/31 ✅tested)_</span>
-    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version for larger-scale models and higher-resolution image
+    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version for larger-scale models and higher-resolution image <span style="color:gray;">_(untested)_</span>
     - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency ✅
 
 - [ ] **[SVD] Stable-Video-Diffusion**
     - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion): Version specifically for video generation and editing
 
 **Scheduler Abilities**
-- [ ] **Strategy**
+- [x] **Strategy**
     - [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
     - [x] Karras (karras) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
 
-- [ ] **Sampling Methods**
+- [x] **Sampling Methods**
     - [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span> 
     - [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 ✅tested)_</span>
     - [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
@@ -215,5 +263,5 @@ And now, you can have a try~ (0w0 )
 
 **Tokenizer Type**
 - [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 ✅tested)_</span> 
-- [x] Word Piece Encoding (wp) <span style="color:green;">_(after 2024/05/27 ✅tested)_</span>
+- [x] Word Piece Encoding (word_piece) <span style="color:green;">_(after 2024/05/27 ✅tested)_</span>
 - [ ] Sentence Piece Encoding (sp)  <span style="color:blue;">_[if necessary]_</span>
