@@ -185,9 +185,9 @@ And now, you can have a try~ (0w0 )
 - [ ] **[SD_v3] Stable-Diffusion (v3.0)**
     - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3): Anticipated next-generation version with more improvements and new features
 
-- [ ] **[SDXL] Stable-Diffusion-XL**
+- [x] **[SDXL] Stable-Diffusion-XL** <span style="color:green;">_(SDXL-turbo after 2026/07/31 ✅tested)_</span>
     - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl): Experimental version for larger-scale models and higher-resolution image
-    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency
+    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency ✅
 
 - [ ] **[SVD] Stable-Video-Diffusion**
     - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion): Version specifically for video generation and editing

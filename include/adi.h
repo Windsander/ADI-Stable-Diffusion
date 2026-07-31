@@ -16,7 +16,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#define CURRENT_ADI_VERSION "v1.1.0"
+#define CURRENT_ADI_VERSION "v1.2.0"
 
 /* Inference Execution Settings ===========================================*/
 
