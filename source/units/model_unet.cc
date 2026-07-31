@@ -51,7 +51,11 @@ public:
     explicit UNet(const std::string &model_path_, const ModelUNetConfig &unet_config_ = DEFAULT_UNET_CONFIG);
     ~UNet() override;
 
-    Tensor inference(const Tensor &embs_positive_,const Tensor &embs_negative_, const Tensor &encoded_img_);
+    Tensor inference(
+        const Tensor &embs_positive_, const Tensor &embs_negative_,
+        const Tensor &pooled_positive_, const Tensor &pooled_negative_,
+        const Tensor &encoded_img_
+    );
 };
 
 UNet::UNet(const std::string &model_path_, const ModelUNetConfig& unet_config_) : ModelBase(model_path_){
@@ -82,6 +86,8 @@ void UNet::generate_output(std::vector<Tensor> &output_tensors_) {
 Tensor UNet::inference(
     const Tensor &embs_positive_,
     const Tensor &embs_negative_,
+    const Tensor &pooled_positive_,
+    const Tensor &pooled_negative_,
     const Tensor &encoded_img_
 ) {
     int w_ = int(sd_unet_config.sd_input_width);
@@ -102,6 +108,20 @@ Tensor UNet::inference(
         if (declared_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
             timestep_type_ = declared_type_;
         }
+    }
+
+    // SDXL UNets declare 5 inputs (sample, timestep, encoder_hidden_states,
+    // text_embeds, time_ids): micro-conditioning built from the pooled
+    // embedding + [orig_h, orig_w, crop_top, crop_left, target_h, target_w]
+    const bool sdxl_conditioned_ = (model_input_count() >= 5);
+    Tensor time_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    if (sdxl_conditioned_) {
+        std::vector<float> time_ids_value_ = {
+            float(sd_unet_config.sd_input_height * 8), float(sd_unet_config.sd_input_width * 8),
+            0.0f, 0.0f,
+            float(sd_unet_config.sd_input_height * 8), float(sd_unet_config.sd_input_width * 8)
+        };
+        time_ids_ = TensorHelper::create(TensorShape{1, 6}, time_ids_value_);
     }
 
     TensorShape latent_shape_{1, c_, h_, w_};
@@ -132,6 +152,10 @@ Tensor UNet::inference(
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
             input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
+            if (sdxl_conditioned_) {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+            }
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
             execute(input_tensors, output_tensors);
@@ -145,6 +169,10 @@ Tensor UNet::inference(
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
             input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
+            if (sdxl_conditioned_) {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+            }
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
             execute(input_tensors, output_tensors);

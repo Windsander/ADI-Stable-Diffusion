@@ -110,6 +110,7 @@ typedef struct IOrtSDConfig {
         const char* onnx_vae_decoder_path;          // Model: VAE Decoder Path (also known as vae_decoder)
         const char* onnx_control_net_path;          // Model: ControlNet Path (currently not available)
         const char* onnx_safty_path;                // Model: Safety Security Model Path (currently not available)
+        const char* onnx_clip_2_path;               // Model: 2nd CLIP Path (SDXL text_encoder_2, empty when unused)
     } sd_modelpath_config;
 
     struct {

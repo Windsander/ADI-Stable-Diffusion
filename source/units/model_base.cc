@@ -50,6 +50,37 @@ protected:
         return tensor_info_.GetElementType();
     }
 
+    size_t model_input_count() const { return model_meta.tensor_count_i; }
+    size_t model_output_count() const { return model_meta.tensor_count_o; }
+    std::string model_output_name(size_t index_) {
+        return (index_ < model_meta.tensor_count_o) ? model_meta.tensor_names_o[index_] : "";
+    }
+
+    // run with ORT-allocated outputs (shapes resolved by the model itself);
+    // needed when output arity/shapes vary across exports (e.g. SDXL text encoders)
+    std::vector<Tensor> execute_alloc(std::vector<Tensor>& input_tensors_) {
+        if (!model_session) {
+            amon_report(class_exception(EXC_LOG_ERR, "ERROR:: model not found"));
+            return {};
+        }
+        try {
+            std::vector<const char*> input_names_;
+            std::vector<const char*> output_names_;
+            for (auto& name_ : model_meta.tensor_names_i) input_names_.push_back(name_.c_str());
+            for (auto& name_ : model_meta.tensor_names_o) output_names_.push_back(name_.c_str());
+            return model_session->Run(
+                Ort::RunOptions{nullptr},
+                input_names_.data(), input_tensors_.data(), input_tensors_.size(),
+                output_names_.data(), output_names_.size()
+            );
+        } catch (const Ort::Exception &e) {
+            std::cerr << "ONNX Runtime exception: " << e.what() << std::endl;
+        } catch (const std::exception &e) {
+            std::cerr << "Standard exception: " << e.what() << std::endl;
+        }
+        return {};
+    }
+
 protected:
     virtual void generate_output(std::vector<Tensor>& output_tensors_) = 0;
 

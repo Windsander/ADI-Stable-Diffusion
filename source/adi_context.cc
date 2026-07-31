@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 ORT_SD_Context - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
@@ -22,6 +22,7 @@ typedef struct ModelPathConfig {
     std::string onnx_vae_decoder_path;
     std::string onnx_control_net_path;
     std::string onnx_safty_path;
+    std::string onnx_clip_2_path;   // SDXL text_encoder_2 (empty when unused)
 } ModelPathConfig;
 
 typedef struct OrtSD_Config {
@@ -43,6 +44,8 @@ private:
     typedef struct OrtSD_Remain {
         Tensor embeded_positive = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         Tensor embeded_negative = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        Tensor pooled_positive  = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        Tensor pooled_negative  = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     } OrtSD_Remain;
 
 private:
@@ -53,6 +56,7 @@ private:
     OrtSD_Remain ort_remain;
 
     Clip *ort_sd_clip = nullptr;
+    Clip *ort_sd_clip_2 = nullptr;              // SDXL text_encoder_2 (nullptr when unused)
     UNet *ort_sd_unet = nullptr;
     VAE *ort_sd_vae_encoder = nullptr;
     VAE *ort_sd_vae_decoder = nullptr;
@@ -83,6 +87,8 @@ OrtSD_Context::~OrtSD_Context(){
     }
     this->ort_remain.embeded_negative.release();
     this->ort_remain.embeded_positive.release();
+    this->ort_remain.pooled_negative.release();
+    this->ort_remain.pooled_positive.release();
 }
 
 Tensor OrtSD_Context::convert_images(const IMAGE_DATA &image_data_) const {
@@ -144,12 +150,25 @@ IMAGE_DATA OrtSD_Context::convert_result(const onnx::sd::base::Tensor &tensor_) 
 }
 
 void OrtSD_Context::init() {
+    const bool with_clip_2_ = !ort_config.sd_modelpath_config.onnx_clip_2_path.empty();
+
+    // SDXL: both encoders condition on the penultimate hidden state
     ort_sd_clip = new Clip(
         ort_config.sd_modelpath_config.onnx_clip_path,
         {
-            ort_config.sd_tokenizer_config
+            ort_config.sd_tokenizer_config,
+            with_clip_2_
         }
     );
+    if (with_clip_2_) {
+        ort_sd_clip_2 = new Clip(
+            ort_config.sd_modelpath_config.onnx_clip_2_path,
+            {
+                ort_config.sd_tokenizer_config,
+                true
+            }
+        );
+    }
 
     ort_sd_unet = new UNet(
         ort_config.sd_modelpath_config.onnx_unet_path,
@@ -185,6 +204,7 @@ void OrtSD_Context::init() {
     );
 
     ort_sd_clip->init(*ort_executor);
+    if (ort_sd_clip_2) ort_sd_clip_2->init(*ort_executor);
     ort_sd_unet->init(*ort_executor);
     ort_sd_vae_encoder->init(*ort_executor);
     ort_sd_vae_decoder->init(*ort_executor);
@@ -195,10 +215,22 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
     std::lock_guard<std::mutex> lock(ort_thread_lock);
 
     // embeded_positive_ [1, 77 * pos_N, 768], txt_encoder_1
-    ort_remain.embeded_positive = ort_sd_clip->embedding(positive_prompts_);
+    ClipEmbedResult embed_pos_ = ort_sd_clip->embedding(positive_prompts_);
+    ClipEmbedResult embed_neg_ = ort_sd_clip->embedding(negative_prompts_);
 
-    // embeded_negative_ [1, 77 * neg_N, 768], txt_encoder_1
-    ort_remain.embeded_negative = ort_sd_clip->embedding(negative_prompts_);
+    if (ort_sd_clip_2) {
+        // SDXL: concat dual-encoder hiddens on the feature dim ([1,77,768]+[1,77,1280] -> [1,77,2048]),
+        // pooled conditioning comes from the 2nd encoder's pooled output
+        ClipEmbedResult embed_pos_2_ = ort_sd_clip_2->embedding(positive_prompts_);
+        ClipEmbedResult embed_neg_2_ = ort_sd_clip_2->embedding(negative_prompts_);
+        ort_remain.embeded_positive = TensorHelper::concat_last_dim<float>(embed_pos_.hidden, embed_pos_2_.hidden);
+        ort_remain.embeded_negative = TensorHelper::concat_last_dim<float>(embed_neg_.hidden, embed_neg_2_.hidden);
+        ort_remain.pooled_positive  = std::move(embed_pos_2_.pooled);
+        ort_remain.pooled_negative  = std::move(embed_neg_2_.pooled);
+    } else {
+        ort_remain.embeded_positive = std::move(embed_pos_.hidden);
+        ort_remain.embeded_negative = std::move(embed_neg_.hidden);
+    }
 }
 
 IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
@@ -212,7 +244,11 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     Tensor encoded_sample_ = ort_sd_vae_encoder->encode(sample_image_);
 
     // infered_latent_ [1, 4, 64, 64]
-    Tensor infered_latent_ = ort_sd_unet->inference(ort_remain.embeded_positive, ort_remain.embeded_negative, encoded_sample_);
+    Tensor infered_latent_ = ort_sd_unet->inference(
+        ort_remain.embeded_positive, ort_remain.embeded_negative,
+        ort_remain.pooled_positive, ort_remain.pooled_negative,
+        encoded_sample_
+    );
 
     // infered_latent_ [1, 3, 512, 512]
     Tensor decoded_tensor_ = ort_sd_vae_decoder->decode(infered_latent_);
@@ -225,11 +261,13 @@ void OrtSD_Context::release(){
     ort_sd_vae_encoder->release(*ort_executor);
     ort_sd_unet->release(*ort_executor);
     ort_sd_clip->release(*ort_executor);
+    if (ort_sd_clip_2) ort_sd_clip_2->release(*ort_executor);
 
     delete ort_sd_vae_decoder;
     delete ort_sd_vae_encoder;
     delete ort_sd_unet;
     delete ort_sd_clip;
+    delete ort_sd_clip_2;
 }
 
 } // namespace context

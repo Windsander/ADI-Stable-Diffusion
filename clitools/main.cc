@@ -114,6 +114,7 @@ struct CommandLineInput {
     std::string onnx_vae_decoder_path;                                      // Model: VAE Decoder Path (also known as vae_decoder)
     std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
+    std::string onnx_clip_2_path;                                           // Model: 2nd CLIP Path (SDXL text_encoder_2)
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
@@ -200,6 +201,7 @@ void print_params(const CommandLineInput& params) {
 
     printf("  Models: \n");
     printf("    clip_path:                      %s\n", params.onnx_clip_path.c_str());
+    printf("    clip_2_path:                    %s\n", params.onnx_clip_2_path.c_str());
     printf("    unet_path:                      %s\n", params.onnx_unet_path.c_str());
     printf("    vae_encoder_path:               %s\n", params.onnx_vae_encoder_path.c_str());
     printf("    vae_decoder_path:               %s\n", params.onnx_vae_decoder_path.c_str());
@@ -267,6 +269,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("                                            actually, was determined by txt_encoder(clip) style.) \n");
 
     printf("  --clip [CLIP_PATH]                 path to clip\n");
+    printf("  --clip2 [CLIP_2_PATH]              path to 2nd clip (SDXL text_encoder_2, enables SDXL conditioning) \n");
     printf("  --unet [UNET_PATH]                 path to unet\n");
     printf("  --vae-encoder [VAE_ENCODER_PATH]   path to vae encoder\n");
     printf("  --vae-decoder [VAE_DECODER_PATH]   path to vae decoder\n");
@@ -425,6 +428,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.onnx_clip_path = argv[i];
+        } else if (arg == "--clip2") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_clip_2_path = argv[i];
         } else if (arg == "--unet") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -777,7 +786,8 @@ int main(int argc, const char *argv[]) {
                 params.onnx_vae_encoder_path.c_str(),
                 params.onnx_vae_decoder_path.c_str(),
                 params.onnx_control_net_path.c_str(),
-                params.onnx_safty_path.c_str()
+                params.onnx_safty_path.c_str(),
+                params.onnx_clip_2_path.c_str()
             },
             {
                 params.sd_scheduler_type,

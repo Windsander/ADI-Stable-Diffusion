@@ -27,6 +27,7 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_vae_decoder_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_control_net_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_clip_2_path),
                 },
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),

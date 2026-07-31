@@ -20,12 +20,23 @@ using namespace detail;
 
 #define DEFAULT_CLIP_CONFIG                                          \
     {                                                                \
-        /*sd_tokenizer_config*/ DEFAULT_TOKENIZER_CONFIG             \
-    }                                                                \
+        /*sd_tokenizer_config*/ DEFAULT_TOKENIZER_CONFIG,            \
+        /*use_penultimate*/     false,                               \
+    }
 
 typedef struct ModelClipConfig {
     TokenizerConfig sd_tokenizer_config;
+    // SDXL-style encoders condition on the penultimate hidden state
+    // (diffusers hidden_states[-2]); legacy SD v1.x/v2.x use last_hidden_state
+    bool use_penultimate;
 } ModelClipConfig ;
+
+// hidden: [1, 77 * N, hidden_dim] prompt-weighted sequence embedding;
+// pooled: [1, projection_dim] when the encoder provides one (SDXL text_encoder_2), empty otherwise
+typedef struct ClipEmbedResult {
+    Tensor hidden = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    Tensor pooled = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+} ClipEmbedResult;
 
 class Clip : public ModelBase {
 private:
@@ -40,7 +51,7 @@ public:
     explicit Clip(const std::string &model_path_,  const ModelClipConfig &clip_config_ = DEFAULT_CLIP_CONFIG);
     ~Clip() override;
 
-    Tensor embedding(const std::string& prompts_);
+    ClipEmbedResult embedding(const std::string& prompts_);
 };
 
 Clip::Clip(const std::string &model_path_, const ModelClipConfig &clip_config_) : ModelBase(model_path_){
@@ -80,7 +91,7 @@ void Clip::generate_output(std::vector<Tensor> &output_tensors_) {
     }
 }
 
-Tensor Clip::embedding(const std::string& prompts_) {
+ClipEmbedResult Clip::embedding(const std::string& prompts_) {
     // tokenize prompts
     PairedTokenWeight tokenizer_output_ = sd_tokenizer_p->tokenize(prompts_);
 
@@ -89,7 +100,22 @@ Tensor Clip::embedding(const std::string& prompts_) {
     // (e.g. SD v2.x via optimum) declare int64 input_ids
     ONNXTensorElementDataType ids_type_ = model_input_element_type(0);
 
+    // legacy exports expose exactly [last_hidden_state, pooler_output];
+    // SDXL-style exports additionally dump every hidden_states.N layer and
+    // must be run with ORT-allocated outputs, selecting layers by name
+    const bool legacy_outputs_ = (model_output_count() <= 2);
+
+    std::string hidden_pick_ = "last_hidden_state";
+    if (!legacy_outputs_ && sd_clip_config.use_penultimate) {
+        long layer_count_ = 0;
+        for (size_t o_ = 0; o_ < model_output_count(); ++o_) {
+            if (model_output_name(o_).rfind("hidden_states.", 0) == 0) layer_count_++;
+        }
+        hidden_pick_ = "hidden_states." + std::to_string(std::max(0L, layer_count_ - 2));
+    }
+
     std::vector<Tensor> merged_hidden_;
+    Tensor pooled_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     for (auto &tw_pair_: tokenizer_output_) {           // major_hidden_dim = 768 in SD, 1280 in SDXL
         Tensor &tokens_ = tw_pair_.first;               // [1, 77]
         Tensor &weight_ = tw_pair_.second;              // [1, 77]
@@ -98,20 +124,41 @@ Tensor Clip::embedding(const std::string& prompts_) {
         if (ids_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64) {
             input_tensors.emplace_back(TensorHelper::cast<int64_t, int32_t>(tokens_));
         } else {
-            input_tensors.emplace_back(std::move(tokens_)); // [vocab_size, major_hidden_dim]
+            input_tensors.emplace_back(TensorHelper::clone<int32_t>(tokens_)); // [vocab_size, major_hidden_dim]
         }
-        std::vector<Tensor> output_tensors;             // [1, 77, major_hidden_dim]
-        generate_output(output_tensors);
-        execute(input_tensors, output_tensors);
+
+        Tensor hidden_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        if (legacy_outputs_) {
+            std::vector<Tensor> output_tensors;         // [1, 77, major_hidden_dim]
+            generate_output(output_tensors);
+            execute(input_tensors, output_tensors);
+            hidden_ = std::move(output_tensors[0]);
+            if (!TensorHelper::have_data(pooled_) && output_tensors.size() > 1) {
+                pooled_ = TensorHelper::clone<float>(output_tensors[1]);
+            }
+        } else {
+            std::vector<Tensor> output_tensors = execute_alloc(input_tensors);
+            for (size_t o_ = 0; o_ < output_tensors.size(); ++o_) {
+                const std::string name_ = model_output_name(o_);
+                if (name_ == hidden_pick_) {
+                    hidden_ = TensorHelper::clone<float>(output_tensors[o_]);
+                } else if (name_ == "pooler_output" || name_ == "text_embeds") {
+                    pooled_ = TensorHelper::clone<float>(output_tensors[o_]);
+                }
+            }
+        }
+        if (!TensorHelper::have_data(hidden_)) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: clip hidden output not found"));
+        }
 
         merged_hidden_.push_back(                       // [1, 77, major_hidden_dim]
-            TensorHelper::weight<float>(output_tensors[0], weight_, 1, true)
+            TensorHelper::weight<float>(hidden_, weight_, 1, true)
         );
     }
     // seems not right
     Tensor hidden_state_ = TensorHelper::merge<float>(merged_hidden_, 1);  // [1, 77 * N, major_hidden_dim]
 
-    return hidden_state_;
+    return {std::move(hidden_state_), std::move(pooled_)};
 }
 
 } // namespace units
@@ -119,4 +166,3 @@ Tensor Clip::embedding(const std::string& prompts_) {
 } // namespace onnx
 
 #endif //MODEL_CLIP_H
-
