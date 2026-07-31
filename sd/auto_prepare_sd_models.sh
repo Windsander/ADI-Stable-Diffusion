@@ -92,6 +92,39 @@ auto_convert_sd() {
   echo "===========================Auto converting done.==========================="
 }
 
+# Function: Convert new-generation models (v2.1 / SDXL), v1.2.0 verified channels.
+# NOTE: stabilityai/* repos on HuggingFace are now GATED (401 without auth).
+#   - SD v2.1: use the ungated community mirror sd2-community/stable-diffusion-2-1
+#     (ModelScope AI-ModelScope/stable-diffusion-2-1 verified as a faster channel).
+#   - SDXL-turbo: convert from a LOCAL diffusers checkout (the repo's
+#     sd-base-model/sdxl-turbo safetensors set), HF repo is gated.
+auto_convert_sd_next() {
+  echo "=====================Auto converting (v2.x/SDXL) start====================="
+  if [ -d "sd-base-model/onnx-sd-v21-768" ]; then
+    echo "Directory onnx-sd-v21-768 already exists. Skipping convert."
+  else
+    python -c "
+from optimum.onnxruntime import ORTStableDiffusionPipeline
+pipe = ORTStableDiffusionPipeline.from_pretrained('sd2-community/stable-diffusion-2-1', export=True)
+pipe.save_pretrained('sd-base-model/onnx-sd-v21-768')
+"
+  fi
+
+  if [ -d "sd-base-model/onnx-sdxl-turbo" ]; then
+    echo "Directory onnx-sdxl-turbo already exists. Skipping convert."
+  elif [ -d "sd-base-model/sdxl-turbo" ]; then
+    python -c "
+from optimum.onnxruntime import ORTStableDiffusionXLPipeline
+pipe = ORTStableDiffusionXLPipeline.from_pretrained('sd-base-model/sdxl-turbo', export=True, local_files_only=True)
+pipe.save_pretrained('sd-base-model/onnx-sdxl-turbo')
+"
+  else
+    echo "WARN: local sd-base-model/sdxl-turbo checkout not found;"
+    echo "      stabilityai/sdxl-turbo on HF is gated, download it manually first."
+  fi
+  echo "=====================Auto converting (v2.x/SDXL) done.====================="
+}
+
 # Function: Auto download Stable Diffusion models
 auto_download_sd() {
   echo "========================Auto cloning official start========================"
@@ -117,6 +150,12 @@ auto_download_sd() {
     git clone https://huggingface.co/Windsander/onnx-sd-turbo sd-base-model/onnx-sd-turbo/
   fi
 
+  # New-generation models (v2.1 / SDXL): no public ONNX mirrors yet.
+  # Preferred path is local conversion (see auto_convert_sd_next);
+  # v2.1 fp32 weights are also fetchable via ModelScope:
+  #   https://modelscope.cn/models/AI-ModelScope/stable-diffusion-2-1
+  echo "NOTE: onnx-sd-v21-768 / onnx-sdxl-turbo are produced by conversion (auto_convert_sd_next)."
+
   echo "========================Auto cloning official done.========================"
 }
 
@@ -124,6 +163,7 @@ auto_download_sd() {
 if confirm; then
   env_prepare
   auto_convert_sd
+  auto_convert_sd_next
 else
   env_skipped
   auto_download_sd
