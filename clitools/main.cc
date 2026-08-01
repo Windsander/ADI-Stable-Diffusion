@@ -75,6 +75,7 @@ const char* scheduler_sigma_type_str[] = {
 const char* tokenizer_series_str[] = {
     "bpe",
     "word_piece",
+    "sp",
 };
 
 // below order match AvailableExecutionType order
@@ -294,7 +295,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
-    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe / word_piece] (default bpe) \n");
+    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe / word_piece / sp] (default bpe) \n");
 
     printf("  --cache <uint>                     scheduler maintain history count, only avail when used by method (default 4) \n");
     printf("  --train-steps <uint>               scheduler steps when at model training stage (default 1000) \n");

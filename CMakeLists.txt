@@ -352,6 +352,18 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Make ############
 
 set(library_name adi)
 
+# sentencepiece (T5-XXL tokenizer, stage-C): vendored static build, official
+# library per project policy (no hand-rolled reimplementation of OSS libs)
+include(FetchContent)
+set(SPM_ENABLE_SHARED OFF CACHE BOOL "sentencepiece: build static only" FORCE)
+set(SPM_ENABLE_TCMALLOC OFF CACHE BOOL "sentencepiece: no tcmalloc" FORCE)
+FetchContent_Declare(sentencepiece
+        GIT_REPOSITORY https://github.com/google/sentencepiece.git
+        GIT_TAG v0.2.1
+        GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(sentencepiece)
+get_target_property(SPM_INCLUDE_DIRS sentencepiece-static INCLUDE_DIRECTORIES)
+
 set(library_data_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/outlet/adi.cc
 )
@@ -383,6 +395,10 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 auto_copy_reference_dynamic(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 auto_link_reference_library(${library_name} onnxruntime ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
+# sentencepiece: headers for the sp tokenizer TU + static link
+target_include_directories(${library_name} PRIVATE ${sentencepiece_SOURCE_DIR}/src)
+target_link_libraries(${library_name} PRIVATE sentencepiece-static)
+
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 
 message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")
@@ -406,6 +422,8 @@ if (ORT_BUILD_COMMAND_LINE)
             "-DORT_BUILD_SHARED_ORT=${ORT_BUILD_SHARED_ORT}"
             "-DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}"
             "-DANDROID_NDK=${ANDROID_NDK}"
+            "-DSPM_INCLUDE_DIR=${sentencepiece_SOURCE_DIR}/src"
+            "-DSPM_STATIC_LIB=$<TARGET_FILE:sentencepiece-static>"
     )
 
     # pass all CMake parameters received by the main project to the sub-project

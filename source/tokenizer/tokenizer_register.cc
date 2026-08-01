@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Tokenizer - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
@@ -9,6 +9,7 @@
 #include "tokenizer_base.cc"
 #include "tokenizer_encode_bpe.cc"
 #include "tokenizer_encode_wp.cc"
+#include "tokenizer_encode_sp.cc"
 
 namespace onnx {
 namespace sd {
@@ -31,6 +32,10 @@ public:
             }
             case TOKENIZER_WORD_PIECE: {
                 result_ptr_ = new WPTokenizer(tokenizer_config_);
+                break;
+            }
+            case TOKENIZER_SP: {
+                result_ptr_ = new SPTokenizer(tokenizer_config_);
                 break;
             }
             default:{

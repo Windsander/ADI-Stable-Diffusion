@@ -126,6 +126,14 @@ add_executable(${TARGET} main.cc)
 target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
 
+# sentencepiece (stage-C sp tokenizer): header + static lib path from parent build
+if (SPM_INCLUDE_DIR)
+    target_include_directories(${TARGET} PRIVATE ${SPM_INCLUDE_DIR})
+endif ()
+if (SPM_STATIC_LIB)
+    target_link_libraries(${TARGET} PRIVATE ${SPM_STATIC_LIB})
+endif ()
+
 if (WIN32)
     add_custom_command(
             TARGET ${TARGET} POST_BUILD

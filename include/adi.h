@@ -87,6 +87,7 @@ enum AvailableSchedulerType {
 enum AvailableTokenizerType {
     AVAILABLE_TOKENIZER_BPE         = 0x00,
     /*AVAILABLE_TOKENIZER_WORD_PIECE  = 0x02,*/
+    AVAILABLE_TOKENIZER_SP          = 0x02,
     AVAILABLE_TOKENIZER_COUNT,
 };
 

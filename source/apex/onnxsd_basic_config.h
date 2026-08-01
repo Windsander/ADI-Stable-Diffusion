@@ -134,6 +134,7 @@ typedef struct SchedulerConfig {
 typedef enum TokenizerType {
     TOKENIZER_BPE               = 0,
     TOKENIZER_WORD_PIECE        = 1,
+    TOKENIZER_SP                = 2,
 } TokenizerType;
 
 #define DEFAULT_TOKENIZER_CONFIG                            \
