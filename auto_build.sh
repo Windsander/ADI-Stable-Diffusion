@@ -157,29 +157,25 @@ esac
 case "$PLATFORM" in
     android)
 #        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_SDK=${ANDROID_SDK}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
         case "$(uname -s)" in
             CYGWIN*|MINGW*|MSYS*)
-                # Windows host: CMake's built-in Android mode looks for
-                # extension-less bin/clang which does not exist there —
-                # pin the triple-prefixed .cmd compiler wrappers explicitly
+                # Windows host: CMake's built-in Android mode hard-validates an
+                # extension-less bin/clang that does not exist on Windows NDKs
+                # (only clang.exe / <triple>-clang.cmd) — bypass it with the
+                # NDK's own toolchain file instead of manual system settings
                 if command -v cygpath >/dev/null 2>&1; then
                     ANDROID_NDK=$(cygpath -m "$ANDROID_NDK")
-                    CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
                 fi
-                ANDROID_PREBUILT=$(ls -d "${ANDROID_NDK}"/toolchains/llvm/prebuilt/* 2>/dev/null | head -1)
-                ANDROID_TRIPLE=""
-                case "$TARGET_ABI" in
-                    x86_64)      ANDROID_TRIPLE="x86_64-linux-android" ;;
-                    x86)         ANDROID_TRIPLE="i686-linux-android" ;;
-                    arm64-v8a)   ANDROID_TRIPLE="aarch64-linux-android" ;;
-                    armeabi-v7a) ANDROID_TRIPLE="armv7a-linux-androideabi" ;;
-                esac
-                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_C_COMPILER=${ANDROID_PREBUILT}/bin/${ANDROID_TRIPLE}${ANDROID_VER}-clang.cmd"
-                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_CXX_COMPILER=${ANDROID_PREBUILT}/bin/${ANDROID_TRIPLE}${ANDROID_VER}-clang++.cmd"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_ABI=${TARGET_ABI}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_PLATFORM=android-${ANDROID_VER}"
+                ;;
+            *)
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
                 ;;
         esac
         ;;
