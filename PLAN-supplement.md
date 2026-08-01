@@ -66,6 +66,46 @@
 | 2.2 SDXL 适配（2026-07-31） | ✅ 双编码器条件管线全链路落地。**模型事故与处置**：本地 `sd/sd-base-model/sdxl-turbo` 的 unet 与 text_encoder_2 外部权重文件是 **Git LFS 指针残桩**（135/136 字节，2024 年 clone 时 LFS 未拉取），ORT 建会话即抛异常——但本地 safetensors 完整，改用 optimum `ORTStableDiffusionXLPipeline(export=True)` 重导出全套至 `onnx-sdxl-turbo`。**实现**（v1.2.0 ABI 窗口集中扩展）：`IOrtSDConfig` 追加 `onnx_clip_2_path`；Clip 增加 `use_penultimate`（diffusers SDXL 取双编码器 `hidden_states[-2]` 且**不**过 final_layer_norm，已核对源码）+ pooled 输出捕获 + 变 arity 导出走 ORT 自分配输出路径（按输出名选层）；context 末维拼接双 hidden（768+1280→2048）、pooled 取自 text_encoder_2；UNet 识别 5 输入签名绑定 text_embeds + time_ids（[h,w,0,0,h,w]）；CLI 新增 `--clip2`。SDXL VAE 缩放因子不同（0.13025）用既有 `--decoding` 覆盖。验证矩阵：sdxl-turbo 512px euler_a 4 步 ✓（出图优，零异常）、CFG7.5+dpm_m 8 步 ✓（结构正确但过饱和——蒸馏模型高 CFG 固有特性，负向 pooled 路径已覆盖）、turbo 回归 ✓（与金图一致）。SDXL-base（非 turbo）未测（模型未下载） |
 | 工程化加固（2026-07-31） | ✅ 发布链排障：补齐 `CHANGELOG.md`（auto-publish 引用）；auto-publish 退役 Action（create-release@v1/upload-release-asset@v1，node12 已退役）替换为 gh CLI + `softprops/action-gh-release@v2`；auto-deploy artifact 系列 v2→v4（v2 已被 GitHub 硬性退役）、`deploy_linux` 按 0.4 决策正式注释禁用、修复 `update_homebrew_formula` 从未下载 artifact 的原生 bug；四个 workflow YAML 校验通过。✅ 冒烟矩阵脚本化：`sd/io-test/run_smoke_matrix.sh`（19 例 quick / 24 例 full，硬门禁：ORT 异常计数、输出尺寸、平像素检查），**本地 quick 19/19 全绿**；强制纳入 git（io-test 目录在 ignore 中）。✅ `auto_prepare_sd_models.sh` 扩展 `auto_convert_sd_next`（v2.1 走 sd2-community 镜像、sdxl-turbo 走本地 safetensors 转换，附 gated 现状注释）。待办：金图对比纳入 CI（test-native 现仅编译）、`ADI_DEPLOY_TOKEN` 有效性需 owner 确认、`release/release-v1.2.0` 分支待推送触发发布链 |
 
+## 阶段 4：v2.0.0 规划（2026-08-01 制定，v1.2.0 已发布 baseline）
+
+> 依据：v1.2.0 全量发布完成（PR #3 合入、双 CI 全绿、Release 11 资产、brew/choco/deploy 链通）+
+> owner 2026 路线刷新（PR #4 `ARCHITECTURE.md` + README checklist）：**目标从 SD v3 修正为
+> SD3.5（Large/Turbo/Medium）与 FLUX.1 家族**——二者共用 MMDiT + rectified-flow + T5-XXL 栈。
+
+### 关键环境事实（已实证，后续 Agent 直接用）
+
+- conda base（`/Users/arikanli/Major/WorkingEnv/anaconda3/bin/python3`）：torch 2.13 CPU + diffusers 0.39 + transformers + onnx/onnxruntime/optimum，用作参考实现与 ONNX 导出，**不要手写开源库等价物**
+- 模型获取：stabilityai 官方仓库全部 gated；已验证通道 = 社区镜像（如 `sd2-community/*`）+ ModelScope（~57MB/min/流，远快于 HF 直连）+ optimum Python API 导出
+- GitHub CI 已全绿（native 19/19 + cross 40/40）；**job 日志需 admin 权限拉取，排查失败先找 owner 要日志/PAT，不要盲改**（本仓库为此浪费过两轮 CI 迭代）
+- Windows CI 修复史（2026-08-01，细节见 git log）：choco `-y`、强制 Ninja 生成器 + `ilammy/msvc-dev-cmd`、`NOMINMAX`（windows.h 宏 vs `std::min/max` C2589）、`CMAKE_BUILD_TYPE` 透传 ExternalProject（LNK2038 运行库不匹配）、android-on-windows 用 NDK toolchain 文件 + 预置 `CMAKE_SYSTEM_NAME/PROCESSOR`
+
+### 验证纪律（沿用 v1.1/v1.2 实证规矩）
+
+1. ABI 窗口：`IOrtSDConfig` 按值传递，clip3/新字段集中到 v2.0.0 单窗口；枚举只准尾部追加
+2. 注册表模式：新调度器/分词器纯增量（新文件 + 注册 + 枚举 + CLI 帮助），零侵入
+3. 数值验证：每个新调度器先做 numpy 合成场对照 diffusers 轨迹（误差量级记入执行记录），再真机冒烟；**参考 pipeline 必须确认真的用了目标 scheduler**（v1.2 曾误判参考图实为默认 euler）
+4. 冒烟门禁：`ModelBase::execute` 吞 ORT 异常（静默零输出→纯噪声），每次冒烟 grep exception 计数必须为 0；图像看结构纹理，不止看能出图
+5. diffusers 参考实现可能绑定特定模型家族（如 IPNDM 绑 ADM）；对 SD 不可用时落论文形式并留证据；检查模型文件是否 Git LFS 残桩
+6. 冒烟矩阵、README 勾选、本文件记录三者与实测一一对应，未测项如实标注
+
+### 阶段切分（按依赖序，每层独立验证后提交）
+
+| 段 | 内容 | 产出/验收 |
+|---|---|---|
+| **A 前置调研**（不动架构） | A1 ORT 升级兼容性报告（1.18.0→当前稳定，CoreML/NNAPI/TensorRT/CUDA 四路回归）；A2 MMDiT + 三编码器编排设计稿（clip3 通道、T5 条件注入方式，写入本节）；A3 SD3.5-turbo/FLUX.1-schnell 的 ONNX 供应与转换链结论 + FLUX.1-dev 许可证审查；A4 `run_smoke_matrix.sh` 接入 test-native 运行门禁 + 补测 v2.0/SDXL-base | 两份决策文档 + 设计稿入库；CI 金图门禁上线 |
+| **B flow 调度家族** | flow euler（rectified-flow 确定性欧拉，SD3.5/FLUX 默认）→ flow heun/高阶（if necessary）。rectified-flow 的 x=σ·ε+(1-σ)·x0 参数化与 EDM 样本空间映射需先代数推导再动手 | numpy 对照 diffusers `FlowMatchEulerDiscreteScheduler` + turbo/v15 回归无损 + SD3.5 可用性留待 D 段验证 |
+| **C SentencePiece 分词器** | T5-XXL 前置；注册表纯增量（`tokenizer_encode_sp.cc` + `TokenizerType` 尾追加 + CLI `sp`）；T5 tokenizer 无 merges 文件、token 数 32100、注意 `<extra_id>` 与大小写敏感差异 | 与 HF `T5Tokenizer` 逐 token 对照一致 + CLI `--tokenizer sp` 帮助文本 |
+| **D MMDiT 单元 + 三编码器** | 结构性扩展（`source/units/` 新增 MMDiT unit，非配置级）：联合注意力、双流/单流块、T5 条件 + pooled 注入（与 SDXL time_ids 不同的 adaLN 调制）；clip3 路径进 `IOrtSDConfig`（本版本唯一 ABI 窗口）；先 SD3.5-turbo 少步验证 | SD3.5-turbo 少步出图 ✓ 零异常；CFG 路径覆盖 |
+| **E FLUX.1** | 搭 D 便车：单文件 ckpt 转换链（diffusers `FluxPipeline` from_single_file）、guidance 蒸馏变体（dev 需 embedded guidance）、rotary 位置嵌入差异 | FLUX.1-schnell 4 步出图 ✓；dev 变体留记录 |
+| **F SVD img2vid** | CLI 预留 `img2vid` 坑位启用；时序模块 + 帧批处理；显存/内存策略（CPU 上帧数上限实测）；可与 D/E 平行 | img2vid 冒烟产出帧序列 ✓ |
+| **G v2.0.0 发布** | 版本号 + CHANGELOG + tag + `release/release-v2.0.0`；**ORT 升级与 Linux .deb/.rpm 修复同窗口落地**（决策 0.3/0.4 的归口） | 全 CI 绿 + Release 资产 + deploy 链通 |
+
+### 阶段 4 执行记录（进行中）
+
+| 项 | 结果 |
+|---|---|
+| （待填充） | — |
+
 ## 阶段 1：采样器与 Sigma 策略补全（v1.1.0，纯增量低风险）
 
 > 目标：14 个采样器全部可用（含 unipc 补全）+ Karras 策略，覆盖社区主流用法。
@@ -91,7 +131,7 @@
 |---|---|---|---|---|
 | 2.1 | SD v2.0 / v2.1 | 768 分辨率链路验证、OpenCLIP-H 分词（BPE 变体）、penultimate hidden layer 抽取 | **v-prediction 已就绪** | v1.2.0 |
 | 2.2 | SDXL / SDXL-turbo | 双文本编码器（CLIP-L + OpenCLIP-G）、pooled embedding、time-id 微条件注入、模型路径配置扩展 | 分词仍走 BPE 路径，sp 非必需 | v1.2.0 |
-| 2.3 | SD v3 | MMDiT 新架构、T5-XXL 分词（**SentencePiece 从 "if necessary" 提为必须**）、rectified-flow 调度（新调度器家族，非 discrete 扩展） | — | v2.0.0 |
+| 2.3 | SD v3 | MMDiT 新架构、T5-XXL 分词（**SentencePiece 从 "if necessary" 提为必须**）、rectified-flow 调度（新调度器家族，非 discrete 扩展） | — | v2.0.0（**2026-08 修正为 SD3.5/FLUX.1，详见阶段 4**） |
 | 2.4 | SVD 视频 | 启用 CLI 预留的 `img2vid` 模式；时序模块 + 帧批处理；显存/内存策略 | 坑位已留 | v2.0.0 |
 
 **架构预判**：2.3/2.4 涉及模型单元体系（`source/units/`）的结构性扩展，与 2.1/2.2 的"配置级扩展"不同，因此拆分为 v2.0.0 大版本。
