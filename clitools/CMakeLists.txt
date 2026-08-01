@@ -16,6 +16,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CLITOOL_DIR})
 if (WIN32)
     # Windows not support RPATH
     message(STATUS "Configuring for Windows")
+    if (MSVC)
+        # windows.h min/max macros break std::min/std::max (C2589); /EHsc for try/catch
+        add_compile_definitions(NOMINMAX _USE_MATH_DEFINES)
+        add_compile_options(/EHsc)
+    endif ()
 elseif (APPLE)
     # macOS use @loader_path
     set(CMAKE_BUILD_RPATH "@loader_path;@loader_path/../lib;../lib")
