@@ -27,6 +27,7 @@ show_help() {
 }
 
 # Parse command line arguments
+GENERATOR=""
 CONFIRM_OPTION=""
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -35,6 +36,7 @@ while [[ "$#" -gt 0 ]]; do
         --build-type) BUILD_TYPE="$2"; shift ;;
         --cmake) CMAKE="$2"; shift ;;
         --ninja) NINJA="$2"; shift ;;
+        --generator) GENERATOR="$2"; shift ;;
         --jobs) JOBS="$2"; shift ;;
         --options) CMAKE_OPTIONS="$2"; shift ;;
 #        --android-sdk) ANDROID_SDK="$2"; shift ;;
@@ -185,8 +187,14 @@ case "$PLATFORM" in
         ;;
 esac
 
-# Run CMake configuration
+# Run CMake configuration (generator only when explicitly requested, e.g. CI
+# forces Ninja on Windows where the default VS-generator cannot cross-compile)
+GENERATOR_ARGS=""
+if [ -n "$GENERATOR" ]; then
+    GENERATOR_ARGS="-G ${GENERATOR}"
+fi
 ${CMAKE} \
+    ${GENERATOR_ARGS} \
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
     ${CMAKE_OPTIONS} \
     -S ${PROJECT_ROOT} \

@@ -125,6 +125,10 @@ jobs:
           ndk-version: 26.1.10909125
           cmake-version: 3.29.5
 
+      - name: Enable MSVC environment (Windows, cl)
+        if: runner.os == 'Windows' && matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Run auto_build.sh
         shell: bash
         run: |
@@ -133,6 +137,7 @@ jobs:
             bash ./auto_build.sh --platform android \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
@@ -143,6 +148,7 @@ jobs:
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
