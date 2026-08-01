@@ -89,6 +89,33 @@ if [ "$MODE" == "turbo" ]; then
   exit $?
 fi
 
+# ---------- sd3.5-large-turbo (triple encoder, MMDiT, flow_euler, 1024px) ----------
+if [ "$MODE" == "sd35" ]; then
+  SD35="$ROOT/sd/sd-base-model/onnx-sd35-turbo"
+  for steps in 4 8; do
+    run_case "sd35-flow_euler-s${steps}" \
+      --clip  $SD35/text_encoder/model.onnx \
+      --clip2 $SD35/text_encoder_2/model.onnx \
+      --clip3 $SD35/text_encoder_3/model.onnx \
+      --unet  $SD35/transformer/model.onnx \
+      --vae-encoder $SD35/vae_encoder/model.onnx \
+      --vae-decoder $SD35/vae_decoder/model.onnx \
+      --merges $SD35/tokenizer/merges.txt \
+      --dict  $SD35/tokenizer/vocab.json \
+      --sp-model $SD35/tokenizer_3/spiece.model \
+      -w 1024 -h 1024 -c 3 --seed 15.0 --dims 768 \
+      --beta scaled_linear --scheduler flow_euler --shift 3.0 \
+      --predictor epsilon --tokenizer bpe \
+      --token-idx-num 49408 --token-length 77 \
+      --decoding 1.5305 --decode-shift 0.0609 \
+      --guidance 1.0 --steps $steps
+  done
+  echo "============================================"
+  echo "smoke matrix done (sd35): $RUNS runs, $FAILURES failures"
+  [ "$FAILURES" == "0" ]
+  exit $?
+fi
+
 # ---------- sd v1.5 (dims 768, guidance 7.5, 20 steps) ----------
 for s in euler_a unipc dpm_m pndm ipndm deis_m; do
   run_case "v15-$s-s20" $(model_args onnx-sd-v15) \
