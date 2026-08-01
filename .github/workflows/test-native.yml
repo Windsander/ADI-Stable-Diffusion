@@ -100,7 +100,22 @@ jobs:
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
-        run: choco install ninja -y
+        shell: bash
+        run: |
+          # GitHub windows-latest images ship cmake+ninja preinstalled; only
+          # fall back to choco when something is actually missing (choco 2.x
+          # is no longer guaranteed on every windows image)
+          cmake --version | head -1
+          if ! command -v ninja >/dev/null 2>&1; then
+            if command -v choco >/dev/null 2>&1; then
+              choco install ninja -y
+            else
+              echo "ERROR: ninja unavailable and choco missing on this image"
+              exit 1
+            fi
+          else
+            ninja --version
+          fi
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
