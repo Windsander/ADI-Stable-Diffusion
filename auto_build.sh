@@ -157,10 +157,16 @@ esac
 case "$PLATFORM" in
     android)
 #        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_SDK=${ANDROID_SDK}"
+        # normalize Windows-style NDK path (git-bash -> C:/...) for cmake include()
+        if command -v cygpath >/dev/null 2>&1; then
+            ANDROID_NDK=$(cygpath -m "$ANDROID_NDK")
+        fi
+        # use the NDK's own toolchain file: CMake's built-in Android mode looks
+        # for extension-less bin/clang, which does not exist on Windows hosts
         CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_ABI=${TARGET_ABI}"
+        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_PLATFORM=android-${ANDROID_VER}"
         ;;
 
     linux)

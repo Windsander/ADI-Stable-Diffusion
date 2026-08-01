@@ -395,6 +395,7 @@ if (ORT_BUILD_COMMAND_LINE)
 
     # add specific CMake parameters
     list(APPEND CMAKE_CACHE_ARGS
+            "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
             "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_NAME=${MAJOR_SYSTEM_NAME}"
