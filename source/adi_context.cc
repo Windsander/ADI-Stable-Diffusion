@@ -38,6 +38,7 @@ typedef struct OrtSD_Config {
     float sd_scale_guidance            ; //= 0.9f;
     float sd_random_intensity          ; //= 1.0f;
     float sd_decode_scale_strength     ; //= 0.18215f;
+    float sd_decode_shift_strength     ; //= 0.0f;
 } OrtSD_Config;
 
 class OrtSD_Context {
@@ -207,6 +208,7 @@ void OrtSD_Context::init() {
         ort_config.sd_modelpath_config.onnx_vae_encoder_path,
         {
             ort_config.sd_decode_scale_strength,
+            ort_config.sd_decode_shift_strength,
             ort_config.sd_input_width / 8,
             ort_config.sd_input_height / 8,
             4,
@@ -217,6 +219,7 @@ void OrtSD_Context::init() {
         ort_config.sd_modelpath_config.onnx_vae_decoder_path,
         {
             ort_config.sd_decode_scale_strength,
+            ort_config.sd_decode_shift_strength,
             ort_config.sd_input_width,
             ort_config.sd_input_height,
             ort_config.sd_input_channel,

@@ -149,6 +149,7 @@ struct CommandLineInput {
     float sd_scale_guidance = 7.5f;                                         // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
     float sd_random_intensity = 1.0f;                                       // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
+    float sd_decode_shift_strength = 0.0f;                                  // Infer_Major: VAE shift factor (SD3.5 = 0.0609f)
 
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
@@ -289,6 +290,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --beta-end <float>                 Beta end (default 0.012f) \n");
     printf("  --guidance <float>                 Scale for classifier-free guidance, immersion rate for [value * (Positive - Negative)] residual (default 7.5f) \n");
     printf("  --decoding <float>                 for VAE Decoding result merged (default 0.18215f) \n");
+    printf("  --decode-shift <float>             VAE shift factor (default 0.0; SD3.5 = 0.0609) \n");
     printf("  --strength <float>                 set random intensity to control noise adding each step in [0.0, 1.0] (default 1.0f) \n");
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
@@ -520,6 +522,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_decode_scale_strength = std::stof(argv[i]);
+        }  else if (arg == "--decode-shift") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_decode_shift_strength = std::stof(argv[i]);
         }  else if (arg == "--strength") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -847,7 +855,8 @@ int main(int argc, const char *argv[]) {
             params.sd_input_channel,
             params.sd_scale_guidance,
             params.sd_random_intensity,
-            params.sd_decode_scale_strength
+            params.sd_decode_scale_strength,
+            params.sd_decode_shift_strength
         }
     );
     if (!ort_sd_context_) {

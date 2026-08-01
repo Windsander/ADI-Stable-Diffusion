@@ -61,7 +61,8 @@ namespace ortsd {
                 ctx_config_.sd_input_channel,
                 ctx_config_.sd_scale_guidance,
                 ctx_config_.sd_random_intensity,
-                ctx_config_.sd_decode_scale_strength
+                ctx_config_.sd_decode_scale_strength,
+                ctx_config_.sd_decode_shift_strength
             }
         );
     }

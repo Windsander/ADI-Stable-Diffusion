@@ -150,6 +150,7 @@ typedef struct IOrtSDConfig {
     float sd_scale_guidance;                // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
     float sd_random_intensity;              // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength;         // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
+    float sd_decode_shift_strength;         // Infer_Major: VAE shift factor (Recommend 0.0f; SD3.5 = 0.0609f)
 } IOrtSDConfig;
 
 namespace ortsd{
