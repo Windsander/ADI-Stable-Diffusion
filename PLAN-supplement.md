@@ -104,6 +104,7 @@
 
 | 项 | 结果 |
 |---|---|
+| A1 ORT 升级评估（Day 1，2026-08-01） | ✅ 结论：**建议升级 1.18.0 → 1.28.0**（2026-07-25 当前稳定版），与 v2.0.0 同窗口落地。**API 兼容性实证**（下载 1.28 osx-arm64 包 + android aar 逐头文件核对）：我们用到的全部 legacy append API 仍在——`AppendExecutionProvider_{CUDA,Tensorrt}`（c_api.h）、`_CoreML`（coreml_provider_factory.h，已标注 "old API"）、`_CPU`（cpu_provider_factory.h）、`_Nnapi`（aar 内 nnapi_provider_factory.h）——executor 四 provider 路径源码级直接兼容；新增 `onnxruntime_ep_c_api.h`（plugin EP V2）为纯增量。**两个必须处理的坑**：①**预编译包停发**——osx-x86_64、osx-universal2、win-x86 在 1.28 均无包（osx-arm64/linux-x64-gpu_cuda12/linux-aarch64/win-x64-gpu_cuda12/win-arm64/android aar 4 ABI 齐）→ 升级窗口需同步从 CI 矩阵移除 macos-x86_64 与 windows-x86（或源码自编译，不建议）；②**gpu 包改名**——`gpu-cuda12`（1.18，连字符）→ `gpu_cuda12`（1.28，下划线），`ONNX_INFERENCE_TARGET` 映射需同步改。**中期风险**：legacy append API 已标记 old API，未来 1-2 大版本或移除，建议升级时顺手加 provider 选择适配层（先试 V2 `SessionOptionsAppendExecutionProvider(name)`，fallback legacy）。四 provider 回归方案：CoreML/CPU 本机实测、NNAPI/CUDA/TRT 无设备做编译级验证 |
 | （待填充） | — |
 
 ## 阶段 1：采样器与 Sigma 策略补全（v1.1.0，纯增量低风险）
