@@ -82,6 +82,13 @@ for s in euler_a unipc pndm ipndm deis_m; do
     --scheduler $s --sigma karras --predictor epsilon --guidance 1.0 --steps 4
 done
 
+if [ "$MODE" == "turbo" ]; then
+  echo "============================================"
+  echo "smoke matrix done (turbo only): $RUNS runs, $FAILURES failures"
+  [ "$FAILURES" == "0" ]
+  exit $?
+fi
+
 # ---------- sd v1.5 (dims 768, guidance 7.5, 20 steps) ----------
 for s in euler_a unipc dpm_m pndm ipndm deis_m; do
   run_case "v15-$s-s20" $(model_args onnx-sd-v15) \
