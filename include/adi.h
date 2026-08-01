@@ -79,6 +79,7 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_PNDM        = 0x0b,
     AVAILABLE_SCHEDULER_IPNDM       = 0x0c,
     AVAILABLE_SCHEDULER_DEIS_M      = 0x0d,
+    AVAILABLE_SCHEDULER_FLOW_EULER  = 0x0e,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -124,6 +125,7 @@ typedef struct IOrtSDConfig {
         enum AvailableAlphaType scheduler_alpha_type;   // Scheduler: Alpha(Beta) Method (Cos, Exp)
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
         enum AvailableSigmaType scheduler_sigma_type;          // Scheduler: Sigma Schedule Style (Default, Karras)
+        float scheduler_shift;                              // Scheduler: Sigma Shift (rectified-flow family only, default 3.0f)
     } sd_scheduler_config;
 
     struct {

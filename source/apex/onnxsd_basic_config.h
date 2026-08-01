@@ -76,6 +76,7 @@ typedef enum SchedulerType {
     SCHEDULER_PNDM              = 11,
     SCHEDULER_IPNDM             = 12,
     SCHEDULER_DEIS_M            = 13,
+    SCHEDULER_FLOW_EULER        = 14,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
@@ -125,6 +126,7 @@ typedef struct SchedulerConfig {
     AlphaType scheduler_alpha_type;
     PredictionType scheduler_predict_type;
     SigmaType scheduler_sigma_type;
+    float scheduler_shift;              // Flow: sigma shift (rectified-flow family, default 3.0)
 } SchedulerConfig;
 
 /* Diffusion Tokenizer Settings ===========================================*/

@@ -62,6 +62,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "pndm",
     "ipndm",
     "deis_m",
+    "flow_euler",
 };
 
 // below order match AvailableSigmaType order
@@ -126,6 +127,7 @@ struct CommandLineInput {
     AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
     AvailableSigmaType scheduler_sigma_type = SIGMA_TYPE_DEFAULT;           // Scheduler: Sigma Schedule Style (Default, Karras)
+    float scheduler_shift = 3.0f;                                           // Scheduler: Sigma Shift (rectified-flow family only)
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
@@ -286,8 +288,9 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m] (default euler_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m / flow_euler] (default euler_a) \n");
     printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
+    printf("  --shift <float>                    Sigma Shift for rectified-flow schedulers (default 3.0) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
@@ -526,6 +529,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.scheduler_sigma_type = (AvailableSigmaType)sigma_found;
+        } else if (arg == "--shift") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_shift = std::stof(argv[i]);
         } else if (arg == "--beta") {
             int betae_found = GET_TYPE_FROM_STR(scheduler_beta_type_str, BETA_COUNT);
             if (betae_found == -1) {
@@ -799,7 +808,8 @@ int main(int argc, const char *argv[]) {
                 params.scheduler_beta_type,
                 params.scheduler_alpha_type,
                 params.scheduler_predict_type,
-                params.scheduler_sigma_type
+                params.scheduler_sigma_type,
+                params.scheduler_shift
             },
             {
                 params.sd_tokenizer_type,
