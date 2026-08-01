@@ -157,8 +157,11 @@ create_homebrew_formula() {
   local sha256_arm64
   sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
 
+  local formula_class_
+  formula_class_="$(echo "${formula_name:0:1}" | tr '[:lower:]' '[:upper:]')${formula_name:1}"
+
   cat <<EOF > ${formula_name}-${version}.rb
-class ${formula_name^} < Formula
+class ${formula_class_} < Formula
   desc "ADI Stable Diffusion"
   homepage "https://github.com/Windsander/ADI-Stable-Diffusion"
   version "${version}"
