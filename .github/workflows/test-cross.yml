@@ -147,9 +147,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          choco install ninja
-          choco install llvm
-          choco install mingw
+          choco install ninja -y
+          choco install llvm -y
+          choco install mingw -y
           
           if [[ ${{ matrix.platform }} == 'macos' ]]; then
             echo "Target platform is macOS."
@@ -158,27 +158,27 @@ jobs:
           elif [[ ${{ matrix.platform }} == 'linux' ]]; then
             echo "Target platform is Linux."
             if [[ ${{ matrix.arch }} == 'x86_64' ]]; then
-              choco install mingw-w64-x86_64-linux-gnu
+              choco install mingw-w64-x86_64-linux-gnu -y
               setx CC x86_64-linux-gnu-gcc
               setx CXX x86_64-linux-gnu-g++
             elif [[ ${{ matrix.arch }} == 'aarch64' ]]; then
-              choco install mingw-w64-aarch64-linux-gnu
+              choco install mingw-w64-aarch64-linux-gnu -y
               setx CC aarch64-linux-gnu-gcc
               setx CXX aarch64-linux-gnu-g++
             elif [[ ${{ matrix.arch }} == 'arm64' ]]; then
-              choco install mingw-w64-arm-linux-gnueabihf
+              choco install mingw-w64-arm-linux-gnueabihf -y
               setx CC arm-linux-gnueabihf-gcc
               setx CXX arm-linux-gnueabihf-g++
             elif [[ ${{ matrix.arch }} == 'x86' ]]; then
-              choco install mingw-w64-i686-linux-gnu
+              choco install mingw-w64-i686-linux-gnu -y
               setx CC i686-linux-gnu-gcc
               setx CXX i686-linux-gnu-g++
             elif [[ ${{ matrix.arch }} == 'arm64-v8a' ]]; then
-              choco install mingw-w64-aarch64-linux-gnu
+              choco install mingw-w64-aarch64-linux-gnu -y
               setx CC aarch64-linux-gnu-gcc
               setx CXX aarch64-linux-gnu-g++
             elif [[ ${{ matrix.arch }} == 'armeabi-v7a' ]]; then
-              choco install mingw-w64-arm-linux-gnueabihf
+              choco install mingw-w64-arm-linux-gnueabihf -y
               setx CC arm-linux-gnueabihf-gcc
               setx CXX arm-linux-gnueabihf-g++
             fi

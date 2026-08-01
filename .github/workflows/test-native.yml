@@ -100,7 +100,7 @@ jobs:
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
-        run: choco install ninja
+        run: choco install ninja -y
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
