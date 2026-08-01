@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
@@ -38,38 +38,35 @@ jobs:
       target_branch: ${{ env.TARGET_BRANCH }}
       version: ${{ env.VERSION }}
 
-  deploy_linux:
-    needs: setup_environment
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout release
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ needs.setup_environment.outputs.target_branch }}
-
-      - name: Set up environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential devscripts debhelper rpm
-          sudo apt-get install -y cmake ninja-build curl coreutils dput dpkg
-          sudo apt-get install -y python3-pip
-          sudo pip3 install copr-cli
-
-      - name: Run deploy script
-        shell: bash
-        run: |
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          chmod +x auto_deploy.sh
-          ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-artifacts
-          path: |
-            *.deb
-            *.rpm
+  # NOTE(v1.2 decision 0.4): Linux .deb/.rpm packaging stays DISABLED in this
+  # window; the job is kept here, fully commented, for the v2.0.0 repair window.
+  # deploy_linux:
+  #   needs: setup_environment
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout release
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ needs.setup_environment.outputs.target_branch }}
+  #     - name: Set up environment
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y build-essential devscripts debhelper rpm
+  #         sudo apt-get install -y cmake ninja-build curl coreutils dput dpkg
+  #         sudo apt-get install -y python3-pip
+  #         sudo pip3 install copr-cli
+  #     - name: Run deploy script
+  #       shell: bash
+  #       run: |
+  #         chmod +x auto_deploy.sh
+  #         ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
+  #     - name: Upload Linux artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: linux-artifacts
+  #         path: |
+  #           *.deb
+  #           *.rpm
 
   deploy_macos:
     needs: setup_environment
@@ -77,7 +74,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
@@ -97,7 +94,7 @@ jobs:
           ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
           path: |
@@ -109,13 +106,12 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
       - name: Set up environment
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
           choco install cmake -y
           choco install ninja -y
           choco install curl -y
@@ -129,30 +125,30 @@ jobs:
           ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
           path: |
             *.nupkg
 
   finalize_deploy:
-    needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux, is temporary exclude
+    needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux disabled (v1.2 decision 0.4)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: macos-artifacts
           path: ./artifacts/macos
 
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: windows-artifacts
           path: ./artifacts/windows
@@ -172,7 +168,7 @@ jobs:
           git config --global user.name "github-actions[deploy-bot]"
           git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
           git checkout --orphan deploy
-          git rm -rf . 
+          git rm -rf .
           cp ./artifacts/macos/* .
           cp ./artifacts/windows/* .
           cp ./artifacts/temp/* .
@@ -186,19 +182,25 @@ jobs:
 
     steps:
       - name: Checkout homebrew repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: Windsander/homebrew-ADI-Stable-Diffusion
           token: ${{ secrets.ADI_DEPLOY_TOKEN }}
           ref: main
 
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: ./artifacts/macos
+
       - name: Copy and commit homebrew formula
         run: |
           mkdir -p Formula
           cp ./artifacts/macos/*.rb Formula/
-          cp ./artifacts/temp/README.md .
-          git add Formula/*.rb README.md
+          cp README.md . 2>/dev/null || true
+          git add Formula/*.rb
           git config --global user.name "github-actions[deploy-bot]"
           git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
-          git commit -m "Update Homebrew formula for version ${{ needs.setup_environment.outputs.version }}"
+          git commit -m "Update Homebrew formula for version ${{ needs.setup_environment.outputs.version }}" || echo "no changes"
           git push origin main

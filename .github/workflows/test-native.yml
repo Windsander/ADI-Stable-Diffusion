@@ -100,7 +100,22 @@ jobs:
 
       - name: Install dependencies on Windows
         if: runner.os == 'Windows'
-        run: choco install ninja
+        shell: bash
+        run: |
+          # GitHub windows-latest images ship cmake+ninja preinstalled; only
+          # fall back to choco when something is actually missing (choco 2.x
+          # is no longer guaranteed on every windows image)
+          cmake --version | head -1
+          if ! command -v ninja >/dev/null 2>&1; then
+            if command -v choco >/dev/null 2>&1; then
+              choco install ninja -y
+            else
+              echo "ERROR: ninja unavailable and choco missing on this image"
+              exit 1
+            fi
+          else
+            ninja --version
+          fi
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
@@ -110,6 +125,10 @@ jobs:
           ndk-version: 26.1.10909125
           cmake-version: 3.29.5
 
+      - name: Enable MSVC environment (Windows, cl)
+        if: runner.os == 'Windows' && matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Run auto_build.sh
         shell: bash
         run: |
@@ -118,6 +137,7 @@ jobs:
             bash ./auto_build.sh --platform android \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
@@ -128,6 +148,7 @@ jobs:
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \

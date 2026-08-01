@@ -31,6 +31,7 @@ protected:
 protected:
     Predictants find_predict_params_at(float sigma_) ;
     long find_closest_timestep_index(long time_);
+    int64_t find_timestep_at_sigma(float sigma_);
     float generate_sigma_at(float timestep_);
 
 protected:
@@ -90,6 +91,21 @@ float SchedulerBase::generate_sigma_at(float timestep_) {
     float sigma = std::pow((1 - alpha_prod) / alpha_prod, 0.5f);
     // Mark: for safety & efficiency, I'm using [our_sigma^2 = sigma^2/(1-sigma^2)]
     return sigma;
+}
+
+// invert σ(t) by bisection: σ(t) is monotonically increasing over [0, training_steps-1]
+int64_t SchedulerBase::find_timestep_at_sigma(float sigma_) {
+    double lo = 0.0;
+    double hi = double(scheduler_config.scheduler_training_steps - 1);
+    for (int it_ = 0; it_ < 60; ++it_) {
+        double mid = 0.5 * (lo + hi);
+        if (double(generate_sigma_at(float(mid))) < double(sigma_)) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    return int64_t(std::llround(0.5 * (lo + hi)));
 }
 
 SchedulerBase::Predictants SchedulerBase::find_predict_params_at(float sigma_)
@@ -200,16 +216,40 @@ uint64_t SchedulerBase::init(uint64_t inference_steps_) {
     // linearspace
     int start_at = 0;
     int end_when = int(scheduler_config.scheduler_training_steps - 1);
-    float step_gap = (inference_steps_ > 1) ?
-                     float(end_when - start_at) / float(inference_steps_ - 1) :
-                     float(end_when);
 
-    for (uint32_t i = 0; i < inference_steps_; ++i) {
-        float t = float(end_when) - step_gap * float(i);
-        float sigma = generate_sigma_at(t);
-        scheduler_timesteps.insert(make_pair(long(i), int64_t(t)));
-        scheduler_sigmas.push_back(sigma);
-        scheduler_max_sigma = max(scheduler_max_sigma, sigma);
+    switch (scheduler_config.scheduler_sigma_type) {
+        case SIGMA_TYPE_KARRAS: {
+            // Karras et al. 2022 rho-schedule (rho=7, same as diffusers use_karras_sigmas):
+            // sigma_i = ( sigma_max^(1/rho) + i/(n-1) * (sigma_min^(1/rho) - sigma_max^(1/rho)) )^rho
+            const float karras_rho_ = 7.0f;
+            float sigma_min_ = generate_sigma_at(0.0f);
+            float sigma_max_ = generate_sigma_at(float(end_when));
+            float ramp_low_  = std::pow(sigma_max_, 1.0f / karras_rho_);
+            float ramp_high_ = std::pow(sigma_min_, 1.0f / karras_rho_);
+            for (uint32_t i = 0; i < inference_steps_; ++i) {
+                float w = (inference_steps_ > 1) ? float(i) / float(inference_steps_ - 1) : 0.0f;
+                float sigma = std::pow(ramp_low_ + w * (ramp_high_ - ramp_low_), karras_rho_);
+                scheduler_timesteps.insert(make_pair(long(i), find_timestep_at_sigma(sigma)));
+                scheduler_sigmas.push_back(sigma);
+                scheduler_max_sigma = max(scheduler_max_sigma, sigma);
+            }
+            break;
+        }
+        case SIGMA_TYPE_DEFAULT:
+        default: {
+            float step_gap = (inference_steps_ > 1) ?
+                             float(end_when - start_at) / float(inference_steps_ - 1) :
+                             float(end_when);
+
+            for (uint32_t i = 0; i < inference_steps_; ++i) {
+                float t = float(end_when) - step_gap * float(i);
+                float sigma = generate_sigma_at(t);
+                scheduler_timesteps.insert(make_pair(long(i), int64_t(t)));
+                scheduler_sigmas.push_back(sigma);
+                scheduler_max_sigma = max(scheduler_max_sigma, sigma);
+            }
+            break;
+        }
     }
     scheduler_sigmas.push_back(0);
     return correction_steps(inference_steps_);

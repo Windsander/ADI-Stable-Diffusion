@@ -147,43 +147,18 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          choco install ninja
-          choco install llvm
-          choco install mingw
-          
-          if [[ ${{ matrix.platform }} == 'macos' ]]; then
-            echo "Target platform is macOS."
-          elif [[ ${{ matrix.platform }} == 'windows' ]]; then
-            echo "Target platform is Windows."
-          elif [[ ${{ matrix.platform }} == 'linux' ]]; then
-            echo "Target platform is Linux."
-            if [[ ${{ matrix.arch }} == 'x86_64' ]]; then
-              choco install mingw-w64-x86_64-linux-gnu
-              setx CC x86_64-linux-gnu-gcc
-              setx CXX x86_64-linux-gnu-g++
-            elif [[ ${{ matrix.arch }} == 'aarch64' ]]; then
-              choco install mingw-w64-aarch64-linux-gnu
-              setx CC aarch64-linux-gnu-gcc
-              setx CXX aarch64-linux-gnu-g++
-            elif [[ ${{ matrix.arch }} == 'arm64' ]]; then
-              choco install mingw-w64-arm-linux-gnueabihf
-              setx CC arm-linux-gnueabihf-gcc
-              setx CXX arm-linux-gnueabihf-g++
-            elif [[ ${{ matrix.arch }} == 'x86' ]]; then
-              choco install mingw-w64-i686-linux-gnu
-              setx CC i686-linux-gnu-gcc
-              setx CXX i686-linux-gnu-g++
-            elif [[ ${{ matrix.arch }} == 'arm64-v8a' ]]; then
-              choco install mingw-w64-aarch64-linux-gnu
-              setx CC aarch64-linux-gnu-gcc
-              setx CXX aarch64-linux-gnu-g++
-            elif [[ ${{ matrix.arch }} == 'armeabi-v7a' ]]; then
-              choco install mingw-w64-arm-linux-gnueabihf
-              setx CC arm-linux-gnueabihf-gcc
-              setx CXX arm-linux-gnueabihf-g++
+          # kept windows combos all compile with cl; llvm/mingw were only used
+          # by linux-cross combos, which this matrix excludes — skip them.
+          cmake --version | head -1
+          if ! command -v ninja >/dev/null 2>&1; then
+            if command -v choco >/dev/null 2>&1; then
+              choco install ninja -y
+            else
+              echo "ERROR: ninja unavailable and choco missing on this image"
+              exit 1
             fi
-          elif [[ ${{ matrix.platform }} == 'android' ]]; then
-            echo "Target platform is Android."
+          else
+            ninja --version
           fi
 
       - name: Set up Android SDK and NDK
@@ -194,6 +169,10 @@ jobs:
           ndk-version: 26.1.10909125
           cmake-version: 3.29.5
 
+      - name: Enable MSVC environment (Windows, cl)
+        if: runner.os == 'Windows' && matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Run auto_build.sh
         shell: bash
         run: |
@@ -201,6 +180,7 @@ jobs:
             bash ./auto_build.sh --platform android \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \
@@ -211,6 +191,7 @@ jobs:
             bash ./auto_build.sh --platform ${{ matrix.platform }} \
                                  --cmake "cmake" \
                                  --ninja "ninja" \
+                                 --generator "Ninja" \
                                  --build-type ${{ matrix.build_type }} \
                                  --arch-abi ${{ matrix.arch }} \
                                  --jobs 4 \

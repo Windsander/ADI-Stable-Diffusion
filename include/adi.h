@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 ORT_SD_Context Interface - Arikan.Li
  * Created by Arikan.Li on 2024/05/22.
  */
@@ -16,7 +16,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#define CURRENT_ADI_VERSION "v1.0.1"
+#define CURRENT_ADI_VERSION "v1.2.0"
 
 /* Inference Execution Settings ===========================================*/
 
@@ -56,6 +56,13 @@ enum AvailablePredictionType {
     AVAILABLE_PREDICTOR_COUNT,
 };
 
+/* Scheduler Sigma Schedule Provide */
+enum AvailableSigmaType {
+    SIGMA_TYPE_DEFAULT          = 0x00,
+    SIGMA_TYPE_KARRAS           = 0x01,
+    AVAILABLE_SIGMA_COUNT,
+};
+
 /* Scheduler Type Provide */
 enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_EULER       = 0x00,
@@ -66,6 +73,12 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_DDPM        = 0x05,
     AVAILABLE_SCHEDULER_DDIM        = 0x06,
     AVAILABLE_SCHEDULER_UNIPC       = 0x07,
+    AVAILABLE_SCHEDULER_DPM_M       = 0x08,
+    AVAILABLE_SCHEDULER_DPM_SDE     = 0x09,
+    AVAILABLE_SCHEDULER_DPM_S       = 0x0a,
+    AVAILABLE_SCHEDULER_PNDM        = 0x0b,
+    AVAILABLE_SCHEDULER_IPNDM       = 0x0c,
+    AVAILABLE_SCHEDULER_DEIS_M      = 0x0d,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -97,6 +110,7 @@ typedef struct IOrtSDConfig {
         const char* onnx_vae_decoder_path;          // Model: VAE Decoder Path (also known as vae_decoder)
         const char* onnx_control_net_path;          // Model: ControlNet Path (currently not available)
         const char* onnx_safty_path;                // Model: Safety Security Model Path (currently not available)
+        const char* onnx_clip_2_path;               // Model: 2nd CLIP Path (SDXL text_encoder_2, empty when unused)
     } sd_modelpath_config;
 
     struct {
@@ -109,6 +123,7 @@ typedef struct IOrtSDConfig {
         enum AvailableBetaType scheduler_beta_type;     // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
         enum AvailableAlphaType scheduler_alpha_type;   // Scheduler: Alpha(Beta) Method (Cos, Exp)
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
+        enum AvailableSigmaType scheduler_sigma_type;          // Scheduler: Sigma Schedule Style (Default, Karras)
     } sd_scheduler_config;
 
     struct {

@@ -264,6 +264,13 @@ if (ORT_ENABLE_NNAPI)
 endif ()
 message("[onnx.runtime.sd][I] onnxruntime enable ${Red}CPU Provider${ColourReset}")
 
+if (MSVC)
+    # windows.h defines min/max as macros -> C2589 at every std::min/std::max
+    # (scheduler + clip units); /EHsc enables unwind semantics for try/catch
+    add_compile_definitions(NOMINMAX _USE_MATH_DEFINES)
+    add_compile_options(/EHsc)
+endif ()
+
 # 4. Prepare inference engine compiled library (from online/local)
 if (ORT_BUILD_COMBINE_BASE)
     # Enter: combine ort-lib
@@ -388,6 +395,7 @@ if (ORT_BUILD_COMMAND_LINE)
 
     # add specific CMake parameters
     list(APPEND CMAKE_CACHE_ARGS
+            "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
             "-DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_PATH=${CMAKE_BINARY_DIR}"
             "-DMAJOR_SYSTEM_NAME=${MAJOR_SYSTEM_NAME}"

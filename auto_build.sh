@@ -27,6 +27,7 @@ show_help() {
 }
 
 # Parse command line arguments
+GENERATOR=""
 CONFIRM_OPTION=""
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -35,6 +36,7 @@ while [[ "$#" -gt 0 ]]; do
         --build-type) BUILD_TYPE="$2"; shift ;;
         --cmake) CMAKE="$2"; shift ;;
         --ninja) NINJA="$2"; shift ;;
+        --generator) GENERATOR="$2"; shift ;;
         --jobs) JOBS="$2"; shift ;;
         --options) CMAKE_OPTIONS="$2"; shift ;;
 #        --android-sdk) ANDROID_SDK="$2"; shift ;;
@@ -76,7 +78,12 @@ if [ -z "$TARGET_ABI" ] || [ "$TARGET_ABI" == "default" ]; then
             TARGET_ABI="x86_64"
             ;;
         aarch64 | arm64)
-            TARGET_ABI="aarch64"
+            # Apple 工具链约定使用 arm64，Linux/Android 使用 aarch64
+            if [ "$PLATFORM" == "macos" ]; then
+                TARGET_ABI="arm64"
+            else
+                TARGET_ABI="aarch64"
+            fi
             ;;
         i386 | i686)
             TARGET_ABI="x86"
@@ -150,10 +157,32 @@ esac
 case "$PLATFORM" in
     android)
 #        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_SDK=${ANDROID_SDK}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
-        CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
+        case "$(uname -s)" in
+            CYGWIN*|MINGW*|MSYS*)
+                # Windows host: CMake's built-in Android mode hard-validates an
+                # extension-less bin/clang that does not exist on Windows NDKs
+                # (only clang.exe / <triple>-clang.cmd) — bypass it with the
+                # NDK's own toolchain file instead of manual system settings
+                if command -v cygpath >/dev/null 2>&1; then
+                    ANDROID_NDK=$(cygpath -m "$ANDROID_NDK")
+                fi
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_ABI=${TARGET_ABI}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_PLATFORM=android-${ANDROID_VER}"
+                # generic-toolchain.cmake is included before PROJECT() processes
+                # the toolchain file — pre-seed these as cache vars (NDK toolchain
+                # only warns DEPRECATION about them, then proceeds)
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
+                ;;
+            *)
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_VERSION=${ANDROID_VER}"
+                ;;
+        esac
         ;;
 
     linux)
@@ -180,8 +209,14 @@ case "$PLATFORM" in
         ;;
 esac
 
-# Run CMake configuration
+# Run CMake configuration (generator only when explicitly requested, e.g. CI
+# forces Ninja on Windows where the default VS-generator cannot cross-compile)
+GENERATOR_ARGS=""
+if [ -n "$GENERATOR" ]; then
+    GENERATOR_ARGS="-G ${GENERATOR}"
+fi
 ${CMAKE} \
+    ${GENERATOR_ARGS} \
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
     ${CMAKE_OPTIONS} \
     -S ${PROJECT_ROOT} \

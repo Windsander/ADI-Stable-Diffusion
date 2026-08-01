@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 ORT_SD_Context Interface - Arikan.Li
  * Created by Arikan.Li on 2024/05/22.
  */
@@ -27,6 +27,7 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_vae_decoder_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_control_net_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_clip_2_path),
                 },
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
@@ -37,7 +38,8 @@ namespace ortsd {
                     ctx_config_.sd_scheduler_config.scheduler_seed,
                     onnx::sd::base::BetaType(ctx_config_.sd_scheduler_config.scheduler_beta_type),
                     onnx::sd::base::AlphaType(ctx_config_.sd_scheduler_config.scheduler_alpha_type),
-                    onnx::sd::base::PredictionType(ctx_config_.sd_scheduler_config.scheduler_predict_type)
+                    onnx::sd::base::PredictionType(ctx_config_.sd_scheduler_config.scheduler_predict_type),
+                    onnx::sd::base::SigmaType(ctx_config_.sd_scheduler_config.scheduler_sigma_type)
                 },
                 {
                     onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),

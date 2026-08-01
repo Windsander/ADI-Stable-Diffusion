@@ -56,6 +56,18 @@ const char* scheduler_sampler_fuc_str[] = {
     "ddpm",
     "ddim",
     "unipc",
+    "dpm_m",
+    "dpm_sde",
+    "dpm_s",
+    "pndm",
+    "ipndm",
+    "deis_m",
+};
+
+// below order match AvailableSigmaType order
+const char* scheduler_sigma_type_str[] = {
+    "default",
+    "karras",
 };
 
 // below order match AvailablePredictionType order
@@ -102,6 +114,7 @@ struct CommandLineInput {
     std::string onnx_vae_decoder_path;                                      // Model: VAE Decoder Path (also known as vae_decoder)
     std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
+    std::string onnx_clip_2_path;                                           // Model: 2nd CLIP Path (SDXL text_encoder_2)
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
@@ -112,6 +125,7 @@ struct CommandLineInput {
     AvailableBetaType scheduler_beta_type = BETA_TYPE_LINEAR;               // Scheduler: Beta Style (Linear. ScaleLinear, CAP_V2)
     AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
+    AvailableSigmaType scheduler_sigma_type = SIGMA_TYPE_DEFAULT;           // Scheduler: Sigma Schedule Style (Default, Karras)
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
@@ -187,6 +201,7 @@ void print_params(const CommandLineInput& params) {
 
     printf("  Models: \n");
     printf("    clip_path:                      %s\n", params.onnx_clip_path.c_str());
+    printf("    clip_2_path:                    %s\n", params.onnx_clip_2_path.c_str());
     printf("    unet_path:                      %s\n", params.onnx_unet_path.c_str());
     printf("    vae_encoder_path:               %s\n", params.onnx_vae_encoder_path.c_str());
     printf("    vae_decoder_path:               %s\n", params.onnx_vae_decoder_path.c_str());
@@ -212,6 +227,7 @@ void print_params(const CommandLineInput& params) {
     printf("    scheduler_beta_type:            %s\n", scheduler_beta_type_str[params.scheduler_beta_type]);
     printf("    scheduler_alpha_type:           %s\n", scheduler_alpha_type_str[params.scheduler_alpha_type]);
     printf("    scheduler_prediction:           %s\n", scheduler_prediction_str[params.scheduler_predict_type]);
+    printf("    scheduler_sigma_schedule:       %s\n", scheduler_sigma_type_str[params.scheduler_sigma_type]);
     printf("    tokenizer_series:               %s\n", tokenizer_series_str[params.sd_tokenizer_type]);
 
     printf("  Static (by Models [const]): \n");
@@ -253,6 +269,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("                                            actually, was determined by txt_encoder(clip) style.) \n");
 
     printf("  --clip [CLIP_PATH]                 path to clip\n");
+    printf("  --clip2 [CLIP_2_PATH]              path to 2nd clip (SDXL text_encoder_2, enables SDXL conditioning) \n");
     printf("  --unet [UNET_PATH]                 path to unet\n");
     printf("  --vae-encoder [VAE_ENCODER_PATH]   path to vae encoder\n");
     printf("  --vae-decoder [VAE_DECODER_PATH]   path to vae decoder\n");
@@ -269,11 +286,12 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms] (default euler_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m] (default euler_a) \n");
+    printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
-    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe] (currently only provide BPE) \n");
+    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe / word_piece] (default bpe) \n");
 
     printf("  --cache <uint>                     scheduler maintain history count, only avail when used by method (default 4) \n");
     printf("  --train-steps <uint>               scheduler steps when at model training stage (default 1000) \n");
@@ -410,6 +428,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.onnx_clip_path = argv[i];
+        } else if (arg == "--clip2") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_clip_2_path = argv[i];
         } else if (arg == "--unet") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -495,6 +519,13 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_scheduler_type = (AvailableSchedulerType)schedule_found;
+        } else if (arg == "--sigma") {
+            int sigma_found = GET_TYPE_FROM_STR(scheduler_sigma_type_str, AVAILABLE_SIGMA_COUNT);
+            if (sigma_found == -1) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_type = (AvailableSigmaType)sigma_found;
         } else if (arg == "--beta") {
             int betae_found = GET_TYPE_FROM_STR(scheduler_beta_type_str, BETA_COUNT);
             if (betae_found == -1) {
@@ -650,6 +681,7 @@ static std::string get_image_params(const CommandLineInput &params) {
                         "  Alpha >> " + std::string(scheduler_alpha_type_str[params.scheduler_alpha_type]) +
                         "], " + "\n";
     parameter_string += "Predictor: " + std::string(scheduler_prediction_str[params.scheduler_predict_type]) + ", " + "\n";
+    parameter_string += "Sigma: " + std::string(scheduler_sigma_type_str[params.scheduler_sigma_type]) + ", " + "\n";
     parameter_string += "Tokenizer: " + std::string(tokenizer_series_str[params.sd_tokenizer_type]) + ", " + "\n";
     parameter_string += "Version: ONNXRuntime-Stable-Diffusion";
     return parameter_string;
@@ -754,7 +786,8 @@ int main(int argc, const char *argv[]) {
                 params.onnx_vae_encoder_path.c_str(),
                 params.onnx_vae_decoder_path.c_str(),
                 params.onnx_control_net_path.c_str(),
-                params.onnx_safty_path.c_str()
+                params.onnx_safty_path.c_str(),
+                params.onnx_clip_2_path.c_str()
             },
             {
                 params.sd_scheduler_type,
@@ -765,7 +798,8 @@ int main(int argc, const char *argv[]) {
                 params.scheduler_seed,
                 params.scheduler_beta_type,
                 params.scheduler_alpha_type,
-                params.scheduler_predict_type
+                params.scheduler_predict_type,
+                params.scheduler_sigma_type
             },
             {
                 params.sd_tokenizer_type,

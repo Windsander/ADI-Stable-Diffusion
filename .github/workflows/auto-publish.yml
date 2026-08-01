@@ -11,40 +11,25 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Extract version number
-        id: extract_version
         shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/heads/release/release-}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Extracted version: $VERSION"
 
-      - name: Check if release tag exists
-        id: tag_exists
+      - name: Create GitHub Release (if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          if git rev-parse "refs/tags/release-${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_ENV
+          if ! gh release view "release-${{ env.VERSION }}" >/dev/null 2>&1; then
+            gh release create "release-${{ env.VERSION }}" --title "ADI ${{ env.VERSION }}" --notes-file CHANGELOG.md
           else
-            echo "exists=false" >> $GITHUB_ENV
+            echo "Release release-${{ env.VERSION }} already exists, skip creation."
           fi
-          echo "env.exists=$(cat $GITHUB_ENV | grep exists | cut -d '=' -f2)"
-
-      - name: Create GitHub Release
-        id: create_release
-        if: env.exists == 'false'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: release-${{ env.VERSION }}
-          release_name: ADI ${{ env.VERSION }}
-          body_path: CHANGELOG.md
-
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
 
   upload_assets:
     needs: create_release
@@ -124,10 +109,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -136,7 +121,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/heads/release/release-}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Extracted version: $VERSION"
 
       - name: Install dependencies (Linux)
@@ -154,7 +139,7 @@ jobs:
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install cmake ninja zip
+          choco install cmake ninja zip -y
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
@@ -164,11 +149,16 @@ jobs:
           ndk-version: 26.1.10909125
           cmake-version: 3.29.5
 
+      - name: Enable MSVC environment (Windows, cl)
+        if: matrix.os == 'windows-latest' && matrix.platform == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build project (Linux, macOS, Windows)
         if: matrix.platform != 'android'
         shell: bash
         run: |
           bash ./auto_build.sh --platform ${{ matrix.platform }} \
+                               --generator "Ninja" \
                                --build-type ${{ matrix.build_type }} \
                                --arch-abi ${{ matrix.arch }} \
                                -c
@@ -180,6 +170,7 @@ jobs:
           bash ./auto_build.sh --platform android \
                                --cmake "cmake" \
                                --ninja "ninja" \
+                               --generator "Ninja" \
                                --build-type ${{ matrix.build_type }} \
                                --arch-abi ${{ matrix.arch }} \
                                --jobs 4 \
@@ -228,44 +219,40 @@ jobs:
 
       - name: Upload release asset (Linux)
         if: matrix.platform == 'linux'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-          asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-          asset_content_type: application/gzip
+          tag_name: release-${{ env.VERSION }}
+          files: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+          fail_on_unmatched_files: true
 
       - name: Upload release asset (macOS)
         if: matrix.platform == 'macos'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-          asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-          asset_content_type: application/gzip
+          tag_name: release-${{ env.VERSION }}
+          files: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+          fail_on_unmatched_files: true
 
       - name: Upload release asset (Windows)
         if: matrix.platform == 'windows'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
-          asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
-          asset_content_type: application/zip
+          tag_name: release-${{ env.VERSION }}
+          files: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          fail_on_unmatched_files: true
 
       - name: Upload release asset (Android)
         if: matrix.platform == 'android'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
-          asset_name: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
-          asset_content_type: application/zip
+          tag_name: release-${{ env.VERSION }}
+          files: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          fail_on_unmatched_files: true

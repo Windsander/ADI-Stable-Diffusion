@@ -1,4 +1,4 @@
-﻿/*
+/*
  * BasicTools
  * Definition: put simple tools we used in here
  * Created by Arikan.Li on 2022/03/11.
@@ -360,6 +360,27 @@ public:
         return result_tensor_;
     }
 
+    template<class T, class F>
+    static Tensor cast(const Tensor &input_) {
+        auto *input_data_ = input_.GetTensorData<F>();
+        TensorShape input_shape_ = input_.GetTensorTypeAndShapeInfo().GetShape();
+        size_t input_size_ = input_.GetTensorTypeAndShapeInfo().GetElementCount();
+        T* result_data_ = new T[input_size_];
+
+        for (size_t i = 0; i < input_size_; i++) {
+            result_data_[i] = static_cast<T>(input_data_[i]);
+        }
+
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            Ort::MemoryInfo::CreateCpu(
+                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault
+            ), result_data_, int64_t(input_size_),
+            input_shape_.data(), input_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
     template<class T>
     static Tensor clone(const Tensor &input_, const TensorShape &shape_ = {}) {
         GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
@@ -460,6 +481,45 @@ public:
         Tensor result_tensor_ = Tensor::CreateTensor<T>(
             input_tensors_[0].GetTensorMemoryInfo(), result_data_, result_size_,
             shape_.data(), shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
+    // concatenate two same-rank tensors along the last dim, e.g.
+    // [1, 77, 768] + [1, 77, 1280] -> [1, 77, 2048]  (SDXL dual-encoder merge)
+    template<class T>
+    static Tensor concat_last_dim(const Tensor &input_l_, const Tensor &input_r_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+
+        if (input_shape_l_.size() != input_shape_r_.size() || input_shape_l_.empty()) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_last_dim rank mismatch"));
+        }
+        long inner_l_ = long(input_shape_l_.back());
+        long inner_r_ = long(input_shape_r_.back());
+        long outer_l_ = long(input_size_l_) / inner_l_;
+        long outer_r_ = long(input_size_r_) / inner_r_;
+        if (outer_l_ != outer_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_last_dim outer mismatch"));
+        }
+
+        long result_size_ = long(input_size_l_) + long(input_size_r_);
+        T* result_data_ = new T[result_size_];
+        for (long o_ = 0; o_ < outer_l_; ++o_) {
+            for (long i_ = 0; i_ < inner_l_; ++i_) {
+                result_data_[o_ * (inner_l_ + inner_r_) + i_] = input_data_l_[o_ * inner_l_ + i_];
+            }
+            for (long i_ = 0; i_ < inner_r_; ++i_) {
+                result_data_[o_ * (inner_l_ + inner_r_) + inner_l_ + i_] = input_data_r_[o_ * inner_r_ + i_];
+            }
+        }
+
+        TensorShape result_shape_ = input_shape_l_;
+        result_shape_.back() = inner_l_ + inner_r_;
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            result_shape_.data(), result_shape_.size()
         );
 
         return result_tensor_;

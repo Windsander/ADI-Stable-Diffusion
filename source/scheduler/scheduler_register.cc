@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Scheduler - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
@@ -14,6 +14,12 @@
 #include "scheduler_discrete_ddpm.cc"
 #include "scheduler_discrete_ddim.cc"
 #include "scheduler_discrete_unipc.cc"
+#include "scheduler_discrete_dpm_m.cc"
+#include "scheduler_discrete_dpm_sde.cc"
+#include "scheduler_discrete_dpm_s.cc"
+#include "scheduler_discrete_pndm.cc"
+#include "scheduler_discrete_ipndm.cc"
+#include "scheduler_discrete_deis_m.cc"
 
 namespace onnx {
 namespace sd {
@@ -59,6 +65,30 @@ public:
             }
             case SCHEDULER_UNIPC: {
                 result_ptr_ = new UniPCDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DPM_M: {
+                result_ptr_ = new DpmMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DPM_SDE: {
+                result_ptr_ = new DpmSDEDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DPM_S: {
+                result_ptr_ = new DpmSDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_PNDM: {
+                result_ptr_ = new PNDMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_IPNDM: {
+                result_ptr_ = new IPNDMDiscreteScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_DEIS_M: {
+                result_ptr_ = new DeisMDiscreteScheduler(scheduler_config_);
                 break;
             }
             default:{
