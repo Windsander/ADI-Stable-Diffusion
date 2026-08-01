@@ -22,7 +22,8 @@ typedef struct ModelPathConfig {
     std::string onnx_vae_decoder_path;
     std::string onnx_control_net_path;
     std::string onnx_safty_path;
-    std::string onnx_clip_2_path;   // SDXL text_encoder_2 (empty when unused)
+    std::string onnx_clip_2_path;   // SDXL/SD3 text_encoder_2 (empty when unused)
+    std::string onnx_clip_3_path;   // SD3/FLUX text_encoder_3 = T5-XXL (empty when unused)
 } ModelPathConfig;
 
 typedef struct OrtSD_Config {
@@ -56,7 +57,8 @@ private:
     OrtSD_Remain ort_remain;
 
     Clip *ort_sd_clip = nullptr;
-    Clip *ort_sd_clip_2 = nullptr;              // SDXL text_encoder_2 (nullptr when unused)
+    Clip *ort_sd_clip_2 = nullptr;              // SDXL/SD3 text_encoder_2 (nullptr when unused)
+    Clip *ort_sd_clip_3 = nullptr;              // SD3/FLUX text_encoder_3 = T5-XXL (nullptr when unused)
     UNet *ort_sd_unet = nullptr;
     VAE *ort_sd_vae_encoder = nullptr;
     VAE *ort_sd_vae_decoder = nullptr;
@@ -170,6 +172,24 @@ void OrtSD_Context::init() {
         );
     }
 
+    // SD3/FLUX: 3rd encoder is T5-XXL — SentencePiece tokenizer, 32100 vocab,
+    // 256-token sequence, 4096-dim hidden, last_hidden_state (no penultimate)
+    if (!ort_config.sd_modelpath_config.onnx_clip_3_path.empty()) {
+        TokenizerConfig t5_cfg_ = ort_config.sd_tokenizer_config;
+        t5_cfg_.tokenizer_type = TOKENIZER_SP;
+        t5_cfg_.tokenizer_dictionary_at = ort_config.sd_tokenizer_config.tokenizer_sp_model_at;
+        t5_cfg_.avail_token_count = 32100;
+        t5_cfg_.avail_token_size = 256;
+        t5_cfg_.major_hidden_dim = 4096;
+        ort_sd_clip_3 = new Clip(
+            ort_config.sd_modelpath_config.onnx_clip_3_path,
+            {
+                t5_cfg_,
+                false
+            }
+        );
+    }
+
     ort_sd_unet = new UNet(
         ort_config.sd_modelpath_config.onnx_unet_path,
         {
@@ -205,6 +225,7 @@ void OrtSD_Context::init() {
 
     ort_sd_clip->init(*ort_executor);
     if (ort_sd_clip_2) ort_sd_clip_2->init(*ort_executor);
+    if (ort_sd_clip_3) ort_sd_clip_3->init(*ort_executor);
     ort_sd_unet->init(*ort_executor);
     ort_sd_vae_encoder->init(*ort_executor);
     ort_sd_vae_decoder->init(*ort_executor);
@@ -218,7 +239,36 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
     ClipEmbedResult embed_pos_ = ort_sd_clip->embedding(positive_prompts_);
     ClipEmbedResult embed_neg_ = ort_sd_clip->embedding(negative_prompts_);
 
-    if (ort_sd_clip_2) {
+    if (ort_sd_clip_3) {
+        // SD3 / FLUX: triple-encoder orchestration (see PLAN-v2.0-mmdit.md §2)
+        ClipEmbedResult embed_pos_3_ = ort_sd_clip_3->embedding(positive_prompts_);
+        ClipEmbedResult embed_neg_3_ = ort_sd_clip_3->embedding(negative_prompts_);
+        if (ort_sd_clip_2) {
+            // SD3: (L.seq|G.seq)=2048 -> zero-pad 4096 -> concat T5 seq -> 333x4096;
+            // pooled = L.pooler|G.pooler = 2048
+            ClipEmbedResult embed_pos_2_ = ort_sd_clip_2->embedding(positive_prompts_);
+            ClipEmbedResult embed_neg_2_ = ort_sd_clip_2->embedding(negative_prompts_);
+            Tensor lg_pos_ = TensorHelper::concat_last_dim<float>(embed_pos_.hidden, embed_pos_2_.hidden);
+            Tensor lg_neg_ = TensorHelper::concat_last_dim<float>(embed_neg_.hidden, embed_neg_2_.hidden);
+            lg_pos_ = TensorHelper::pad_last_dim<float>(lg_pos_, 4096);
+            lg_neg_ = TensorHelper::pad_last_dim<float>(lg_neg_, 4096);
+            std::vector<Tensor> seq_pos_, seq_neg_;
+            seq_pos_.emplace_back(std::move(lg_pos_));
+            seq_pos_.emplace_back(std::move(embed_pos_3_.hidden));
+            seq_neg_.emplace_back(std::move(lg_neg_));
+            seq_neg_.emplace_back(std::move(embed_neg_3_.hidden));
+            ort_remain.embeded_positive = TensorHelper::merge<float>(seq_pos_, 1);
+            ort_remain.embeded_negative = TensorHelper::merge<float>(seq_neg_, 1);
+            ort_remain.pooled_positive  = TensorHelper::concat_last_dim<float>(embed_pos_.pooled, embed_pos_2_.pooled);
+            ort_remain.pooled_negative  = TensorHelper::concat_last_dim<float>(embed_neg_.pooled, embed_neg_2_.pooled);
+        } else {
+            // FLUX: T5 sequence only; pooled = CLIP-L pooler
+            ort_remain.embeded_positive = std::move(embed_pos_3_.hidden);
+            ort_remain.embeded_negative = std::move(embed_neg_3_.hidden);
+            ort_remain.pooled_positive  = std::move(embed_pos_.pooled);
+            ort_remain.pooled_negative  = std::move(embed_neg_.pooled);
+        }
+    } else if (ort_sd_clip_2) {
         // SDXL: concat dual-encoder hiddens on the feature dim ([1,77,768]+[1,77,1280] -> [1,77,2048]),
         // pooled conditioning comes from the 2nd encoder's pooled output
         ClipEmbedResult embed_pos_2_ = ort_sd_clip_2->embedding(positive_prompts_);
@@ -262,12 +312,14 @@ void OrtSD_Context::release(){
     ort_sd_unet->release(*ort_executor);
     ort_sd_clip->release(*ort_executor);
     if (ort_sd_clip_2) ort_sd_clip_2->release(*ort_executor);
+    if (ort_sd_clip_3) ort_sd_clip_3->release(*ort_executor);
 
     delete ort_sd_vae_decoder;
     delete ort_sd_vae_encoder;
     delete ort_sd_unet;
     delete ort_sd_clip;
     delete ort_sd_clip_2;
+    delete ort_sd_clip_3;
 }
 
 } // namespace context

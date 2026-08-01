@@ -28,6 +28,7 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_control_net_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_clip_2_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_clip_3_path),
                 },
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
@@ -51,7 +52,8 @@ namespace ortsd {
                     ctx_config_.sd_tokenizer_config.major_hidden_dim,
                     ctx_config_.sd_tokenizer_config.major_boundary_factor,
                     ctx_config_.sd_tokenizer_config.txt_attn_increase_factor,
-                    ctx_config_.sd_tokenizer_config.txt_attn_decrease_factor
+                    ctx_config_.sd_tokenizer_config.txt_attn_decrease_factor,
+                    ctx_config_.sd_tokenizer_config.tokenizer_sp_model_at
                 },
                 ctx_config_.sd_inference_steps,
                 ctx_config_.sd_input_width,

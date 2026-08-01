@@ -113,6 +113,7 @@ typedef struct IOrtSDConfig {
         const char* onnx_control_net_path;          // Model: ControlNet Path (currently not available)
         const char* onnx_safty_path;                // Model: Safety Security Model Path (currently not available)
         const char* onnx_clip_2_path;               // Model: 2nd CLIP Path (SDXL text_encoder_2, empty when unused)
+        const char* onnx_clip_3_path;               // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL, empty when unused)
     } sd_modelpath_config;
 
     struct {
@@ -139,6 +140,7 @@ typedef struct IOrtSDConfig {
         float major_boundary_factor;                // Tokenizer: weights for <start> & <end> mark-token
         float txt_attn_increase_factor;             // Tokenizer: weights for (prompt) to gain attention by this factor
         float txt_attn_decrease_factor;             // Tokenizer: weights for [prompt] to loss attention by this factor
+        const char* tokenizer_sp_model_at;          // Tokenizer: SentencePiece model file (spiece.model, for T5-XXL / tokenizer sp)
     } sd_tokenizer_config;
 
     uint64_t sd_inference_steps;            // Infer_Major: inference step

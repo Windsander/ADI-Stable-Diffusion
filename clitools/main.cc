@@ -117,6 +117,7 @@ struct CommandLineInput {
     std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
     std::string onnx_clip_2_path;                                           // Model: 2nd CLIP Path (SDXL text_encoder_2)
+    std::string onnx_clip_3_path;                                           // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL)
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
@@ -139,6 +140,7 @@ struct CommandLineInput {
     float major_boundary_factor = 1.0f;                                     // Tokenizer: weights for <start> & <end> mark-token
     float txt_attn_increase_factor = 1.1f;                                  // Tokenizer: weights for (prompt) to gain attention by this factor
     float txt_attn_decrease_factor = 1 / 1.1f;                              // Tokenizer: weights for [prompt] to loss attention by this factor
+    std::string tokenizer_sp_model_at;                                      // Tokenizer: SentencePiece model file (spiece.model, for T5-XXL)
 
     uint64_t sd_inference_steps = 2;                                        // Infer_Major: inference step
     uint64_t sd_input_width = 512;                                          // Infer_Major: IO image width (match SD-model training sets, Constant)
@@ -273,6 +275,8 @@ void print_usage(int argc, const char* argv[]) {
 
     printf("  --clip [CLIP_PATH]                 path to clip\n");
     printf("  --clip2 [CLIP_2_PATH]              path to 2nd clip (SDXL text_encoder_2, enables SDXL conditioning) \n");
+    printf("  --clip3 [CLIP_3_PATH]              path to 3rd clip (SD3/FLUX text_encoder_3 = T5-XXL, enables triple-encoder) \n");
+    printf("  --sp-model [SPIECE_MODEL_PATH]     path to sentencepiece model (spiece.model, for --tokenizer sp / T5-XXL) \n");
     printf("  --unet [UNET_PATH]                 path to unet\n");
     printf("  --vae-encoder [VAE_ENCODER_PATH]   path to vae encoder\n");
     printf("  --vae-decoder [VAE_DECODER_PATH]   path to vae decoder\n");
@@ -438,6 +442,18 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.onnx_clip_2_path = argv[i];
+        } else if (arg == "--clip3") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_clip_3_path = argv[i];
+        } else if (arg == "--sp-model") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.tokenizer_sp_model_at = argv[i];
         } else if (arg == "--unet") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -797,7 +813,8 @@ int main(int argc, const char *argv[]) {
                 params.onnx_vae_decoder_path.c_str(),
                 params.onnx_control_net_path.c_str(),
                 params.onnx_safty_path.c_str(),
-                params.onnx_clip_2_path.c_str()
+                params.onnx_clip_2_path.c_str(),
+                params.onnx_clip_3_path.c_str()
             },
             {
                 params.sd_scheduler_type,
@@ -821,7 +838,8 @@ int main(int argc, const char *argv[]) {
                 params.major_hidden_dim,
                 params.major_boundary_factor,
                 params.txt_attn_increase_factor,
-                params.txt_attn_decrease_factor
+                params.txt_attn_decrease_factor,
+                params.tokenizer_sp_model_at.c_str()
             },
             params.sd_inference_steps,
             params.sd_input_width,

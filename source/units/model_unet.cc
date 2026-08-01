@@ -112,8 +112,10 @@ Tensor UNet::inference(
 
     // SDXL UNets declare 5 inputs (sample, timestep, encoder_hidden_states,
     // text_embeds, time_ids): micro-conditioning built from the pooled
-    // embedding + [orig_h, orig_w, crop_top, crop_left, target_h, target_w]
+    // embedding + [orig_h, orig_w, crop_top, crop_left, target_h, target_w].
+    // MMDiT (SD3/FLUX) declares 4: pooled_projections as the 4th input.
     const bool sdxl_conditioned_ = (model_input_count() >= 5);
+    const bool mmdit_conditioned_ = (model_input_count() == 4);
     Tensor time_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     if (sdxl_conditioned_) {
         std::vector<float> time_ids_value_ = {
@@ -152,6 +154,9 @@ Tensor UNet::inference(
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
             input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
+            if (mmdit_conditioned_) {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
+            }
             if (sdxl_conditioned_) {
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
@@ -169,6 +174,9 @@ Tensor UNet::inference(
             input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
             input_tensors.emplace_back(clone_timestep_(timestep_));
             input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
+            if (mmdit_conditioned_) {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
+            }
             if (sdxl_conditioned_) {
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));

@@ -160,6 +160,7 @@ typedef struct TokenizerConfig {
     float major_boundary_factor;
     float txt_attn_increase_factor;
     float txt_attn_decrease_factor;
+    std::string tokenizer_sp_model_at;          // SentencePiece model file (spiece.model, for T5-XXL / tokenizer sp)
 } TokenizerConfig;
 
 /* Key State & Assistant Const ===========================================*/

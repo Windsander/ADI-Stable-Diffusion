@@ -525,6 +525,41 @@ public:
         return result_tensor_;
     }
 
+    // zero-pad the last dim from its size to pad_to_, e.g. SD3's CLIP seq
+    // embeddings 2048 -> 4096 (joint_attention_dim) before concat with T5
+    template<class T>
+    static Tensor pad_last_dim(const Tensor &input_, long pad_to_, T pad_value_ = T(0)) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.empty()) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pad_last_dim empty rank"));
+        }
+        long inner_ = long(input_shape_.back());
+        if (inner_ > pad_to_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pad_last_dim shrink"));
+        }
+        long outer_ = long(input_size_) / inner_;
+
+        long result_size_ = outer_ * pad_to_;
+        T* result_data_ = new T[result_size_];
+        for (long o_ = 0; o_ < outer_; ++o_) {
+            for (long i_ = 0; i_ < inner_; ++i_) {
+                result_data_[o_ * pad_to_ + i_] = input_data_[o_ * inner_ + i_];
+            }
+            for (long i_ = inner_; i_ < pad_to_; ++i_) {
+                result_data_[o_ * pad_to_ + i_] = pad_value_;
+            }
+        }
+
+        TensorShape result_shape_ = input_shape_;
+        result_shape_.back() = pad_to_;
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            result_shape_.data(), result_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
     template<class T>
     static Tensor guide(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
