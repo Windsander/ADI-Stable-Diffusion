@@ -170,6 +170,11 @@ case "$PLATFORM" in
                 CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake"
                 CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_ABI=${TARGET_ABI}"
                 CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_PLATFORM=android-${ANDROID_VER}"
+                # generic-toolchain.cmake is included before PROJECT() processes
+                # the toolchain file — pre-seed these as cache vars (NDK toolchain
+                # only warns DEPRECATION about them, then proceeds)
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+                CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
                 ;;
             *)
                 CMAKE_OPTIONS="${CMAKE_OPTIONS} -DANDROID_NDK=${ANDROID_NDK}"
