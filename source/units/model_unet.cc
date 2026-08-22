@@ -93,6 +93,12 @@ Tensor UNet::inference(
     int w_ = int(sd_unet_config.sd_input_width);
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
+    // MMDiT (SD3 / FLUX) backbone declares 16-channel latent, unlike SD 1.5/xl (4).
+    // Detect by input signature count: MMDiT has 4 inputs, SDXL has 5+.
+    if (model_input_count() == 4) {
+        c_ = 16;
+    }
+    sd_unet_config.sd_input_channel = c_;   // keep generate_output() in sync
     const bool need_guidance_ = (sd_unet_config.sd_scale_guidance > 1);
     const uint64_t working_steps_ = sd_scheduler_p->init(sd_unet_config.sd_inference_steps);
 

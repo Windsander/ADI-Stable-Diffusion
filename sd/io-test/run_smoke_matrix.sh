@@ -103,11 +103,11 @@ if [ "$MODE" == "sd35" ]; then
       --merges $SD35/tokenizer/merges.txt \
       --dict  $SD35/tokenizer/vocab.json \
       --sp-model $SD35/tokenizer_3/spiece.model \
-      -w 1024 -h 1024 -c 3 --seed 15.0 --dims 768 \
+      -w 1024 -h 1024 -c 16 --seed 15.0 --dims 768 \
       --beta scaled_linear --scheduler flow_euler --shift 3.0 \
       --predictor epsilon --tokenizer bpe \
       --token-idx-num 49408 --token-length 77 \
-      --decoding 1.5305 --decode-shift 0.0609 \
+      --decoding 0.18215 --decode-shift 0.0609 \
       --guidance 1.0 --steps $steps
   done
   echo "============================================"

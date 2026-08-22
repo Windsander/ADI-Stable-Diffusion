@@ -227,8 +227,7 @@ void OrtSD_Context::init() {
     );
 
     ort_sd_clip->init(*ort_executor);
-    if (ort_sd_clip_2) ort_sd_clip_2->init(*ort_executor);
-    if (ort_sd_clip_3) ort_sd_clip_3->init(*ort_executor);
+    // NOTE: clip_2 / clip_3 は prepare() 時に遅延初期化（メモリ節約のため）
     ort_sd_unet->init(*ort_executor);
     ort_sd_vae_encoder->init(*ort_executor);
     ort_sd_vae_decoder->init(*ort_executor);
@@ -237,6 +236,15 @@ void OrtSD_Context::init() {
 void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::string &negative_prompts_){
     // make sure thread security, prevent prepare & inference conflict
     std::lock_guard<std::mutex> lock(ort_thread_lock);
+
+    // NOTE: clip_2 / clip_3 は init() 時に読み込まず prepare() 時に遅延初期化
+    //（SD3.5 の text_encoder_2=2.6GB, text_encoder_3=18GB を一度にロードすると OOM）
+    if (ort_sd_clip_2 && !ort_sd_clip_2->is_initialized()) {
+        ort_sd_clip_2->init(*ort_executor);
+    }
+    if (ort_sd_clip_3 && !ort_sd_clip_3->is_initialized()) {
+        ort_sd_clip_3->init(*ort_executor);
+    }
 
     // embeded_positive_ [1, 77 * pos_N, 768], txt_encoder_1
     ClipEmbedResult embed_pos_ = ort_sd_clip->embedding(positive_prompts_);
@@ -284,6 +292,22 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
         ort_remain.embeded_positive = std::move(embed_pos_.hidden);
         ort_remain.embeded_negative = std::move(embed_neg_.hidden);
     }
+
+    // prepare() 完了後、CLIP エンコーダは embed 結果が ort_remain に格納済みなので
+    // 以降は不要。OOM 回避のため明示的に解放する（特に SD3.5 の text_encoder_2 + text_encoder_3 は巨大）。
+    if (ort_sd_clip_2) {
+        ort_sd_clip_2->release(*ort_executor);
+        delete ort_sd_clip_2;
+        ort_sd_clip_2 = nullptr;
+    }
+    if (ort_sd_clip_3) {
+        ort_sd_clip_3->release(*ort_executor);
+        delete ort_sd_clip_3;
+        ort_sd_clip_3 = nullptr;
+    }
+    // ort_sd_clip（CLIP-L）は比較的小さい（472M）だが、解放してもよい。
+    // ただし sd35 のみならず sdxl など他モードでも使われる可能性があるため、一旦残す。
+    // 将来メモリが厳しくなった場合、同様に解放を検討。
 }
 
 IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
@@ -293,14 +317,20 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     // input_image [1, 3, 512, 512]
     Tensor sample_image_ = convert_images(image_data_);
 
-    // encoded_image [1, 4, 64, 64]
+    // encoded_image [1, 4, 64, 64] for SD 1.5/xl;
+    // for SD3.5 / FLUX the VAE encoder emits 32 channels (mean+logvar) which we
+    // reparameterize to a 16-channel latent for the MMDiT backbone.
     Tensor encoded_sample_ = ort_sd_vae_encoder->encode(sample_image_);
+    Tensor latent_for_unet_ = std::move(encoded_sample_);
+    if (ort_sd_clip_3) {
+        latent_for_unet_ = ort_sd_vae_encoder->sample(latent_for_unet_);
+    }
 
-    // infered_latent_ [1, 4, 64, 64]
+    // infered_latent_ [1, 16, 64, 64] for MMDiT / [1, 4, 64, 64] otherwise
     Tensor infered_latent_ = ort_sd_unet->inference(
         ort_remain.embeded_positive, ort_remain.embeded_negative,
         ort_remain.pooled_positive, ort_remain.pooled_negative,
-        encoded_sample_
+        latent_for_unet_
     );
 
     // infered_latent_ [1, 3, 512, 512]
@@ -314,8 +344,8 @@ void OrtSD_Context::release(){
     ort_sd_vae_encoder->release(*ort_executor);
     ort_sd_unet->release(*ort_executor);
     ort_sd_clip->release(*ort_executor);
-    if (ort_sd_clip_2) ort_sd_clip_2->release(*ort_executor);
-    if (ort_sd_clip_3) ort_sd_clip_3->release(*ort_executor);
+    if (ort_sd_clip_2 && ort_sd_clip_2->is_initialized()) ort_sd_clip_2->release(*ort_executor);
+    if (ort_sd_clip_3 && ort_sd_clip_3->is_initialized()) ort_sd_clip_3->release(*ort_executor);
 
     delete ort_sd_vae_decoder;
     delete ort_sd_vae_encoder;

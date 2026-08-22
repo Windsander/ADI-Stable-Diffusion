@@ -1,6 +1,6 @@
-/*
- * Copyright (c) 2018-2050 SD_VAE - Arikan.Li
- * Created by Arikan.Li on 2024/05/14.
+/* 
+ * Copyright (c) 2018-2050 SD_VAE - Arikan.Li 
+ * Created by Arikan.Li on 2024/05/14. 
  */
 #ifndef MODEL_VAE_H
 #define MODEL_VAE_H
@@ -23,7 +23,7 @@ using namespace detail;
         /*sd_input_width*/            512,                           \
         /*sd_input_height*/           512,                           \
         /*sd_input_channel*/          4,                             \
-    }                                                                \
+    }
 
 typedef struct ModelVAEsConfig {
     float sd_decode_scale_strength;
@@ -46,6 +46,7 @@ public:
 
     Tensor encode(const Tensor &inimage_);
     Tensor decode(const Tensor &latents_);
+    Tensor sample(const Tensor &latent_params_);
 };
 
 VAE::VAE(const std::string &model_path_, const ModelVAEsConfig &vae_config_) : ModelBase(model_path_){
@@ -85,6 +86,45 @@ Tensor VAE::encode(const Tensor &inimage_) {
         -sd_vae_config.sd_decode_shift_strength * sd_vae_config.sd_decode_scale_strength
     );
     return result_;
+}
+
+Tensor VAE::sample(const Tensor &latent_params_) {
+    // SD3.5/FLUX VAE encoder outputs 32 channels: [1, 16 (mean), 16 (logvar), H, W].
+    // reparameterize to a 16-channel latent for the MMDiT backbone.
+    if (!TensorHelper::have_data(latent_params_)) {
+        return TensorHelper::empty<float>();
+    }
+    auto info = latent_params_.GetTensorTypeAndShapeInfo();
+    auto shape = info.GetShape();
+    if (shape.size() != 4) {
+        return TensorHelper::empty<float>();
+    }
+    int64_t c = shape[1];
+    int64_t half_c = c / 2;
+    int64_t h = shape[2];
+    int64_t w = shape[3];
+    int64_t spatial = h * w;
+    int64_t total = c * spatial;
+    const float* src = latent_params_.GetTensorData<float>();
+
+    std::vector<float> mean_(half_c * spatial);
+    std::vector<float> logvar_(half_c * spatial);
+    for (int64_t i = 0; i < half_c * spatial; ++i) {
+        mean_[i]  = src[i];
+        logvar_[i] = src[half_c * spatial + i];
+    }
+
+    std::vector<float> latent_(half_c * spatial);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<float> dist(0.0f, 1.0f);
+    for (int64_t i = 0; i < half_c * spatial; ++i) {
+        float stddev = std::exp(0.5f * logvar_[i]);
+        latent_[i] = mean_[i] + stddev * dist(gen);
+    }
+
+    TensorShape out_shape_{1, half_c, h, w};
+    return TensorHelper::create(out_shape_, latent_);
 }
 
 Tensor VAE::decode(const Tensor &latents_) {

@@ -85,11 +85,12 @@ protected:
     virtual void generate_output(std::vector<Tensor>& output_tensors_) = 0;
 
 public:
-    explicit ModelBase(std::string model_path_) : model_path(std::move(model_path_)) {};
+    explicit ModelBase(std::string model_path_) : model_path(std::move(model_path_)) {}
     virtual ~ModelBase() = default;
 
     void init(ONNXRuntimeExecutor &ort_executor_);
     void release(ONNXRuntimeExecutor &ort_executor_);
+    bool is_initialized() const { return model_session != nullptr; }
 };
 
 void ModelBase::print_model_detail(const Ort::AllocatorWithDefaultOptions& allocator, bool is_input) {
