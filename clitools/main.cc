@@ -9,10 +9,21 @@
 #include <iostream>
 #include <sstream>
 #include <random>
+#include <fstream>
 
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cstdlib>
+
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#include <sys/sysctl.h>
+#elif defined(__linux__)
+#include <sys/sysinfo.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#endif
 
 #include "adi.h"
 
@@ -150,9 +161,124 @@ struct CommandLineInput {
     float sd_random_intensity = 1.0f;                                       // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
     float sd_decode_shift_strength = 0.0f;                                  // Infer_Major: VAE shift factor (SD3.5 = 0.0609f)
+    std::string sd_precision = "auto";                                      // Infer_Major: weight precision policy: auto | fp32 | fp16
 
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
+
+// ---------- runtime precision policy (auto fp32/fp16 by host memory) ----------
+// fp32 stays the single authoritative artifact; fp16 is a derived conversion
+// produced on demand by sd/tools/onnx_fp16_convert.py and cached in a sibling
+// "<model-set>-fp16" directory. Decision flow: probe available RAM -> estimate
+// load peak (max(encoder stack, backbone stack) x 1.3) -> if fp32 does not fit,
+// swap each component path to its fp16 counterpart, converting when missing.
+
+static uint64_t probe_available_memory_bytes() {
+#if defined(__APPLE__)
+    mach_port_t host_ = mach_host_self();
+    vm_statistics64_data_t vmstat_{};
+    mach_msg_type_number_t count_ = HOST_VM_INFO64_COUNT;
+    if (host_statistics64(host_, HOST_VM_INFO64, (host_info64_t)&vmstat_, &count_) == KERN_SUCCESS) {
+        uint64_t page_ = 0;
+        {   // page size
+            int mib_[2] = {CTL_HW, HW_PAGESIZE};
+            int ps_ = 0; size_t len_ = sizeof(ps_);
+            if (sysctl(mib_, 2, &ps_, &len_, nullptr, 0) == 0) page_ = uint64_t(ps_);
+        }
+        if (page_ == 0) page_ = 4096;
+        return uint64_t(vmstat_.free_count + vmstat_.inactive_count) * page_;
+    }
+    return 0;
+#elif defined(__linux__)
+    struct sysinfo info_{};
+    if (sysinfo(&info_) == 0) {
+        return uint64_t(info_.freeram + info_.bufferram) * info_.mem_unit;
+    }
+    return 0;
+#elif defined(_WIN32)
+    MEMORYSTATUSEX status_{};
+    status_.dwLength = sizeof(status_);
+    if (GlobalMemoryStatusEx(&status_)) return uint64_t(status_.ullAvailPhys);
+    return 0;
+#else
+    return 0;
+#endif
+}
+
+static uint64_t file_bytes(const std::string &path_) {
+    std::ifstream in_(path_, std::ios::binary | std::ios::ate);
+    return in_ ? uint64_t(in_.tellg()) : 0;
+}
+
+static std::string parent_dir(const std::string &path_) {
+    size_t pos_ = path_.find_last_of('/');
+    return (pos_ == std::string::npos) ? std::string(".") : path_.substr(0, pos_);
+}
+
+// bytes of one exported component (model.onnx + external data file)
+static uint64_t component_bytes(const std::string &onnx_path_) {
+    if (onnx_path_.empty()) return 0;
+    return file_bytes(onnx_path_) + file_bytes(parent_dir(onnx_path_) + "/model.onnx_data");
+}
+
+static void resolve_precision(CommandLineInput &params) {
+    if (params.sd_precision != "auto" && params.sd_precision != "fp32" && params.sd_precision != "fp16") {
+        fprintf(stderr, "error: --precision must be one of: auto | fp32 | fp16\n");
+        exit(1);
+    }
+    if (params.sd_precision == "fp32") return;
+
+    std::vector<std::string *> components_ = {
+        &params.onnx_clip_path, &params.onnx_clip_2_path, &params.onnx_clip_3_path,
+        &params.onnx_unet_path, &params.onnx_vae_encoder_path, &params.onnx_vae_decoder_path
+    };
+    uint64_t encoders_ = component_bytes(params.onnx_clip_path)
+                       + component_bytes(params.onnx_clip_2_path)
+                       + component_bytes(params.onnx_clip_3_path);
+    uint64_t backbone_ = component_bytes(params.onnx_unet_path)
+                       + component_bytes(params.onnx_vae_encoder_path)
+                       + component_bytes(params.onnx_vae_decoder_path);
+    // encoders run in prepare() and are released before the backbone loop, so
+    // the peak is the larger stack, not their sum
+    uint64_t peak_est_ = uint64_t(double(std::max(encoders_, backbone_)) * 1.3);
+
+    bool want_fp16_ = (params.sd_precision == "fp16");
+    if (params.sd_precision == "auto") {
+        uint64_t avail_ = probe_available_memory_bytes();
+        want_fp16_ = (avail_ > 0) && (peak_est_ > uint64_t(double(avail_) * 0.75));
+        printf("[precision] auto: available RAM %.1f GB, fp32 peak est %.1f GB -> %s\n",
+               double(avail_) / 1073741824.0, double(peak_est_) / 1073741824.0,
+               want_fp16_ ? "fp16" : "fp32");
+    }
+    if (!want_fp16_) return;
+
+    const char *python_ = getenv("ADI_FP16_PYTHON");
+    const char *tool_ = getenv("ADI_FP16_TOOL");
+    std::string python_cmd_ = python_ ? python_ : "python3";
+    std::string tool_path_ = tool_ ? tool_ : "sd/tools/onnx_fp16_convert.py";
+
+    for (auto *path_ptr_ : components_) {
+        if (path_ptr_->empty()) continue;
+        std::string comp_dir_ = parent_dir(*path_ptr_);            // .../onnx-<set>/<component>
+        std::string set_dir_ = parent_dir(comp_dir_);              // .../onnx-<set>
+        std::string comp_name_ = comp_dir_.substr(set_dir_.size() + 1);
+        std::string fp16_onnx_ = set_dir_ + "-fp16/" + comp_name_ + "/model.onnx";
+        if (file_bytes(fp16_onnx_) == 0) {
+            printf("[precision] converting %s -> fp16 (one-time, cached)\n", comp_dir_.c_str());
+            std::string cmd_ = "\"" + python_cmd_ + "\" \"" + tool_path_ + "\" \"" +
+                               comp_dir_ + "\" \"" + (set_dir_ + "-fp16/" + comp_name_) + "\"";
+            int rc_ = system(cmd_.c_str());
+            if (rc_ != 0 || file_bytes(fp16_onnx_) == 0) {
+                fprintf(stderr, "[precision] WARN: fp16 conversion failed for %s, keeping fp32\n",
+                        comp_dir_.c_str());
+                continue;
+            }
+        }
+        *path_ptr_ = fp16_onnx_;
+        printf("[precision] %s -> %s\n", comp_name_.c_str(), fp16_onnx_.c_str());
+    }
+}
+
 
 std::string wrap_text(const std::string &text, size_t line_width = 0, size_t line_wraps = 0) {
     line_width = (line_width <= 0) ? DEFAULT_LINE_WIDTH : line_width;
@@ -291,6 +417,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --guidance <float>                 Scale for classifier-free guidance, immersion rate for [value * (Positive - Negative)] residual (default 7.5f) \n");
     printf("  --decoding <float>                 for VAE Decoding result merged (default 0.18215f) \n");
     printf("  --decode-shift <float>             VAE shift factor (default 0.0; SD3.5 = 0.0609) \n");
+    printf("  --precision <auto|fp32|fp16>       weight precision policy (default auto: probe RAM, convert fp16 on demand via sd/tools/onnx_fp16_convert.py) \n");
     printf("  --strength <float>                 set random intensity to control noise adding each step in [0.0, 1.0] (default 1.0f) \n");
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
@@ -528,6 +655,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_decode_shift_strength = std::stof(argv[i]);
+        }  else if (arg == "--precision") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_precision = argv[i];
         }  else if (arg == "--strength") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -682,6 +815,10 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         fprintf(stderr, "error: VAE Decoding scale must be positive (decode: latents/scale + shift; SD1.x=0.18215, SD3.5=1.5305)\n");
         exit(1);
     }
+
+    // runtime precision policy: auto-switch model paths to fp16 (converting on
+    // demand) when the fp32 stack does not fit in available memory
+    resolve_precision(params);
 
     // seed random check
     if (params.scheduler_seed < 0) {
