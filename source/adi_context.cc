@@ -64,6 +64,11 @@ private:
     VAE *ort_sd_vae_encoder = nullptr;
     VAE *ort_sd_vae_decoder = nullptr;
 
+    // captured at init() time: triple-encoder (SD3/FLUX) mode implies a
+    // 16-channel MMDiT latent. Must not be derived from ort_sd_clip_3 later,
+    // since prepare() may release encoder sessions before inference().
+    bool ort_is_mmdit = false;
+
 private:
     Tensor convert_images(const IMAGE_DATA &image_data_) const;
     IMAGE_DATA convert_result(const Tensor &infer_output_) const;
@@ -176,6 +181,7 @@ void OrtSD_Context::init() {
     // SD3/FLUX: 3rd encoder is T5-XXL — SentencePiece tokenizer, 32100 vocab,
     // 256-token sequence, 4096-dim hidden, last_hidden_state (no penultimate)
     if (!ort_config.sd_modelpath_config.onnx_clip_3_path.empty()) {
+        ort_is_mmdit = true;
         TokenizerConfig t5_cfg_ = ort_config.sd_tokenizer_config;
         t5_cfg_.tokenizer_type = TOKENIZER_SP;
         t5_cfg_.tokenizer_dictionary_at = ort_config.sd_tokenizer_config.tokenizer_sp_model_at;
@@ -293,17 +299,15 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
         ort_remain.embeded_negative = std::move(embed_neg_.hidden);
     }
 
-    // prepare() 完了後、CLIP エンコーダは embed 結果が ort_remain に格納済みなので
-    // 以降は不要。OOM 回避のため明示的に解放する（特に SD3.5 の text_encoder_2 + text_encoder_3 は巨大）。
-    if (ort_sd_clip_2) {
+    // prepare() 完了後、CLIP エンコーダの embed 結果は ort_remain に格納済み。
+    // OOM 回避のためセッションは明示的に解放する（特に SD3.5 の text_encoder_2 + text_encoder_3 は巨大）。
+    // ただしオブジェクト自体は残す：再 prepare() 時に is_initialized() 経由で遅延再 init される。
+    //（ここで delete すると再 prepare() が埋め込みを更新できず、stale embedding を使う壊れた状態になる）
+    if (ort_sd_clip_2 && ort_sd_clip_2->is_initialized()) {
         ort_sd_clip_2->release(*ort_executor);
-        delete ort_sd_clip_2;
-        ort_sd_clip_2 = nullptr;
     }
-    if (ort_sd_clip_3) {
+    if (ort_sd_clip_3 && ort_sd_clip_3->is_initialized()) {
         ort_sd_clip_3->release(*ort_executor);
-        delete ort_sd_clip_3;
-        ort_sd_clip_3 = nullptr;
     }
     // ort_sd_clip（CLIP-L）は比較的小さい（472M）だが、解放してもよい。
     // ただし sd35 のみならず sdxl など他モードでも使われる可能性があるため、一旦残す。
@@ -322,7 +326,7 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     // reparameterize to a 16-channel latent for the MMDiT backbone.
     Tensor encoded_sample_ = ort_sd_vae_encoder->encode(sample_image_);
     Tensor latent_for_unet_ = std::move(encoded_sample_);
-    if (ort_sd_clip_3) {
+    if (ort_is_mmdit) {
         latent_for_unet_ = ort_sd_vae_encoder->sample(latent_for_unet_);
     }
 
