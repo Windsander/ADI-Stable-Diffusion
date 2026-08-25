@@ -94,8 +94,13 @@ Tensor UNet::inference(
     int h_ = int(sd_unet_config.sd_input_height);
     int c_ = int(sd_unet_config.sd_input_channel);
     // MMDiT (SD3 / FLUX) backbone declares 16-channel latent, unlike SD 1.5/xl (4).
-    // Detect by input signature count: MMDiT has 4 inputs, SDXL has 5+.
-    if (model_input_count() == 4) {
+    // SD3 export has exactly 4 inputs; FLUX adds rotary ids + guidance (7 inputs)
+    // and is detected by its signature "img_ids" input.
+    bool flux_conditioned_ = false;
+    for (size_t ii = 0; ii < model_input_count(); ++ii) {
+        if (model_input_name(ii) == "img_ids") { flux_conditioned_ = true; break; }
+    }
+    if (model_input_count() == 4 || flux_conditioned_) {
         c_ = 16;
     }
     sd_unet_config.sd_input_channel = c_;   // keep generate_output() in sync
@@ -126,8 +131,9 @@ Tensor UNet::inference(
     // text_embeds, time_ids): micro-conditioning built from the pooled
     // embedding + [orig_h, orig_w, crop_top, crop_left, target_h, target_w].
     // MMDiT (SD3/FLUX) declares 4: pooled_projections as the 4th input.
-    const bool sdxl_conditioned_ = (model_input_count() >= 5);
-    const bool mmdit_conditioned_ = (model_input_count() == 4);
+    // FLUX counts 7 but follows the MMDiT path (name-bound below).
+    const bool sdxl_conditioned_ = (model_input_count() >= 5) && !flux_conditioned_;
+    const bool mmdit_conditioned_ = (model_input_count() == 4) || flux_conditioned_;
     Tensor time_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     if (sdxl_conditioned_) {
         std::vector<float> time_ids_value_ = {
@@ -136,6 +142,30 @@ Tensor UNet::inference(
             float(sd_unet_config.sd_input_height * 8), float(sd_unet_config.sd_input_width * 8)
         };
         time_ids_ = TensorHelper::create(TensorShape{1, 6}, time_ids_value_);
+    }
+
+    // FLUX rotary position ids & guidance embedding.
+    // img_ids: [seq, 3] = (0, row, col) over the packed 2x2 grid (diffusers
+    // FluxPipeline._prepare_latent_image_ids); txt_ids: zeros [txt_seq, 3];
+    // guidance: schnell is guidance-distilled -> constant 0.
+    Tensor img_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    Tensor txt_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    Tensor guidance_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    long flux_seq_ = 0;
+    if (flux_conditioned_) {
+        long ph_ = h_ / 2, pw_ = w_ / 2;
+        flux_seq_ = ph_ * pw_;
+        std::vector<float> img_ids_value_(flux_seq_ * 3, 0.0f);
+        for (long p = 0; p < ph_; ++p) {
+            for (long q = 0; q < pw_; ++q) {
+                img_ids_value_[(p * pw_ + q) * 3 + 1] = float(p);
+                img_ids_value_[(p * pw_ + q) * 3 + 2] = float(q);
+            }
+        }
+        img_ids_ = TensorHelper::create(TensorShape{flux_seq_, 3}, img_ids_value_);
+        long tseq_ = long(embs_positive_.GetTensorTypeAndShapeInfo().GetShape()[1]);
+        txt_ids_ = TensorHelper::create(TensorShape{tseq_, 3}, std::vector<float>(tseq_ * 3, 0.0f));
+        guidance_ = TensorHelper::create(TensorShape{1}, std::vector<float>{0.0f});
     }
 
     TensorShape latent_shape_{1, c_, h_, w_};
@@ -175,6 +205,12 @@ Tensor UNet::inference(
                     inputs_.emplace_back(TensorHelper::clone<float_t>(pooled_));
                 } else if (n_ == "timestep" || n_ == "t") {
                     inputs_.emplace_back(clone_timestep_(ts_));
+                } else if (n_ == "img_ids") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(img_ids_));
+                } else if (n_ == "txt_ids") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(txt_ids_));
+                } else if (n_ == "guidance") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(guidance_));
                 } else {
                     amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: unbound MMDiT model input"));
                 }
@@ -182,14 +218,36 @@ Tensor UNet::inference(
             return inputs_;
         };
 
+        // FLUX consumes 2x2-patch-packed latents [1, seq, C*4]; the scheduler
+        // state itself stays in [1, C, H, W] and we pack/unpack around the call.
+        Tensor packed_latent_ = (flux_conditioned_) ?
+                                TensorHelper::pack_2x2<float>(model_latent_) :
+                                TensorHelper::create(TensorShape{0}, std::vector<float>{});
+        const Tensor& model_input_ = (flux_conditioned_) ? packed_latent_ : model_latent_;
+        auto make_output_ = [&]() {
+            std::vector<Tensor> output_tensors;
+            if (flux_conditioned_) {
+                std::vector<float> out_buf_(flux_seq_ * c_ * 4, 0.0f);
+                output_tensors.emplace_back(TensorHelper::create(
+                    TensorShape{1, int64_t(flux_seq_), int64_t(c_) * 4}, out_buf_));
+            } else {
+                generate_output(output_tensors);
+            }
+            return output_tensors;
+        };
+        auto unpack_pred_ = [&](Tensor pred_) {
+            if (flux_conditioned_) return TensorHelper::unpack_2x2<float>(pred_, h_, w_);
+            return std::move(pred_);   // Ort::Value has no copy ctor
+        };
+
         // do positive N_pos_embed_num times
         Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         if (TensorHelper::have_data(embs_positive_)) {
             std::vector<Tensor> input_tensors;
             if (mmdit_conditioned_) {
-                input_tensors = bind_mmdit_inputs_(model_latent_, timestep_, embs_positive_, pooled_positive_);
+                input_tensors = bind_mmdit_inputs_(model_input_, timestep_, embs_positive_, pooled_positive_);
             } else {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_input_));
                 input_tensors.emplace_back(clone_timestep_(timestep_));
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
                 if (sdxl_conditioned_) {
@@ -197,10 +255,9 @@ Tensor UNet::inference(
                     input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
                 }
             }
-            std::vector<Tensor> output_tensors;
-            generate_output(output_tensors);
+            std::vector<Tensor> output_tensors = make_output_();
             execute(input_tensors, output_tensors);
-            pred_positive_ = std::move(output_tensors[0]);
+            pred_positive_ = unpack_pred_(std::move(output_tensors[0]));
         }
 
         // do negative N_neg_embed_num times
@@ -208,9 +265,9 @@ Tensor UNet::inference(
         if (TensorHelper::have_data(embs_negative_) && need_guidance_) {
             std::vector<Tensor> input_tensors;
             if (mmdit_conditioned_) {
-                input_tensors = bind_mmdit_inputs_(model_latent_, timestep_, embs_negative_, pooled_negative_);
+                input_tensors = bind_mmdit_inputs_(model_input_, timestep_, embs_negative_, pooled_negative_);
             } else {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_input_));
                 input_tensors.emplace_back(clone_timestep_(timestep_));
                 input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
                 if (sdxl_conditioned_) {
@@ -218,10 +275,9 @@ Tensor UNet::inference(
                     input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
                 }
             }
-            std::vector<Tensor> output_tensors;
-            generate_output(output_tensors);
+            std::vector<Tensor> output_tensors = make_output_();
             execute(input_tensors, output_tensors);
-            pred_negative_ = std::move(output_tensors[0]);
+            pred_negative_ = unpack_pred_(std::move(output_tensors[0]));
         }
 
         // Merge predictions

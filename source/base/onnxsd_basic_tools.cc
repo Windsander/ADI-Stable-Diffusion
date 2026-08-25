@@ -601,6 +601,70 @@ public:
         return result_tensor_;
     }
 
+    // FLUX 2x2 patch packing: [1, C, H, W] -> [1, (H/2)*(W/2), C*4].
+    // Matches diffusers FluxPipeline._pack_latents (view + permute 0,2,4,1,3,5):
+    // packed[b, ph*(W/2)+pw, c*4 + i*2 + j] = latent[b, c, ph*2+i, pw*2+j]
+    template<class T>
+    static Tensor pack_2x2(const Tensor &input_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 4) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pack_2x2 expects rank-4 [B,C,H,W]"));
+        }
+        long b_ = long(input_shape_[0]), c_ = long(input_shape_[1]);
+        long h_ = long(input_shape_[2]), w_ = long(input_shape_[3]);
+        long ph_ = h_ / 2, pw_ = w_ / 2;
+        long seq_ = ph_ * pw_;
+        long inner_ = c_ * 4;
+        long result_size_ = b_ * seq_ * inner_;
+        T* result_data_ = new T[result_size_];
+        for (long b = 0; b < b_; ++b)
+            for (long p_h = 0; p_h < ph_; ++p_h)
+                for (long p_w = 0; p_w < pw_; ++p_w)
+                    for (long c = 0; c < c_; ++c)
+                        for (long i = 0; i < 2; ++i)
+                            for (long j = 0; j < 2; ++j) {
+                                long src_ = ((b * c_ + c) * h_ + (p_h * 2 + i)) * w_ + (p_w * 2 + j);
+                                long dst_ = ((b * seq_ + p_h * pw_ + p_w) * c_ + c) * 4 + i * 2 + j;
+                                result_data_[dst_] = input_data_[src_];
+                            }
+        TensorShape shape_{b_, seq_, inner_};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // inverse of pack_2x2: [1, (H/2)*(W/2), C*4] -> [1, C, H, W]
+    template<class T>
+    static Tensor unpack_2x2(const Tensor &input_, long height_, long width_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 3) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: unpack_2x2 expects rank-3 [B,seq,C*4]"));
+        }
+        long b_ = long(input_shape_[0]);
+        long inner_ = long(input_shape_[2]);
+        long c_ = inner_ / 4;
+        long h_ = height_, w_ = width_;
+        long ph_ = h_ / 2, pw_ = w_ / 2;
+        long result_size_ = b_ * c_ * h_ * w_;
+        T* result_data_ = new T[result_size_];
+        for (long b = 0; b < b_; ++b)
+            for (long p_h = 0; p_h < ph_; ++p_h)
+                for (long p_w = 0; p_w < pw_; ++p_w)
+                    for (long c = 0; c < c_; ++c)
+                        for (long i = 0; i < 2; ++i)
+                            for (long j = 0; j < 2; ++j) {
+                                long dst_ = ((b * c_ + c) * h_ + (p_h * 2 + i)) * w_ + (p_w * 2 + j);
+                                long src_ = ((b * ph_ * pw_ + p_h * pw_ + p_w) * c_ + c) * 4 + i * 2 + j;
+                                result_data_[dst_] = input_data_[src_];
+                            }
+        TensorShape shape_{b_, c_, h_, w_};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
     template<class T>
     static Tensor guide(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
