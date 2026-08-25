@@ -92,9 +92,10 @@ fi
 # ---------- sd3.5-large-turbo (triple encoder, MMDiT, flow_euler, 1024px) ----------
 if [ "$MODE" == "sd35" ]; then
   # 支持 fp32 (高內存機器) 和 fp16 (低內存機器) 雙目录
-  # 默認使用 fp16（本機 128GB 但 fp32 79GB 峰值仍 OOM）
-  # 高內存機器（>1TB）可通過設置 SD35_MODEL_DIR 環境變量切換到 fp32
-  SD35="${SD35_MODEL_DIR:-$ROOT/sd/sd-base-model/onnx-sd35-turbo-fp16}"
+  # 默認使用 fp32：fp16 目錄的 text_encoder*/transformer 目前轉換損壞（類型不匹配/外部數據缺失），
+  # 待 onnxconverter_common 重建後再切回。128GB 機器 fp32 峰值 ~35GB（prepare 後 encoder 已釋放）。
+  # 可用 SD35_MODEL_DIR 環境變量顯式切換。
+  SD35="${SD35_MODEL_DIR:-$ROOT/sd/sd-base-model/onnx-sd35-turbo}"
   for steps in 4 8; do
     run_case "sd35-flow_euler-s${steps}" \
       --clip  $SD35/text_encoder/model.onnx \
