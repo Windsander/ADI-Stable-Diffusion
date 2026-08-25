@@ -55,6 +55,9 @@ protected:
     std::string model_output_name(size_t index_) {
         return (index_ < model_meta.tensor_count_o) ? model_meta.tensor_names_o[index_] : "";
     }
+    std::string model_input_name(size_t index_) {
+        return (index_ < model_meta.tensor_count_i) ? model_meta.tensor_names_i[index_] : "";
+    }
 
     // run with ORT-allocated outputs (shapes resolved by the model itself);
     // needed when output arity/shapes vary across exports (e.g. SDXL text encoders)

@@ -269,13 +269,10 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
             Tensor lg_neg_ = TensorHelper::concat_last_dim<float>(embed_neg_.hidden, embed_neg_2_.hidden);
             lg_pos_ = TensorHelper::pad_last_dim<float>(lg_pos_, 4096);
             lg_neg_ = TensorHelper::pad_last_dim<float>(lg_neg_, 4096);
-            std::vector<Tensor> seq_pos_, seq_neg_;
-            seq_pos_.emplace_back(std::move(lg_pos_));
-            seq_pos_.emplace_back(std::move(embed_pos_3_.hidden));
-            seq_neg_.emplace_back(std::move(lg_neg_));
-            seq_neg_.emplace_back(std::move(embed_neg_3_.hidden));
-            ort_remain.embeded_positive = TensorHelper::merge<float>(seq_pos_, 1);
-            ort_remain.embeded_negative = TensorHelper::merge<float>(seq_neg_, 1);
+            // sequence-dim concat [1,77,4096] ++ [1,256,4096] -> [1,333,4096]
+            // (merge() interleaves equal chunks — wrong semantics here)
+            ort_remain.embeded_positive = TensorHelper::concat_sequence<float>(lg_pos_, embed_pos_3_.hidden);
+            ort_remain.embeded_negative = TensorHelper::concat_sequence<float>(lg_neg_, embed_neg_3_.hidden);
             ort_remain.pooled_positive  = TensorHelper::concat_last_dim<float>(embed_pos_.pooled, embed_pos_2_.pooled);
             ort_remain.pooled_negative  = TensorHelper::concat_last_dim<float>(embed_neg_.pooled, embed_neg_2_.pooled);
         } else {

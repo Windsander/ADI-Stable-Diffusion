@@ -107,12 +107,18 @@ Tensor UNet::inference(
     // declare float scalar. Feeding a mismatched tensor makes ORT throw inside
     // ModelBase::execute, which is caught and logged — the UNet output then
     // silently stays zero and the whole trajectory decodes to pure noise.
+    // Locate the timestep input BY NAME: export input order varies
+    // (legacy: sample, timestep, ...; optimum SD3 MMDiT: timestep last).
     ONNXTensorElementDataType timestep_type_ = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
     size_t timestep_rank_ = 1;
-    {
-        ONNXTensorElementDataType declared_type_ = model_input_element_type(1, &timestep_rank_);
-        if (declared_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
-            timestep_type_ = declared_type_;
+    for (size_t ii = 0; ii < model_input_count(); ++ii) {
+        const std::string n_ = model_input_name(ii);
+        if (n_ == "timestep" || n_ == "t") {
+            ONNXTensorElementDataType declared_type_ = model_input_element_type(ii, &timestep_rank_);
+            if (declared_type_ != ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED) {
+                timestep_type_ = declared_type_;
+            }
+            break;
         }
     }
 
@@ -153,19 +159,43 @@ Tensor UNet::inference(
                    TensorHelper::clone<float_t>(t_) : TensorHelper::clone<int64_t>(t_);
         };
 
+        // MMDiT exports declare inputs in exporter-specific order (optimum SD3:
+        // hidden_states, encoder_hidden_states, pooled_projections, timestep) —
+        // bind BY DECLARED INPUT NAME; positional order cannot be assumed.
+        auto bind_mmdit_inputs_ = [&](const Tensor& lat_, const Tensor& ts_,
+                                      const Tensor& embs_, const Tensor& pooled_) {
+            std::vector<Tensor> inputs_;
+            for (size_t ii = 0; ii < model_input_count(); ++ii) {
+                const std::string n_ = model_input_name(ii);
+                if (n_ == "hidden_states" || n_ == "sample" || n_ == "latent_model_input") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(lat_));
+                } else if (n_ == "encoder_hidden_states") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(embs_));
+                } else if (n_ == "pooled_projections" || n_ == "text_embeds") {
+                    inputs_.emplace_back(TensorHelper::clone<float_t>(pooled_));
+                } else if (n_ == "timestep" || n_ == "t") {
+                    inputs_.emplace_back(clone_timestep_(ts_));
+                } else {
+                    amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: unbound MMDiT model input"));
+                }
+            }
+            return inputs_;
+        };
+
         // do positive N_pos_embed_num times
         Tensor pred_positive_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         if (TensorHelper::have_data(embs_positive_)) {
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
-            input_tensors.emplace_back(clone_timestep_(timestep_));
-            input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
             if (mmdit_conditioned_) {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
-            }
-            if (sdxl_conditioned_) {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+                input_tensors = bind_mmdit_inputs_(model_latent_, timestep_, embs_positive_, pooled_positive_);
+            } else {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+                input_tensors.emplace_back(clone_timestep_(timestep_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_positive_));
+                if (sdxl_conditioned_) {
+                    input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_positive_));
+                    input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+                }
             }
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
@@ -177,15 +207,16 @@ Tensor UNet::inference(
         Tensor pred_negative_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
         if (TensorHelper::have_data(embs_negative_) && need_guidance_) {
             std::vector<Tensor> input_tensors;
-            input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
-            input_tensors.emplace_back(clone_timestep_(timestep_));
-            input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
             if (mmdit_conditioned_) {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
-            }
-            if (sdxl_conditioned_) {
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
-                input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+                input_tensors = bind_mmdit_inputs_(model_latent_, timestep_, embs_negative_, pooled_negative_);
+            } else {
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(model_latent_));
+                input_tensors.emplace_back(clone_timestep_(timestep_));
+                input_tensors.emplace_back(TensorHelper::clone<float_t>(embs_negative_));
+                if (sdxl_conditioned_) {
+                    input_tensors.emplace_back(TensorHelper::clone<float_t>(pooled_negative_));
+                    input_tensors.emplace_back(TensorHelper::clone<float_t>(time_ids_));
+                }
             }
             std::vector<Tensor> output_tensors;
             generate_output(output_tensors);
