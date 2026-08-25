@@ -31,3 +31,4 @@ engine/onnxruntime-*
 engine/onnxruntime/*
 
 CMakeSettings.json
+debug/
