@@ -678,8 +678,8 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         exit(1);
     }
 
-    if (params.sd_decode_scale_strength < 0.f || params.sd_decode_scale_strength > 1.f) {
-        fprintf(stderr, "error: can only work with VAE Decoding scale in [0.0, 1.0]\n");
+    if (params.sd_decode_scale_strength <= 0.f) {
+        fprintf(stderr, "error: VAE Decoding scale must be positive (decode: latents/scale + shift; SD1.x=0.18215, SD3.5=1.5305)\n");
         exit(1);
     }
 
