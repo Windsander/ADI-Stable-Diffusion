@@ -32,7 +32,3 @@ engine/onnxruntime/*
 
 CMakeSettings.json
 debug/
-
-# local working docs (never commit)
-PLAN-v2.0-mmdit.md
-GOAL_SESSION_v2.0.0_Closure.md
