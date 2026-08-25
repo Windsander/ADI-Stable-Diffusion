@@ -148,11 +148,19 @@ Tensor UNet::inference(
     // img_ids: [seq, 3] = (0, row, col) over the packed 2x2 grid (diffusers
     // FluxPipeline._prepare_latent_image_ids); txt_ids: zeros [txt_seq, 3];
     // guidance: schnell is guidance-distilled -> constant 0.
+    // ids dtype follows the export declaration (optimum FLUX exports INT64).
     Tensor img_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     Tensor txt_ids_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
     Tensor guidance_ = TensorHelper::create(TensorShape{0}, std::vector<float>{});
+    bool flux_ids_int64_ = false;
     long flux_seq_ = 0;
     if (flux_conditioned_) {
+        for (size_t ii = 0; ii < model_input_count(); ++ii) {
+            if (model_input_name(ii) == "img_ids") {
+                flux_ids_int64_ = (model_input_element_type(ii) == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64);
+                break;
+            }
+        }
         long ph_ = h_ / 2, pw_ = w_ / 2;
         flux_seq_ = ph_ * pw_;
         std::vector<float> img_ids_value_(flux_seq_ * 3, 0.0f);
@@ -181,6 +189,9 @@ Tensor UNet::inference(
         Tensor timestep_ = sd_scheduler_p->time(i);
         if (timestep_type_ == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
             float timestep_value_ = float(timestep_.GetTensorData<int64_t>()[0]);
+            // diffusers FluxPipeline feeds timestep/1000 to the transformer;
+            // SD3 feeds sigma*1000 directly. Our schedulers emit sigma*1000.
+            if (flux_conditioned_) timestep_value_ /= 1000.0f;
             TensorShape timestep_shape_ = (timestep_rank_ == 0) ? TensorShape{} : TensorShape{1};
             timestep_ = TensorHelper::create<float>(timestep_shape_, std::vector<float>{timestep_value_});
         }
@@ -206,9 +217,13 @@ Tensor UNet::inference(
                 } else if (n_ == "timestep" || n_ == "t") {
                     inputs_.emplace_back(clone_timestep_(ts_));
                 } else if (n_ == "img_ids") {
-                    inputs_.emplace_back(TensorHelper::clone<float_t>(img_ids_));
+                    inputs_.emplace_back((flux_ids_int64_) ?
+                        TensorHelper::cast<int64_t, float_t>(img_ids_) :
+                        TensorHelper::clone<float_t>(img_ids_));
                 } else if (n_ == "txt_ids") {
-                    inputs_.emplace_back(TensorHelper::clone<float_t>(txt_ids_));
+                    inputs_.emplace_back((flux_ids_int64_) ?
+                        TensorHelper::cast<int64_t, float_t>(txt_ids_) :
+                        TensorHelper::clone<float_t>(txt_ids_));
                 } else if (n_ == "guidance") {
                     inputs_.emplace_back(TensorHelper::clone<float_t>(guidance_));
                 } else {

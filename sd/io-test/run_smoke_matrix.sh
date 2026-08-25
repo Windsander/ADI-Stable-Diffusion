@@ -122,6 +122,35 @@ if [ "$MODE" == "sd35" ]; then
   exit $?
 fi
 
+# ---------- FLUX.1-schnell (dual encoder, packed MMDiT, flow_euler, 1024px) ----------
+if [ "$MODE" == "flux" ]; then
+  # schnell は guidance 蒸留済み：guidance=1.0 / shift=1.0（scheduler_config 準拠、
+  # use_dynamic_shifting=false）。timestep は C++ 側で自動 /1000（diffusers 準拠）。
+  # VAE: scaling_factor=0.3611, shift_factor=0.1159。
+  FLUX="${FLUX_MODEL_DIR:-$ROOT/sd/sd-base-model/onnx-flux-schnell}"
+  for steps in 4; do
+    run_case "flux-flow_euler-s${steps}" \
+      --clip  $FLUX/text_encoder/model.onnx \
+      --clip3 $FLUX/text_encoder_2/model.onnx \
+      --unet  $FLUX/transformer/model.onnx \
+      --vae-encoder $FLUX/vae_encoder/model.onnx \
+      --vae-decoder $FLUX/vae_decoder/model.onnx \
+      --merges $FLUX/tokenizer/merges.txt \
+      --dict  $FLUX/tokenizer/vocab.json \
+      --sp-model $FLUX/tokenizer_2/spiece.model \
+      -w 1024 -h 1024 -c 3 --seed 15.0 --dims 768 \
+      --beta scaled_linear --scheduler flow_euler --shift 1.0 \
+      --predictor epsilon --tokenizer bpe \
+      --token-idx-num 49408 --token-length 77 \
+      --decoding 0.3611 --decode-shift 0.1159 \
+      --guidance 1.0 --steps $steps
+  done
+  echo "============================================"
+  echo "smoke matrix done (flux): $RUNS runs, $FAILURES failures"
+  [ "$FAILURES" == "0" ]
+  exit $?
+fi
+
 # ---------- sd v1.5 (dims 768, guidance 7.5, 20 steps) ----------
 for s in euler_a unipc dpm_m pndm ipndm deis_m; do
   run_case "v15-$s-s20" $(model_args onnx-sd-v15) \
