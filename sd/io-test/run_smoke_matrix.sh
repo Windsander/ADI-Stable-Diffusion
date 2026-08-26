@@ -142,6 +142,8 @@ if [ "$MODE" == "sd35" ]; then
   # 2026-08-25 全量 verify OK + 1024px 冒煙通過（std=47.39 vs fp32 47.53）。
   # 默認 fp32（高內存機器直連）；低內存機器設 SD35_MODEL_DIR=...-fp16。
   SD35="${SD35_MODEL_DIR:-$ROOT/sd/sd-base-model/onnx-sd35-turbo}"
+  # -c は IO 画像チャンネル数（常に 3）。latent 16ch は UNet 4-input 検出で自動適用。
+  # --decoding は VAE scaling_factor 自体（decode: latents/scale + shift）→ SD3.5 = 1.5305。
   for steps in 4 8; do
     run_case "sd35-flow_euler-s${steps}" \
       --clip  $SD35/text_encoder/model.onnx \
@@ -153,8 +155,6 @@ if [ "$MODE" == "sd35" ]; then
       --merges $SD35/tokenizer/merges.txt \
       --dict  $SD35/tokenizer/vocab.json \
       --sp-model $SD35/tokenizer_3/spiece.model \
-      # -c は IO 画像チャンネル数（常に 3）。latent 16ch は UNet 4-input 検出で自動適用。
-      # --decoding は VAE scaling_factor 自体（decode: latents/scale + shift）→ SD3.5 = 1.5305。
       -w 1024 -h 1024 -c 3 --seed 15.0 --dims 768 \
       --beta scaled_linear --scheduler flow_euler --shift 3.0 \
       --predictor epsilon --tokenizer bpe \
