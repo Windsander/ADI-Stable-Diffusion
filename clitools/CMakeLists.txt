@@ -141,16 +141,26 @@ if (WIN32)
             COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_LIB_PATH}/${ORT_LIB}.dll" "$<TARGET_FILE_DIR:${TARGET}>"
     )
 elseif (APPLE)
+    # ORT >= 1.19 changed the dylib install-name to @rpath/libonnxruntime.1.dylib
+    # (SOVERSION-style); <= 1.18 used @rpath/libonnxruntime.<version>.dylib.
+    # Normalize both to the unversioned @rpath/libonnxruntime.dylib we ship in lib/.
+    # Non-matching -change rules are silently ignored by install_name_tool.
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for macOS"
-            COMMAND install_name_tool -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib" "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
+            COMMAND install_name_tool
+                    -change "@rpath/lib${ORT_LIB}.1.dylib" "@rpath/lib${ORT_LIB}.dylib"
+                    -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib"
+                    "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
 elseif (LINUX)
+    # ORT >= 1.19 soname is libonnxruntime.so.1; <= 1.18 was libonnxruntime.so.<version>.
+    # Normalize DT_NEEDED to the unversioned libonnxruntime.so we ship in lib/
+    # (keep the lib prefix). Tolerate either source name not being present.
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Linux"
-            COMMAND patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} ${ORT_LIB}.so "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
+            COMMAND sh -c "patchelf --replace-needed lib${ORT_LIB}.so.1 lib${ORT_LIB}.so '$<TARGET_FILE_DIR:${TARGET}>/${TARGET>' || true; patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} lib${ORT_LIB}.so '$<TARGET_FILE_DIR:${TARGET}>/${TARGET>' || true"
     )
 elseif (ANDROID)
     add_custom_command(
