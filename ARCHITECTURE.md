@@ -40,7 +40,7 @@ ADI-Stable-Diffusion/
 │   └── apex/                # Internal config structs (SchedulerConfig, TokenizerConfig, ...)
 ├── clitools/                # CLI front-end (main.cc), stb image backends, example scripts
 ├── engine/                  # ORT: 2024-era git submodule + per-platform prebuilt packages
-│   │                        #   (1.17.3 / 1.18.0), auto_prepare_engine_env.sh
+│   │                        #   (1.28.0), auto_prepare_engine_env.sh
 ├── apex/                    # CMake helper modules (colors, ort-env, static, utils)
 ├── apex-toolchain/          # Cross-compile toolchains: android / darwin / linux / windows
 ├── sd/                      # Model zoo + io-test smoke matrix + io-examples latent visuals
@@ -80,7 +80,7 @@ ADI-Stable-Diffusion/
 ├──────────────┴──────────────────────┴───────────────────────┤
 │  base/                 TensorHelper / ONNXRuntimeExecutor    │
 ├─────────────────────────────────────────────────────────────┤
-│  ONNXRuntime           engine/ (prebuilt 1.17.3/1.18.0       │
+│  ONNXRuntime           engine/ (prebuilt 1.28.0             │
 │                        or submodule build)                   │
 │  Providers: CPU · CoreML · NNAPI · TensorRT · CUDA           │
 └─────────────────────────────────────────────────────────────┘
@@ -228,10 +228,11 @@ TensorRT → CUDA → CoreML → NNAPI in that order. Sessions run with
 `ORT_PARALLEL` execution mode and `ORT_ENABLE_ALL` graph optimization.
 
 The engine itself is **prepared at build time**, not committed: per-platform
-prebuilt packages (1.17.3 / 1.18.0) under `engine/`, or the (2024-era)
+prebuilt packages (1.28.0) under `engine/`, or the (2024-era)
 `onnxruntime` submodule for from-source builds (`ORT_COMPILED_ONLINE` /
-`ORT_COMPILED_HEAVY`). An ORT upgrade with a 4-provider regression pass is
-scheduled for the v2.0.0 window (§14).
+`ORT_COMPILED_HEAVY`). ORT was upgraded 1.18.0 → 1.28.0 in the v2.0.0 window;
+the osx-x86_64 / win-x86 prebuilts were discontinued upstream and fall back
+to the source-build path.
 
 ## 10. Build System
 
@@ -285,9 +286,9 @@ under `clitools/examples/`; README carries verified per-model invocations
 | 1 | `IOrtSDConfig` pass-by-value ⇒ any field change breaks ABI | Version-window discipline; next window v2.0.0 |
 | 2 | WordPiece missing from public `AvailableTokenizerType` enum | Expose at next ABI window |
 | 3 | Internal `namespace onnx` collides with ONNX's own | Rename in v2.0.0 refactor |
-| 4 | ORT engine stale (prebuilt 1.17.3/1.18.0, 2024-era submodule); 4-provider paths unregressed | Upgrade + regression in v2.0.0 window |
+| 4 | ~~ORT engine stale~~ resolved v2.0.0: prebuilt 1.28.0; provider V2 API migration deferred (legacy APIs live in 1.28); CUDA/TensorRT device regression still open | Device regression on CUDA/TensorRT hardware |
 | 5 | Smoke/golden regression not in CI (`test-native` is compile-only) | Wire matrix into workflows |
-| 6 | Linux .deb/.rpm packaging disabled since 2024-08 | Repair with ORT upgrade (decision 0.4) |
+| 6 | ~~Linux .deb/.rpm packaging disabled~~ resolved v2.0.0: formally removed from the deploy chain (decision G3); Linux build+run still CI-covered | none — closed |
 | 7 | `debug/` validation assets untracked — porting rationale lives only locally | Curate and commit |
 | 8 | Batch fixed at 1; `convert_images` hard-codes 3-channel skip | Revisit with pipeline batching |
 | 9 | ControlNet / safety-checker fields reserved but unwired | Post-v2.0.0 evaluation |
