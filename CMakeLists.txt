@@ -36,7 +36,7 @@ include(${CMAKE_PROJECT_DIR}/apex-toolchain/generic-toolchain.cmake)
 PROJECT("adi-sd")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET undefined)
-SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
+SET(ONNX_INFERENCE_VERSION "1.28.0" CACHE STRING "ONNXRuntime version" FORCE)
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -102,16 +102,19 @@ endif()
 # Warning: Cuda & TensorRT can only available in local-build mode
 #          Caused by online-official doesn't provide target provider.h
 if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)      # for Windows x32
+    # ORT 1.28 discontinued the win-x86 prebuilt package — fall back to the
+    # local source-build path (engine submodule); CI no longer ships this target
     SET(ONNX_INFERENCE_TARGET win-x86)
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM win-x86)
-    set(SD_ORT_ONLINE_AVAIL ON)
+    set(SD_ORT_ONLINE_AVAIL OFF)
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
+    message(WARNING "[onnx.runtime.sd][W] ORT 1.28 has NO win-x86 prebuilt package; online prebuilt disabled, local source build required")
 elseif (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)  # for Windows x64
-    SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
+    SET(ONNX_INFERENCE_TARGET win-x64-gpu_cuda12)   # renamed gpu-cuda12 -> gpu_cuda12 since ORT 1.19+
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)      # can be ON when local-build
     set(DEFAULT_COREML_STATE OFF)
@@ -129,14 +132,17 @@ elseif (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")  # for Windows ARM64
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CPU")
 elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")  # for macOS x86_64
+    # ORT 1.28 discontinued osx-x86_64 / osx-universal2 prebuilt packages —
+    # fall back to the local source-build path; CI no longer ships this target
     SET(ONNX_INFERENCE_TARGET osx-x86_64)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
     set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM osx-x86_64)
-    set(SD_ORT_ONLINE_AVAIL ON)
+    set(SD_ORT_ONLINE_AVAIL OFF)
     set(ENGINE_NAME "ORT-CoreML")
+    message(WARNING "[onnx.runtime.sd][W] ORT 1.28 has NO osx-x86_64 prebuilt package; online prebuilt disabled, local source build required")
 elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")  # for macOS arm64
     SET(ONNX_INFERENCE_TARGET osx-arm64)
     set(DEFAULT_CUDA_STATE OFF)
@@ -147,7 +153,7 @@ elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")  # for macOS arm64
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CoreML")
 elseif (LINUX AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")  # for Linux x86_64
-    SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
+    SET(ONNX_INFERENCE_TARGET linux-x64-gpu_cuda12)   # renamed gpu-cuda12 -> gpu_cuda12 since ORT 1.19+
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
