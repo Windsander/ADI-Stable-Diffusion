@@ -370,6 +370,26 @@ FetchContent_Declare(sentencepiece
 FetchContent_MakeAvailable(sentencepiece)
 get_target_property(SPM_INCLUDE_DIRS sentencepiece-static INCLUDE_DIRECTORIES)
 
+# sentencepiece's bundled protobuf logs via __android_log_write on Android.
+# Every sentencepiece target (static libs AND the spm_* tools, which link the
+# static lib into standalone exes) needs NDK liblog or the final link fails
+# with "undefined symbol: __android_log_write".
+# NOTE: sentencepiece v0.2.1 declares the static libs with the KEYWORD
+# signature (src/CMakeLists.txt:240-241) but the spm_* tools with the PLAIN
+# signature — CMake forbids mixing, so match each group's own form.
+if (ANDROID)
+    foreach (spm_lib sentencepiece-static sentencepiece_train-static)
+        if (TARGET ${spm_lib})
+            target_link_libraries(${spm_lib} PRIVATE log)
+        endif ()
+    endforeach ()
+    foreach (spm_tool spm_encode spm_export_vocab spm_train spm_decode spm_normalize)
+        if (TARGET ${spm_tool})
+            target_link_libraries(${spm_tool} log)
+        endif ()
+    endforeach ()
+endif ()
+
 set(library_data_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/outlet/adi.cc
 )
@@ -404,6 +424,12 @@ auto_link_reference_library(${library_name} onnxruntime ${CMAKE_LIBRARY_OUTPUT_D
 # sentencepiece: headers for the sp tokenizer TU + static link
 target_include_directories(${library_name} PRIVATE ${sentencepiece_SOURCE_DIR}/src)
 target_link_libraries(${library_name} PRIVATE sentencepiece-static)
+
+# sentencepiece's bundled protobuf logs via __android_log_write on Android —
+# final links (shared adi and/or cli exe) need NDK liblog
+if (ANDROID)
+    target_link_libraries(${library_name} PRIVATE log)
+endif ()
 
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 

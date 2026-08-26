@@ -124,6 +124,11 @@ message(STATUS "FOUND_ORT_LIB: ${ORT_LIB_PATH}")
 
 add_executable(${TARGET} main.cc)
 target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
+if (ANDROID)
+    # static libadi.a carries sentencepiece/protobuf objects that call
+    # __android_log_write — link NDK liblog for the final exe
+    target_link_libraries(${TARGET} PRIVATE log)
+endif ()
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
 
 # sentencepiece (stage-C sp tokenizer): header + static lib path from parent build
