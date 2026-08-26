@@ -80,6 +80,7 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_IPNDM       = 0x0c,
     AVAILABLE_SCHEDULER_DEIS_M      = 0x0d,
     AVAILABLE_SCHEDULER_FLOW_EULER  = 0x0e,
+    AVAILABLE_SCHEDULER_EULER_SVD   = 0x0f,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -114,6 +115,7 @@ typedef struct IOrtSDConfig {
         const char* onnx_safty_path;                // Model: Safety Security Model Path (currently not available)
         const char* onnx_clip_2_path;               // Model: 2nd CLIP Path (SDXL text_encoder_2, empty when unused)
         const char* onnx_clip_3_path;               // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL, empty when unused)
+        const char* onnx_image_encoder_path;        // Model: SVD CLIP vision tower (non-empty selects img2vid mode)
     } sd_modelpath_config;
 
     struct {
@@ -128,6 +130,8 @@ typedef struct IOrtSDConfig {
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
         enum AvailableSigmaType scheduler_sigma_type;          // Scheduler: Sigma Schedule Style (Default, Karras)
         float scheduler_shift;                              // Scheduler: Sigma Shift (rectified-flow family only, default 3.0f)
+        float scheduler_sigma_min;                          // Scheduler: Karras explicit sigma bounds (0 = derive from betas;
+        float scheduler_sigma_max;                          //   SVD = 0.002 / 700.0)
     } sd_scheduler_config;
 
     struct {
@@ -151,6 +155,10 @@ typedef struct IOrtSDConfig {
     float sd_random_intensity;              // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength;         // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
     float sd_decode_shift_strength;         // Infer_Major: VAE shift factor (Recommend 0.0f; SD3.5 = 0.0609f)
+    uint64_t sd_video_frames;               // Infer_Video: SVD frame count (baked into the ONNX export, default 14)
+    uint64_t sd_video_fps;                  // Infer_Video: SVD fps micro-conditioning (default 7; fps-1 is fed)
+    uint64_t sd_video_motion_bucket;        // Infer_Video: SVD motion bucket id (default 127)
+    float sd_video_noise_aug;               // Infer_Video: SVD conditioning noise augmentation (default 0.02f)
 } IOrtSDConfig;
 
 namespace ortsd{

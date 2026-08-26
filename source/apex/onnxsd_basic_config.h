@@ -77,6 +77,7 @@ typedef enum SchedulerType {
     SCHEDULER_IPNDM             = 12,
     SCHEDULER_DEIS_M            = 13,
     SCHEDULER_FLOW_EULER        = 14,
+    SCHEDULER_EULER_SVD         = 15,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
@@ -127,6 +128,8 @@ typedef struct SchedulerConfig {
     PredictionType scheduler_predict_type;
     SigmaType scheduler_sigma_type;
     float scheduler_shift;              // Flow: sigma shift (rectified-flow family, default 3.0)
+    float scheduler_sigma_min;          // Karras-explicit sigma bounds (0 = derive from beta schedule;
+    float scheduler_sigma_max;          //   SVD = 0.002 / 700.0 per its scheduler_config.json)
 } SchedulerConfig;
 
 /* Diffusion Tokenizer Settings ===========================================*/

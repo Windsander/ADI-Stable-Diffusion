@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Models - Arikan.Li
  * Created by Arikan.Li on 2024/05/09.
  */
@@ -7,8 +7,10 @@
 
 #include "model_base.cc"
 #include "model_unet.cc"
+#include "model_unet_video.cc"
 #include "model_vae.cc"
 #include "model_clip.cc"
+#include "model_image_encoder.cc"
 
 namespace onnx {
 namespace sd {

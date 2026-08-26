@@ -690,6 +690,87 @@ public:
         return result_tensor_;
     }
 
+    // SVD: broadcast a single conditioning frame [1, C, H, W] to [1, F, C, H, W]
+    // (diffusers image_latents.unsqueeze(1).repeat(1, num_frames, 1, 1, 1))
+    template<class T>
+    static Tensor repeat_frames(const Tensor &input_, long frames_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 4) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: repeat_frames expects rank-4 [1,C,H,W]"));
+        }
+        long frame_size_ = long(input_size_);
+        long result_size_ = frame_size_ * frames_;
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < frames_; ++f) {
+            std::copy_n(input_data_, frame_size_, result_data_ + f * frame_size_);
+        }
+        TensorShape shape_{1, frames_, input_shape_[1], input_shape_[2], input_shape_[3]};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // SVD: concat two [1, F, C, H, W] along the channel dim -> [1, F, 2C, H, W].
+    // Frame-major layout makes each frame's channel-concat a plain block copy
+    // (diffusers torch.cat([latent_model_input, image_latents], dim=2))
+    template<class T>
+    static Tensor concat_frame_channels(const Tensor &input_l_, const Tensor &input_r_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+        if (input_shape_l_.size() != 5 || input_shape_r_.size() != 5) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_frame_channels expects rank-5 [1,F,C,H,W]"));
+        }
+        if (input_size_l_ != input_size_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_frame_channels size mismatch"));
+        }
+        long f_ = long(input_shape_l_[1]);
+        long c_ = long(input_shape_l_[2]);
+        long frame_size_ = long(input_size_l_) / f_;
+        long result_size_ = long(input_size_l_) * 2;
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < f_; ++f) {
+            std::copy_n(input_data_l_ + f * frame_size_, frame_size_, result_data_ + f * 2 * frame_size_);
+            std::copy_n(input_data_r_ + f * frame_size_, frame_size_, result_data_ + f * 2 * frame_size_ + frame_size_);
+        }
+        TensorShape shape_{1, f_, c_ * 2, input_shape_l_[3], input_shape_l_[4]};
+        return Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // SVD classifier-free guidance with a per-frame linear ramp
+    // (diffusers torch.linspace(min_guidance_scale, max_guidance_scale, num_frames)):
+    // guided[f] = uncond[f] + g_f * (cond[f] - uncond[f])
+    template<class T>
+    static Tensor guide_frames(const Tensor &input_l_, const Tensor &input_r_,
+                               float guidance_min_, float guidance_max_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+        if (input_shape_l_.size() != 5 || input_size_l_ != input_size_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: guide_frames expects rank-5 [1,F,C,H,W] pair"));
+        }
+        long f_ = long(input_shape_l_[1]);
+        long frame_size_ = long(input_size_l_) / f_;
+        long result_size_ = long(input_size_l_);
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < f_; ++f) {
+            float g_ = (f_ > 1) ?
+                       guidance_min_ + (guidance_max_ - guidance_min_) * float(f) / float(f_ - 1) :
+                       guidance_max_;
+            for (long i = 0; i < frame_size_; ++i) {
+                long at_ = f * frame_size_ + i;
+                result_data_[at_] = input_data_l_[at_] + g_ * (input_data_r_[at_] - input_data_l_[at_]);
+            }
+        }
+        TensorShape shape_ = input_shape_l_;
+        return Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
     template<class T>
     static Tensor weight(const Tensor &input_l_, const Tensor &input_r_, int offset_, bool re_normalize_ = false) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);

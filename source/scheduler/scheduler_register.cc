@@ -21,6 +21,7 @@
 #include "scheduler_discrete_ipndm.cc"
 #include "scheduler_discrete_deis_m.cc"
 #include "scheduler_flow_euler.cc"
+#include "scheduler_discrete_euler_svd.cc"
 
 namespace onnx {
 namespace sd {
@@ -94,6 +95,10 @@ public:
             }
             case SCHEDULER_FLOW_EULER: {
                 result_ptr_ = new FlowEulerScheduler(scheduler_config_);
+                break;
+            }
+            case SCHEDULER_EULER_SVD: {
+                result_ptr_ = new EulerSVDScheduler(scheduler_config_);
                 break;
             }
             default:{

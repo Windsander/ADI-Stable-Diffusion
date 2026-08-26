@@ -29,6 +29,7 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_clip_2_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_clip_3_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_image_encoder_path),
                 },
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
@@ -41,7 +42,9 @@ namespace ortsd {
                     onnx::sd::base::AlphaType(ctx_config_.sd_scheduler_config.scheduler_alpha_type),
                     onnx::sd::base::PredictionType(ctx_config_.sd_scheduler_config.scheduler_predict_type),
                     onnx::sd::base::SigmaType(ctx_config_.sd_scheduler_config.scheduler_sigma_type),
-                    ctx_config_.sd_scheduler_config.scheduler_shift
+                    ctx_config_.sd_scheduler_config.scheduler_shift,
+                    ctx_config_.sd_scheduler_config.scheduler_sigma_min,
+                    ctx_config_.sd_scheduler_config.scheduler_sigma_max
                 },
                 {
                     onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),
@@ -62,7 +65,11 @@ namespace ortsd {
                 ctx_config_.sd_scale_guidance,
                 ctx_config_.sd_random_intensity,
                 ctx_config_.sd_decode_scale_strength,
-                ctx_config_.sd_decode_shift_strength
+                ctx_config_.sd_decode_shift_strength,
+                ctx_config_.sd_video_frames,
+                ctx_config_.sd_video_fps,
+                ctx_config_.sd_video_motion_bucket,
+                ctx_config_.sd_video_noise_aug
             }
         );
     }

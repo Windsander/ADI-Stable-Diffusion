@@ -29,7 +29,9 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
+// NOTE: STB_IMAGE_RESIZE_IMPLEMENTATION lives in the adi library
+// (source/units/model_image_encoder.cc) — defining it here too would
+// duplicate symbols at link time
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_image_resize2.h"
@@ -74,6 +76,7 @@ const char* scheduler_sampler_fuc_str[] = {
     "ipndm",
     "deis_m",
     "flow_euler",
+    "euler_svd",
 };
 
 // below order match AvailableSigmaType order
@@ -129,6 +132,7 @@ struct CommandLineInput {
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
     std::string onnx_clip_2_path;                                           // Model: 2nd CLIP Path (SDXL text_encoder_2)
     std::string onnx_clip_3_path;                                           // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL)
+    std::string onnx_image_encoder_path;                                    // Model: SVD CLIP vision tower (img2vid)
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
@@ -141,6 +145,8 @@ struct CommandLineInput {
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
     AvailableSigmaType scheduler_sigma_type = SIGMA_TYPE_DEFAULT;           // Scheduler: Sigma Schedule Style (Default, Karras)
     float scheduler_shift = 3.0f;                                           // Scheduler: Sigma Shift (rectified-flow family only)
+    float scheduler_sigma_min = 0.0f;                                       // Scheduler: Karras explicit sigma bounds (0 = derive / SVD class default)
+    float scheduler_sigma_max = 0.0f;                                       // Scheduler: SVD = 0.002 / 700.0
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
@@ -162,6 +168,10 @@ struct CommandLineInput {
     float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
     float sd_decode_shift_strength = 0.0f;                                  // Infer_Major: VAE shift factor (SD3.5 = 0.0609f)
     std::string sd_precision = "auto";                                      // Infer_Major: weight precision policy: auto | fp32 | fp16
+    uint64_t sd_video_frames = 14;                                          // Infer_Video: SVD frame count (must match the ONNX export)
+    uint64_t sd_video_fps = 7;                                              // Infer_Video: SVD fps micro-conditioning
+    uint64_t sd_video_motion_bucket = 127;                                  // Infer_Video: SVD motion bucket id
+    float sd_video_noise_aug = 0.02f;                                       // Infer_Video: SVD conditioning noise augmentation
 
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
@@ -230,11 +240,13 @@ static void resolve_precision(CommandLineInput &params) {
 
     std::vector<std::string *> components_ = {
         &params.onnx_clip_path, &params.onnx_clip_2_path, &params.onnx_clip_3_path,
-        &params.onnx_unet_path, &params.onnx_vae_encoder_path, &params.onnx_vae_decoder_path
+        &params.onnx_unet_path, &params.onnx_vae_encoder_path, &params.onnx_vae_decoder_path,
+        &params.onnx_image_encoder_path
     };
     uint64_t encoders_ = component_bytes(params.onnx_clip_path)
                        + component_bytes(params.onnx_clip_2_path)
-                       + component_bytes(params.onnx_clip_3_path);
+                       + component_bytes(params.onnx_clip_3_path)
+                       + component_bytes(params.onnx_image_encoder_path);
     uint64_t backbone_ = component_bytes(params.onnx_unet_path)
                        + component_bytes(params.onnx_vae_encoder_path)
                        + component_bytes(params.onnx_vae_decoder_path);
@@ -385,7 +397,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --help                             show this help message and exit\n");
     printf("  --version                          show local ADI version and exit\n");
     printf("  -t, --type [TYPE]                  execution type (default cpu) [cpu / gpu (core_ml/tensor_rt/cuda/nnapi)]\n");
-    printf("  -m, --mode [MODE]                  run mode [txt2img / img2img]\n");
+    printf("  -m, --mode [MODE]                  run mode [txt2img / img2img / img2vid]\n");
     printf("  -i, --input [IMAGE]                path to the input image (default input.png) [img2img]\n");
     printf("  -o, --output [IMAGE]               path to the input image (default output.png)\n");
     printf("  -p, --positive [PROMPT]            positive prompt, request necessary \n");
@@ -403,6 +415,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --clip [CLIP_PATH]                 path to clip\n");
     printf("  --clip2 [CLIP_2_PATH]              path to 2nd clip (SDXL text_encoder_2, enables SDXL conditioning) \n");
     printf("  --clip3 [CLIP_3_PATH]              path to 3rd clip (SD3/FLUX text_encoder_3 = T5-XXL, enables triple-encoder) \n");
+    printf("  --image-encoder [IMAGE_ENC_PATH]   path to SVD CLIP vision tower (required for -m img2vid) \n");
     printf("  --sp-model [SPIECE_MODEL_PATH]     path to sentencepiece model (spiece.model, for --tokenizer sp / T5-XXL) \n");
     printf("  --unet [UNET_PATH]                 path to unet\n");
     printf("  --vae-encoder [VAE_ENCODER_PATH]   path to vae encoder\n");
@@ -422,9 +435,15 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m / flow_euler] (default euler_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m / flow_euler / euler_svd] (default euler_a) \n");
     printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
     printf("  --shift <float>                    Sigma Shift for rectified-flow schedulers (default 3.0) \n");
+    printf("  --sigma-min <float>                Karras explicit sigma lower bound (0 = derive; SVD = 0.002) \n");
+    printf("  --sigma-max <float>                Karras explicit sigma upper bound (0 = derive; SVD = 700.0) \n");
+    printf("  --frames <uint>                    SVD video frame count, must match the ONNX export (default 14) \n");
+    printf("  --fps <uint>                       SVD fps micro-conditioning (default 7; fps-1 is fed to the UNet) \n");
+    printf("  --motion-bucket <uint>             SVD motion bucket id (default 127) \n");
+    printf("  --noise-aug <float>                SVD conditioning noise augmentation strength (default 0.02) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
@@ -577,6 +596,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.onnx_clip_3_path = argv[i];
+        } else if (arg == "--image-encoder") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_image_encoder_path = argv[i];
         } else if (arg == "--sp-model") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -693,6 +718,42 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.scheduler_shift = std::stof(argv[i]);
+        } else if (arg == "--sigma-min") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_min = std::stof(argv[i]);
+        } else if (arg == "--sigma-max") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_max = std::stof(argv[i]);
+        } else if (arg == "--frames") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_frames = std::stoi(argv[i]);
+        } else if (arg == "--fps") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_fps = std::stoi(argv[i]);
+        } else if (arg == "--motion-bucket") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_motion_bucket = std::stoi(argv[i]);
+        } else if (arg == "--noise-aug") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_noise_aug = std::stof(argv[i]);
         } else if (arg == "--beta") {
             int betae_found = GET_TYPE_FROM_STR(scheduler_beta_type_str, BETA_COUNT);
             if (betae_found == -1) {
@@ -786,6 +847,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
 
     if ((params.mode == IMG2IMG || params.mode == IMG2VID) && params.input_path.length() == 0) {
         fprintf(stderr, "error: when using the img2img mode, the following arguments are required: init-img\n");
+        print_usage(argc, argv);
+        exit(1);
+    }
+
+    if (params.mode == IMG2VID && params.onnx_image_encoder_path.length() == 0) {
+        fprintf(stderr, "error: when using the img2vid mode, the following arguments are required: --image-encoder\n");
         print_usage(argc, argv);
         exit(1);
     }
@@ -923,6 +990,29 @@ static void save_image(const CommandLineInput &params, uint8_t* image_data){
 
     size_t last = params.output_path.find_last_of('.');
     std::string file_name = (last != std::string::npos) ? params.output_path.substr(0, last) : params.output_path;
+
+    // img2vid: the inference buffer stacks all frames (frame-major RGB bytes)
+    if (params.mode == IMG2VID) {
+        uint64_t frame_bytes_ = params.sd_input_width * params.sd_input_height * params.sd_input_channel;
+        for (uint64_t f = 0; f < params.sd_video_frames; ++f) {
+            char frame_path_[4096];
+            snprintf(frame_path_, sizeof(frame_path_), "%s_%04llu.png", file_name.c_str(), (unsigned long long)f);
+            stbi_write_png(
+                frame_path_,
+                (int) params.sd_input_width, (int) params.sd_input_height, (int) params.sd_input_channel,
+                image_data + f * frame_bytes_, 0
+            );
+        }
+        printf("\n");
+        printf("save result video frames to '%s_0000.png' .. '%s_%04llu.png' (%llu frames)\n",
+               file_name.c_str(), file_name.c_str(), (unsigned long long)(params.sd_video_frames - 1),
+               (unsigned long long)params.sd_video_frames);
+        printf("\n");
+        printf("all done with option '%s'\n", get_image_params(params).c_str());
+        printf("\n");
+        return;
+    }
+
     std::string final_image_path = file_name + ".png";
     stbi_write_png(
         final_image_path.c_str(),
@@ -959,7 +1049,8 @@ int main(int argc, const char *argv[]) {
                 params.onnx_control_net_path.c_str(),
                 params.onnx_safty_path.c_str(),
                 params.onnx_clip_2_path.c_str(),
-                params.onnx_clip_3_path.c_str()
+                params.onnx_clip_3_path.c_str(),
+                params.onnx_image_encoder_path.c_str()
             },
             {
                 params.sd_scheduler_type,
@@ -972,7 +1063,9 @@ int main(int argc, const char *argv[]) {
                 params.scheduler_alpha_type,
                 params.scheduler_predict_type,
                 params.scheduler_sigma_type,
-                params.scheduler_shift
+                params.scheduler_shift,
+                params.scheduler_sigma_min,
+                params.scheduler_sigma_max
             },
             {
                 params.sd_tokenizer_type,
@@ -993,7 +1086,11 @@ int main(int argc, const char *argv[]) {
             params.sd_scale_guidance,
             params.sd_random_intensity,
             params.sd_decode_scale_strength,
-            params.sd_decode_shift_strength
+            params.sd_decode_shift_strength,
+            params.sd_video_frames,
+            params.sd_video_fps,
+            params.sd_video_motion_bucket,
+            params.sd_video_noise_aug
         }
     );
     if (!ort_sd_context_) {

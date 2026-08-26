@@ -24,6 +24,7 @@ typedef struct ModelPathConfig {
     std::string onnx_safty_path;
     std::string onnx_clip_2_path;   // SDXL/SD3 text_encoder_2 (empty when unused)
     std::string onnx_clip_3_path;   // SD3/FLUX text_encoder_3 = T5-XXL (empty when unused)
+    std::string onnx_image_encoder_path; // SVD CLIP vision tower (non-empty selects img2vid mode)
 } ModelPathConfig;
 
 typedef struct OrtSD_Config {
@@ -39,6 +40,10 @@ typedef struct OrtSD_Config {
     float sd_random_intensity          ; //= 1.0f;
     float sd_decode_scale_strength     ; //= 0.18215f;
     float sd_decode_shift_strength     ; //= 0.0f;
+    uint64_t sd_video_frames           ; //= 14;   (SVD img2vid)
+    uint64_t sd_video_fps              ; //= 7;    (SVD micro-conditioning; fps-1 is fed)
+    uint64_t sd_video_motion_bucket    ; //= 127;
+    float sd_video_noise_aug           ; //= 0.02f;
 } OrtSD_Config;
 
 class OrtSD_Context {
@@ -63,6 +68,8 @@ private:
     UNet *ort_sd_unet = nullptr;
     VAE *ort_sd_vae_encoder = nullptr;
     VAE *ort_sd_vae_decoder = nullptr;
+    ImageEncoder *ort_sd_image_encoder = nullptr;  // SVD img2vid (nullptr in txt2img/img2img)
+    UNetVideo *ort_sd_unet_video = nullptr;        // SVD img2vid (nullptr in txt2img/img2img)
 
     // captured at init() time: triple-encoder (SD3/FLUX) mode implies a
     // 16-channel MMDiT latent. Must not be derived from ort_sd_clip_3 later,
@@ -72,6 +79,7 @@ private:
 private:
     Tensor convert_images(const IMAGE_DATA &image_data_) const;
     IMAGE_DATA convert_result(const Tensor &infer_output_) const;
+    IMAGE_DATA inference_video(const IMAGE_DATA &image_data_);   // SVD img2vid path
 
 public:
     explicit OrtSD_Context(const OrtSD_Config& ort_config_);
@@ -159,6 +167,58 @@ IMAGE_DATA OrtSD_Context::convert_result(const onnx::sd::base::Tensor &tensor_) 
 
 void OrtSD_Context::init() {
     const bool with_clip_2_ = !ort_config.sd_modelpath_config.onnx_clip_2_path.empty();
+    const bool svd_mode_ = !ort_config.sd_modelpath_config.onnx_image_encoder_path.empty();
+
+    // ---- SVD img2vid: image_encoder + spatio-temporal UNet + temporal VAE ----
+    // (no text encoders; VAE encoder scale locked to 1.0 — SVD does NOT scale
+    // image latents; decoder uses the configured scaling factor 0.18215)
+    if (svd_mode_) {
+        ort_sd_image_encoder = new ImageEncoder(
+            ort_config.sd_modelpath_config.onnx_image_encoder_path,
+            DEFAULT_IMAGE_ENCODER_CONFIG   // NB: `{}` would zero-init the config struct
+        );
+        ort_sd_unet_video = new UNetVideo(
+            ort_config.sd_modelpath_config.onnx_unet_path,
+            {
+                ort_config.sd_scheduler_config,
+                ort_config.sd_inference_steps,
+                ort_config.sd_video_frames,
+                ort_config.sd_input_width / 8,
+                ort_config.sd_input_height / 8,
+                ort_config.sd_video_fps,
+                ort_config.sd_video_motion_bucket,
+                ort_config.sd_video_noise_aug,
+                1.0f,                            // guidance ramp min (diffusers default)
+                ort_config.sd_scale_guidance     // guidance ramp max (--guidance)
+            }
+        );
+        ort_sd_vae_encoder = new VAE(
+            ort_config.sd_modelpath_config.onnx_vae_encoder_path,
+            {
+                1.0f, 0.0f,
+                ort_config.sd_input_width / 8,
+                ort_config.sd_input_height / 8,
+                4,
+            }
+        );
+        ort_sd_vae_decoder = new VAE(
+            ort_config.sd_modelpath_config.onnx_vae_decoder_path,
+            {
+                ort_config.sd_decode_scale_strength,
+                ort_config.sd_decode_shift_strength,
+                ort_config.sd_input_width,
+                ort_config.sd_input_height,
+                ort_config.sd_input_channel,
+            }
+        );
+        ort_sd_image_encoder->init(*ort_executor);
+        ort_sd_unet_video->init(*ort_executor);
+        ort_sd_vae_encoder->init(*ort_executor);
+        ort_sd_vae_decoder->init(*ort_executor);
+        return;
+    }
+
+    // ---- txt2img / img2img ----
 
     // SDXL: both encoders condition on the penultimate hidden state
     ort_sd_clip = new Clip(
@@ -243,6 +303,9 @@ void OrtSD_Context::prepare(const std::string &positive_prompts_, const std::str
     // make sure thread security, prevent prepare & inference conflict
     std::lock_guard<std::mutex> lock(ort_thread_lock);
 
+    // SVD img2vid is text-free: conditioning happens per-inference from the image
+    if (ort_sd_unet_video) return;
+
     // NOTE: clip_2 / clip_3 は init() 時に読み込まず prepare() 時に遅延初期化
     //（SD3.5 の text_encoder_2=2.6GB, text_encoder_3=18GB を一度にロードすると OOM）
     if (ort_sd_clip_2 && !ort_sd_clip_2->is_initialized()) {
@@ -315,6 +378,8 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     // make sure thread security, prevent prepare & inference conflict
     std::lock_guard<std::mutex> lock(ort_thread_lock);
 
+    if (ort_sd_unet_video) return inference_video(image_data_);
+
     // input_image [1, 3, 512, 512]
     Tensor sample_image_ = convert_images(image_data_);
 
@@ -340,13 +405,57 @@ IMAGE_DATA OrtSD_Context::inference(IMAGE_DATA image_data_) {
     return convert_result(decoded_tensor_);
 }
 
+// SVD img2vid: returns ALL frames stacked in one buffer
+// (size = frames * width * height * channel), frame-major RGB bytes
+IMAGE_DATA OrtSD_Context::inference_video(const IMAGE_DATA &image_data_) {
+    const uint64_t frames_ = ort_config.sd_video_frames;
+    const uint64_t w_ = ort_config.sd_input_width;
+    const uint64_t h_ = ort_config.sd_input_height;
+    const uint64_t c_ = ort_config.sd_input_channel;
+    const int64_t lh_ = int64_t(h_ / 8), lw_ = int64_t(w_ / 8);
+
+    // 1. CLIP image embedding [1, 1, 1024]
+    Tensor image_embeds_ = ort_sd_image_encoder->embedding(image_data_, w_, h_);
+
+    // 2. VAE conditioning latent [1, 4, h/8, w/8] (mean, unscaled, noise-aug)
+    Tensor image01_ = convert_images(image_data_);
+    Tensor image_latents_ = ort_sd_vae_encoder->encode_noisy(
+        image01_, ort_config.sd_video_noise_aug,
+        ort_config.sd_scheduler_config.scheduler_seed
+    );
+
+    // 3. spatio-temporal denoise [1, F, 4, h/8, w/8]
+    Tensor video_latents_ = ort_sd_unet_video->inference(image_embeds_, image_latents_);
+
+    // 4. per-frame decode (diffusers decode_latents: flatten -> /scaling -> decode)
+    const int64_t frame_latent_size_ = 4 * lh_ * lw_;
+    const float* latents_data_ = video_latents_.GetTensorData<float>();
+    uint64_t frame_bytes_ = w_ * h_ * c_;
+    auto *video_data_ = new IMAGE_BYTE[frames_ * frame_bytes_];
+    for (uint64_t f = 0; f < frames_; ++f) {
+        std::vector<float> frame_latent_(
+            latents_data_ + f * frame_latent_size_,
+            latents_data_ + (f + 1) * frame_latent_size_
+        );
+        Tensor frame_tensor_ = TensorHelper::create(TensorShape{1, 4, lh_, lw_}, frame_latent_);
+        Tensor decoded_frame_ = ort_sd_vae_decoder->decode(frame_tensor_);
+        IMAGE_DATA frame_image_ = convert_result(decoded_frame_);
+        std::copy_n(frame_image_.data_, frame_bytes_, video_data_ + f * frame_bytes_);
+        delete[] frame_image_.data_;
+        CommonHelper::print_progress_bar(float(f + 1) / float(frames_));
+    }
+    return IMAGE_DATA{video_data_, frames_ * frame_bytes_};
+}
+
 void OrtSD_Context::release(){
-    ort_sd_vae_decoder->release(*ort_executor);
-    ort_sd_vae_encoder->release(*ort_executor);
-    ort_sd_unet->release(*ort_executor);
-    ort_sd_clip->release(*ort_executor);
+    if (ort_sd_vae_decoder) ort_sd_vae_decoder->release(*ort_executor);
+    if (ort_sd_vae_encoder) ort_sd_vae_encoder->release(*ort_executor);
+    if (ort_sd_unet) ort_sd_unet->release(*ort_executor);
+    if (ort_sd_clip) ort_sd_clip->release(*ort_executor);
     if (ort_sd_clip_2 && ort_sd_clip_2->is_initialized()) ort_sd_clip_2->release(*ort_executor);
     if (ort_sd_clip_3 && ort_sd_clip_3->is_initialized()) ort_sd_clip_3->release(*ort_executor);
+    if (ort_sd_image_encoder) ort_sd_image_encoder->release(*ort_executor);
+    if (ort_sd_unet_video) ort_sd_unet_video->release(*ort_executor);
 
     delete ort_sd_vae_decoder;
     delete ort_sd_vae_encoder;
@@ -354,6 +463,8 @@ void OrtSD_Context::release(){
     delete ort_sd_clip;
     delete ort_sd_clip_2;
     delete ort_sd_clip_3;
+    delete ort_sd_image_encoder;
+    delete ort_sd_unet_video;
 }
 
 } // namespace context

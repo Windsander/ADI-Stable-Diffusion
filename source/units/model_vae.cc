@@ -45,6 +45,7 @@ public:
     ~VAE() override;
 
     Tensor encode(const Tensor &inimage_);
+    Tensor encode_noisy(const Tensor &inimage_, float noise_aug_, int64_t seed_);
     Tensor decode(const Tensor &latents_);
     Tensor sample(const Tensor &latent_params_);
 };
@@ -76,6 +77,35 @@ Tensor VAE::encode(const Tensor &inimage_) {
     if (!TensorHelper::have_data(inimage_)) { return TensorHelper::empty<float>(); }
     std::vector<Tensor> input_tensors;
     input_tensors.push_back(TensorHelper::multiple<float>(inimage_, 2.0f, -1.0f));
+    std::vector<Tensor> output_tensors;
+    generate_output(output_tensors);
+    execute(input_tensors, output_tensors);
+
+    Tensor result_ = TensorHelper::multiple<float>(
+        output_tensors.front(),
+        sd_vae_config.sd_decode_scale_strength,
+        -sd_vae_config.sd_decode_shift_strength * sd_vae_config.sd_decode_scale_strength
+    );
+    return result_;
+}
+
+// SVD conditioning-image encode: image [0,1] -> *2-1 -> + noise_aug * N(0,1)
+// (diffusers: image + noise_aug_strength * randn, applied in [-1,1] space)
+// -> vae.encode -> mean (deterministic, latent_dist.mode() == mean).
+// NOTE: SVD does NOT scale image latents — construct this VAE with
+// sd_decode_scale_strength = 1.0 so the trailing scale is an identity.
+Tensor VAE::encode_noisy(const Tensor &inimage_, float noise_aug_, int64_t seed_) {
+    if (!TensorHelper::have_data(inimage_)) { return TensorHelper::empty<float>(); }
+    Tensor scaled_ = TensorHelper::multiple<float>(inimage_, 2.0f, -1.0f);
+    if (noise_aug_ > 0.0f) {
+        TensorShape shape_ = TensorHelper::get_shape(scaled_);
+        RandomGenerator rng_;
+        rng_.seed(seed_);
+        Tensor noise_ = TensorHelper::random<float>(shape_, rng_, noise_aug_);
+        scaled_ = TensorHelper::add<float>(scaled_, noise_, shape_);
+    }
+    std::vector<Tensor> input_tensors;
+    input_tensors.push_back(std::move(scaled_));
     std::vector<Tensor> output_tensors;
     generate_output(output_tensors);
     execute(input_tensors, output_tensors);
