@@ -280,8 +280,8 @@ adi ... --scheduler dpm_m --sigma karras ...
 
 **Engineering & Distribution** _(audited 2026-08)_
 - [x] Smoke-matrix runner scripted (`sd/io-test/run_smoke_matrix.sh`, 19 quick / 24 full cases; hard gates: ORT-exception count, output size, flat-pixel check) <span style="color:green;">_(after 2026/07/31 — local quick 19/19 green)_</span>
-- [x] Release chain hardened (CHANGELOG-driven auto-publish; retired node12 actions replaced; artifact actions v2→v4; `deploy_linux` formally disabled per decision 0.4) <span style="color:green;">_(after 2026/07/31)_</span>
+- [x] Release chain hardened (CHANGELOG-driven auto-publish; retired node12 actions replaced; artifact actions v2→v4; `deploy_linux` formally removed per v2.0.0 decision G3) <span style="color:green;">_(after 2026/07/31)_</span>
 - [ ] Golden-image regression in CI (`test-native` is compile-only today; the smoke matrix is not yet wired into workflows)
-- [ ] ONNXRuntime engine upgrade <span style="color:gray;">_(prebuilt 1.17.3/1.18.0 packages + 2024-era submodule → current stable; regression over CoreML / NNAPI / TensorRT / CUDA — scheduled with the v2.0.0 window)_</span>
-- [ ] Linux .deb/.rpm packaging <span style="color:gray;">_(disabled since 2024/08; repair bundled with the ORT upgrade, decision 0.4)_</span>
+- [x] ONNXRuntime engine upgrade <span style="color:green;">_(1.18.0 → 1.28.0 prebuilt packages; gpu-cuda12 → gpu_cuda12 renames handled; osx-x86_64 / win-x86 prebuilts discontinued upstream → local-build fallback; local regression turbo 13/13 + sd35 1024px bit-match with the 1.18 baseline, 2026/08/26)_</span>
+- [x] Linux .deb/.rpm packaging — **decision: removed, not repaired** <span style="color:green;">_(v2.0.0 decision G3, 2026/08/26: deb rules predate the ORT 1.19+ package rename/soname change and have no maintainer; Linux build+run support stays covered by test-native ubuntu legs and the manual smoke job)_</span>
 - [ ] ControlNet / safety-checker integration <span style="color:gray;">_(fields reserved in `IOrtSDConfig` as `onnx_control_net_path` / `onnx_safty_path`, currently not available)_</span>
