@@ -14,7 +14,6 @@
   <a href="https://github.com/Windsander/ADI-Stable-Diffusion/releases">
     <img src="https://img.shields.io/github/v/release/Windsander/ADI-Stable-Diffusion?display_name=tag" alt="Latest Release"/>
   </a>
-  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows-FDA599" alt="Platforms"/>
 </p>
 
 <br>
