@@ -31,7 +31,7 @@
 |:---:|:---:|:---:|
 | ![FLUX.1-schnell](assets/showcase/flux-schnell-1024.jpg) | ![SD3.5-turbo](assets/showcase/sd35-turbo-1024.jpg) | ![SD v2.1](assets/showcase/sd21-768.jpg) |
 
-| SDXL-turbo · 512px · 4 步 | sd-turbo · 512px · 4 步 | **SVD img2vid** · 14 帧 · 4 步 |
+| SDXL-turbo · 512px · 4 步 | sd-turbo · 512px · 4 步 | **SVD img2vid** · 14 帧 · 25 步 |
 |:---:|:---:|:---:|
 | ![SDXL-turbo](assets/showcase/sdxl-turbo-512.jpg) | ![sd-turbo](assets/showcase/sd-turbo-512.jpg) | ![SVD img2vid](assets/showcase/svd-img2vid-14f.gif) |
 
