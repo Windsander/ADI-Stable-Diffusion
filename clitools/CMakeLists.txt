@@ -123,8 +123,24 @@ message(STATUS "FOUND_ADI_LIB: ${ADI_LIB_PATH}")
 message(STATUS "FOUND_ORT_LIB: ${ORT_LIB_PATH}")
 
 add_executable(${TARGET} main.cc)
-target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
+# NOTE: no CMAKE_THREAD_LIBS_INIT on Android — pthread lives in bionic, and a
+# misdetected -lpthreads (seen with windows-host NDK toolchains) breaks the
+# final link. Android only needs NDK liblog instead (static libadi.a carries
+# sentencepiece/protobuf objects that call __android_log_write).
+if (ANDROID)
+    target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} log)
+else ()
+    target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
+endif ()
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
+
+# sentencepiece (stage-C sp tokenizer): header + static lib path from parent build
+if (SPM_INCLUDE_DIR)
+    target_include_directories(${TARGET} PRIVATE ${SPM_INCLUDE_DIR})
+endif ()
+if (SPM_STATIC_LIB)
+    target_link_libraries(${TARGET} PRIVATE ${SPM_STATIC_LIB})
+endif ()
 
 if (WIN32)
     add_custom_command(
@@ -133,16 +149,31 @@ if (WIN32)
             COMMAND ${CMAKE_COMMAND} -E copy "${GENERATED_LIB_PATH}/${ORT_LIB}.dll" "$<TARGET_FILE_DIR:${TARGET}>"
     )
 elseif (APPLE)
+    # ORT >= 1.19 changed the dylib install-name to @rpath/libonnxruntime.1.dylib
+    # (SOVERSION-style); <= 1.18 used @rpath/libonnxruntime.<version>.dylib.
+    # Normalize both to the unversioned @rpath/libonnxruntime.dylib we ship in lib/.
+    # Non-matching -change rules are silently ignored by install_name_tool.
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for macOS"
-            COMMAND install_name_tool -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib" "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
+            COMMAND install_name_tool
+                    -change "@rpath/lib${ORT_LIB}.1.dylib" "@rpath/lib${ORT_LIB}.dylib"
+                    -change "@rpath/lib${ORT_LIB}.${ONNX_INFERENCE_VERSION}.dylib" "@rpath/lib${ORT_LIB}.dylib"
+                    "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
     )
 elseif (LINUX)
+    # ORT >= 1.19 soname is libonnxruntime.so.1; <= 1.18 was libonnxruntime.so.<version>.
+    # Normalize DT_NEEDED to the unversioned libonnxruntime.so we ship in lib/
+    # (keep the lib prefix). Done via a -P script: embedding sh -c ";"-chains
+    # here breaks on CMake's list-semicolon parsing of the quoted string.
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Linux"
-            COMMAND patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} ${ORT_LIB}.so "$<TARGET_FILE_DIR:${TARGET}>/${TARGET}"
+            COMMAND ${CMAKE_COMMAND}
+                    -DORT_LIB=${ORT_LIB}
+                    -DORT_VERSION=${ONNX_INFERENCE_VERSION}
+                    "-DEXE=$<TARGET_FILE:${TARGET}>"
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/patch_ort_soname.cmake
     )
 elseif (ANDROID)
     add_custom_command(

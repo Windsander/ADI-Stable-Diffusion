@@ -45,12 +45,12 @@ public:
     virtual ~SchedulerBase();
 
     void create();
-    uint64_t init(uint64_t inference_steps_) ;
-    Tensor mask(const TensorShape& mask_shape_);
-    Tensor scale(const Tensor& masker_, int step_index_);
-    Tensor time(int step_index_);
-    Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, float random_intensity_ = 1.0f);
-    void uninit();
+    virtual uint64_t init(uint64_t inference_steps_) ;
+    virtual Tensor mask(const TensorShape& mask_shape_);
+    virtual Tensor scale(const Tensor& masker_, int step_index_);
+    virtual Tensor time(int step_index_);
+    virtual Tensor step(const Tensor& sample_, const Tensor& dnoise_, int step_index_, float random_intensity_ = 1.0f);
+    virtual void uninit();
     void release();
 };
 

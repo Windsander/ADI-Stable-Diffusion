@@ -218,7 +218,7 @@ adi ... --scheduler dpm_m --sigma karras ...
 
 ## Development Progress Checklist (latest):
 
-> Audited against the **v1.2.0** codebase (2026-08); roadmap targets aligned with [PLAN-supplement.md](PLAN-supplement.md).
+> Audited against the **v2.0.0** codebase (2026-08); roadmap targets aligned with [PLAN-supplement.md](PLAN-supplement.md).
 
 **Basic Pipeline Functionalities (Major)**
 - [x] **[SD_v1] Stable-Diffusion (v1.0 ~ v1.5, turbo)** <span style="color:green;">_(after 2024/06/04 tested)_</span>
@@ -234,7 +234,7 @@ adi ... --scheduler dpm_m --sigma karras ...
     - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency <span style="color:gray;">_(untested; identical architecture/pipeline to the verified v2.1)_</span>
     - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects ✅ <span style="color:gray;">_(official repo gated since 2025 — acquired via `sd2-community` mirror + optimum ONNX export chain, see `sd/auto_prepare_sd_models.sh`)_</span>
 
-- [ ] **[SD_v3.x] Stable-Diffusion 3 / 3.5 (MMDiT era)** <span style="color:blue;">_(v2.0.0 window — PLAN-supplement 2.3)_</span>
+- [x] **[SD_v3.x] Stable-Diffusion 3 / 3.5 (MMDiT era)** <span style="color:green;">_(v2.0.0 — SD3.5-turbo 1024px ✅tested 2026/08; MMDiT slot + triple-encoder orchestration + T5-XXL/sp + flow_euler all landed)_</span>
     - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3-medium): First MMDiT release (2024/06) <span style="color:gray;">_(superseded by v3.5; no longer the primary target)_</span>
     - **v3.5 (Large / Large-Turbo / Medium)** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3.5-large): Stability flagship since 2024/10 and the open-weights mainstream of 2026. Requires: MMDiT transformer unit (structural `source/units/` extension, not a config-level one), triple text encoders (CLIP-L + OpenCLIP-G + **T5-XXL → SentencePiece becomes mandatory**), rectified-flow scheduling (new scheduler family below)
 
@@ -242,11 +242,11 @@ adi ... --scheduler dpm_m --sigma karras ...
     - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0): Experimental version for larger-scale models and higher-resolution image <span style="color:gray;">_(untested; same pipeline as SDXL-turbo — dual-encoder `--clip2`, pooled embedding, time-ids micro-conditioning all landed in v1.2.0)_</span>
     - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency ✅
 
-- [ ] **[FLUX-class] Flow-Matching Models** <span style="color:blue;">_[post-v2.0.0 candidate, under evaluation]_</span>
+- [x] **[FLUX-class] Flow-Matching Models** <span style="color:green;">_(v2.0.0 — FLUX.1-schnell 1024px 4-step ✅tested 2026/08; 2x2 pack/unpack + img_ids/txt_ids/guidance name-binding; dev variant untested)_</span>
     - **FLUX.1 [dev] / [schnell]** [(HuggingFace)](https://huggingface.co/black-forest-labs/FLUX.1-dev): The community-favorite open-weights family of 2026. Shares the MMDiT + rectified-flow + T5-XXL stack with SD3.5, so most prerequisites land together with the SD3.5 work; extras: single-file checkpoint conversion chain, guidance-distilled variants, non-commercial license review
 
-- [ ] **[SVD] Stable-Video-Diffusion**
-    - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid): Version specifically for video generation and editing <span style="color:gray;">_(CLI `img2vid` mode name reserved; still the open-weights entry for short img2vid in 2026 — long-form video has moved to closed DiT stacks)_</span>
+- [x] **[SVD] Stable-Video-Diffusion** <span style="color:green;">_(v2.0.0 — img2vid mode live 2026/08: euler_svd scheduler + UNetVideo + CLIP ViT-H ImageEncoder, 14-frame fp32 smoke ✅tested)_</span>
+    - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid): Version specifically for video generation and editing <span style="color:gray;">_(F=14 fixed at export; F=25 XT tier needs a separate export; 25-step quality tier not yet run)_</span>
 
 **Scheduler Abilities**
 - [x] **Strategy**
@@ -269,19 +269,19 @@ adi ... --scheduler dpm_m --sigma karras ...
     - [x] Diffusion Probabilistic Models Solver in Multistep (dpm_m) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
     - [x] Diffusion Probabilistic Models Solver in Singlestep (dpm_s) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
 
-- [ ] **Flow-Matching / Rectified-Flow Family** <span style="color:blue;">_(v2.0.0 requirement — a new scheduler paradigm, not another `scheduler_discrete_*` extension)_</span>
-    - [ ] Flow Euler discrete <span style="color:gray;">_(default sampler of SD3.5 / FLUX-class models; ODE-style few-step integration)_</span>
+- [x] **Flow-Matching / Rectified-Flow Family** <span style="color:green;">_(v2.0.0 — new `FlowSchedulerBase` family, separate from `scheduler_discrete_*`)_</span>
+    - [x] Flow Euler discrete <span style="color:green;">_(v2.0.0 ✅tested — default sampler of SD3.5 / FLUX-class; numpy-verified against diffusers)_</span>
     - [ ] Flow Heun / higher-order flow solvers <span style="color:blue;">_[if necessary]_</span>
 
 **Tokenizer Type**
 - [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 ✅tested — covers CLIP-L / OpenCLIP-G/H, i.e. every model supported so far)_</span> 
 - [x] Word Piece Encoding (word_piece) <span style="color:green;">_(after 2024/05/27 ✅tested)_</span> <span style="color:orange;">_(note: available via internal registry & CLI, but not yet exposed in the public `AvailableTokenizerType` C enum)_</span>
-- [ ] Sentence Piece Encoding (sp) <span style="color:red;">_**promoted: [if necessary] → [required]** — the T5-XXL text encoder is mandatory for SD3.5 / FLUX-class models (v2.0.0 window)_</span>
+- [x] Sentence Piece Encoding (sp) <span style="color:green;">_(v2.0.0 ✅tested — vendored libsentencepiece static build, official library; T5-XXL for SD3.5 / FLUX)_</span>
 
 **Engineering & Distribution** _(audited 2026-08)_
 - [x] Smoke-matrix runner scripted (`sd/io-test/run_smoke_matrix.sh`, 19 quick / 24 full cases; hard gates: ORT-exception count, output size, flat-pixel check) <span style="color:green;">_(after 2026/07/31 — local quick 19/19 green)_</span>
-- [x] Release chain hardened (CHANGELOG-driven auto-publish; retired node12 actions replaced; artifact actions v2→v4; `deploy_linux` formally disabled per decision 0.4) <span style="color:green;">_(after 2026/07/31)_</span>
+- [x] Release chain hardened (CHANGELOG-driven auto-publish; retired node12 actions replaced; artifact actions v2→v4; `deploy_linux` formally removed per v2.0.0 decision G3) <span style="color:green;">_(after 2026/07/31)_</span>
 - [ ] Golden-image regression in CI (`test-native` is compile-only today; the smoke matrix is not yet wired into workflows)
-- [ ] ONNXRuntime engine upgrade <span style="color:gray;">_(prebuilt 1.17.3/1.18.0 packages + 2024-era submodule → current stable; regression over CoreML / NNAPI / TensorRT / CUDA — scheduled with the v2.0.0 window)_</span>
-- [ ] Linux .deb/.rpm packaging <span style="color:gray;">_(disabled since 2024/08; repair bundled with the ORT upgrade, decision 0.4)_</span>
+- [x] ONNXRuntime engine upgrade <span style="color:green;">_(1.18.0 → 1.28.0 prebuilt packages; gpu-cuda12 → gpu_cuda12 renames handled; osx-x86_64 / win-x86 prebuilts discontinued upstream → local-build fallback; local regression turbo 13/13 + sd35 1024px bit-match with the 1.18 baseline, 2026/08/26)_</span>
+- [x] Linux .deb/.rpm packaging — **decision: removed, not repaired** <span style="color:green;">_(v2.0.0 decision G3, 2026/08/26: deb rules predate the ORT 1.19+ package rename/soname change and have no maintainer; Linux build+run support stays covered by test-native ubuntu legs and the manual smoke job)_</span>
 - [ ] ControlNet / safety-checker integration <span style="color:gray;">_(fields reserved in `IOrtSDConfig` as `onnx_control_net_path` / `onnx_safty_path`, currently not available)_</span>

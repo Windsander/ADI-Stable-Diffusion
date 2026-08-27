@@ -28,6 +28,8 @@ namespace ortsd {
                     std::string(ctx_config_.sd_modelpath_config.onnx_control_net_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_safty_path),
                     std::string(ctx_config_.sd_modelpath_config.onnx_clip_2_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_clip_3_path),
+                    std::string(ctx_config_.sd_modelpath_config.onnx_image_encoder_path),
                 },
                 {
                     onnx::sd::base::SchedulerType(ctx_config_.sd_scheduler_config.sd_scheduler_type),
@@ -39,7 +41,10 @@ namespace ortsd {
                     onnx::sd::base::BetaType(ctx_config_.sd_scheduler_config.scheduler_beta_type),
                     onnx::sd::base::AlphaType(ctx_config_.sd_scheduler_config.scheduler_alpha_type),
                     onnx::sd::base::PredictionType(ctx_config_.sd_scheduler_config.scheduler_predict_type),
-                    onnx::sd::base::SigmaType(ctx_config_.sd_scheduler_config.scheduler_sigma_type)
+                    onnx::sd::base::SigmaType(ctx_config_.sd_scheduler_config.scheduler_sigma_type),
+                    ctx_config_.sd_scheduler_config.scheduler_shift,
+                    ctx_config_.sd_scheduler_config.scheduler_sigma_min,
+                    ctx_config_.sd_scheduler_config.scheduler_sigma_max
                 },
                 {
                     onnx::sd::base::TokenizerType(ctx_config_.sd_tokenizer_config.sd_tokenizer_type),
@@ -50,7 +55,8 @@ namespace ortsd {
                     ctx_config_.sd_tokenizer_config.major_hidden_dim,
                     ctx_config_.sd_tokenizer_config.major_boundary_factor,
                     ctx_config_.sd_tokenizer_config.txt_attn_increase_factor,
-                    ctx_config_.sd_tokenizer_config.txt_attn_decrease_factor
+                    ctx_config_.sd_tokenizer_config.txt_attn_decrease_factor,
+                    ctx_config_.sd_tokenizer_config.tokenizer_sp_model_at
                 },
                 ctx_config_.sd_inference_steps,
                 ctx_config_.sd_input_width,
@@ -58,7 +64,12 @@ namespace ortsd {
                 ctx_config_.sd_input_channel,
                 ctx_config_.sd_scale_guidance,
                 ctx_config_.sd_random_intensity,
-                ctx_config_.sd_decode_scale_strength
+                ctx_config_.sd_decode_scale_strength,
+                ctx_config_.sd_decode_shift_strength,
+                ctx_config_.sd_video_frames,
+                ctx_config_.sd_video_fps,
+                ctx_config_.sd_video_motion_bucket,
+                ctx_config_.sd_video_noise_aug
             }
         );
     }

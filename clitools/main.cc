@@ -9,16 +9,32 @@
 #include <iostream>
 #include <sstream>
 #include <random>
+#include <fstream>
 
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cstdlib>
+
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#include <sys/sysctl.h>
+#elif defined(__linux__)
+#include <sys/sysinfo.h>
+#elif defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX  // keep windows.h's min/max macros from breaking std::max
+#endif
+#include <windows.h>
+#endif
 
 #include "adi.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
+// NOTE: STB_IMAGE_RESIZE_IMPLEMENTATION lives in the adi library
+// (source/units/model_image_encoder.cc) — defining it here too would
+// duplicate symbols at link time
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_image_resize2.h"
@@ -62,6 +78,8 @@ const char* scheduler_sampler_fuc_str[] = {
     "pndm",
     "ipndm",
     "deis_m",
+    "flow_euler",
+    "euler_svd",
 };
 
 // below order match AvailableSigmaType order
@@ -74,6 +92,7 @@ const char* scheduler_sigma_type_str[] = {
 const char* tokenizer_series_str[] = {
     "bpe",
     "word_piece",
+    "sp",
 };
 
 // below order match AvailableExecutionType order
@@ -115,6 +134,8 @@ struct CommandLineInput {
     std::string onnx_control_net_path;                                      // Model: ControlNet Path (currently not available)
     std::string onnx_safty_path;                                            // Model: Safety Security Model Path (currently not available)
     std::string onnx_clip_2_path;                                           // Model: 2nd CLIP Path (SDXL text_encoder_2)
+    std::string onnx_clip_3_path;                                           // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL)
+    std::string onnx_image_encoder_path;                                    // Model: SVD CLIP vision tower (img2vid)
 
     AvailableSchedulerType sd_scheduler_type = AVAILABLE_SCHEDULER_EULER;   // Scheduler: scheduler type (Euler_A, LMS)
     uint64_t scheduler_training_steps = 1000;                               // Scheduler: scheduler steps when at model training stage (can be found in model details, set by manual)
@@ -126,6 +147,9 @@ struct CommandLineInput {
     AvailableAlphaType scheduler_alpha_type = ALPHA_TYPE_COSINE;            // Scheduler: Alpha(Beta) Method (Cos, Exp)
     AvailablePredictionType scheduler_predict_type = PREDICT_TYPE_EPSILON;  // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
     AvailableSigmaType scheduler_sigma_type = SIGMA_TYPE_DEFAULT;           // Scheduler: Sigma Schedule Style (Default, Karras)
+    float scheduler_shift = 3.0f;                                           // Scheduler: Sigma Shift (rectified-flow family only)
+    float scheduler_sigma_min = 0.0f;                                       // Scheduler: Karras explicit sigma bounds (0 = derive / SVD class default)
+    float scheduler_sigma_max = 0.0f;                                       // Scheduler: SVD = 0.002 / 700.0
 
     AvailableTokenizerType sd_tokenizer_type = AVAILABLE_TOKENIZER_BPE;     // Tokenizer: tokenizer type (currently only provide BPE)
     std::string tokenizer_dictionary_at;                                    // Tokenizer: vocabulary lib <one vocab per line, row treate as index>
@@ -136,6 +160,7 @@ struct CommandLineInput {
     float major_boundary_factor = 1.0f;                                     // Tokenizer: weights for <start> & <end> mark-token
     float txt_attn_increase_factor = 1.1f;                                  // Tokenizer: weights for (prompt) to gain attention by this factor
     float txt_attn_decrease_factor = 1 / 1.1f;                              // Tokenizer: weights for [prompt] to loss attention by this factor
+    std::string tokenizer_sp_model_at;                                      // Tokenizer: SentencePiece model file (spiece.model, for T5-XXL)
 
     uint64_t sd_inference_steps = 2;                                        // Infer_Major: inference step
     uint64_t sd_input_width = 512;                                          // Infer_Major: IO image width (match SD-model training sets, Constant)
@@ -144,9 +169,131 @@ struct CommandLineInput {
     float sd_scale_guidance = 7.5f;                                         // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
     float sd_random_intensity = 1.0f;                                       // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength = 0.18215f;                              // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
+    float sd_decode_shift_strength = 0.0f;                                  // Infer_Major: VAE shift factor (SD3.5 = 0.0609f)
+    std::string sd_precision = "auto";                                      // Infer_Major: weight precision policy: auto | fp32 | fp16
+    uint64_t sd_video_frames = 14;                                          // Infer_Video: SVD frame count (must match the ONNX export)
+    uint64_t sd_video_fps = 7;                                              // Infer_Video: SVD fps micro-conditioning
+    uint64_t sd_video_motion_bucket = 127;                                  // Infer_Video: SVD motion bucket id
+    float sd_video_noise_aug = 0.02f;                                       // Infer_Video: SVD conditioning noise augmentation
 
     bool verbose = false;  // CLI-Mark: for extra infos of this tools
 };
+
+// ---------- runtime precision policy (auto fp32/fp16 by host memory) ----------
+// fp32 stays the single authoritative artifact; fp16 is a derived conversion
+// produced on demand by sd/tools/onnx_fp16_convert.py and cached in a sibling
+// "<model-set>-fp16" directory. Decision flow: probe available RAM -> estimate
+// load peak (max(encoder stack, backbone stack) x 1.3) -> if fp32 does not fit,
+// swap each component path to its fp16 counterpart, converting when missing.
+
+static uint64_t probe_available_memory_bytes() {
+#if defined(__APPLE__)
+    mach_port_t host_ = mach_host_self();
+    vm_statistics64_data_t vmstat_{};
+    mach_msg_type_number_t count_ = HOST_VM_INFO64_COUNT;
+    if (host_statistics64(host_, HOST_VM_INFO64, (host_info64_t)&vmstat_, &count_) == KERN_SUCCESS) {
+        uint64_t page_ = 0;
+        {   // page size
+            int mib_[2] = {CTL_HW, HW_PAGESIZE};
+            int ps_ = 0; size_t len_ = sizeof(ps_);
+            if (sysctl(mib_, 2, &ps_, &len_, nullptr, 0) == 0) page_ = uint64_t(ps_);
+        }
+        if (page_ == 0) page_ = 4096;
+        return uint64_t(vmstat_.free_count + vmstat_.inactive_count) * page_;
+    }
+    return 0;
+#elif defined(__linux__)
+    struct sysinfo info_{};
+    if (sysinfo(&info_) == 0) {
+        return uint64_t(info_.freeram + info_.bufferram) * info_.mem_unit;
+    }
+    return 0;
+#elif defined(_WIN32)
+    MEMORYSTATUSEX status_{};
+    status_.dwLength = sizeof(status_);
+    if (GlobalMemoryStatusEx(&status_)) return uint64_t(status_.ullAvailPhys);
+    return 0;
+#else
+    return 0;
+#endif
+}
+
+static uint64_t file_bytes(const std::string &path_) {
+    std::ifstream in_(path_, std::ios::binary | std::ios::ate);
+    return in_ ? uint64_t(in_.tellg()) : 0;
+}
+
+static std::string parent_dir(const std::string &path_) {
+    size_t pos_ = path_.find_last_of('/');
+    return (pos_ == std::string::npos) ? std::string(".") : path_.substr(0, pos_);
+}
+
+// bytes of one exported component (model.onnx + external data file)
+static uint64_t component_bytes(const std::string &onnx_path_) {
+    if (onnx_path_.empty()) return 0;
+    return file_bytes(onnx_path_) + file_bytes(parent_dir(onnx_path_) + "/model.onnx_data");
+}
+
+static void resolve_precision(CommandLineInput &params) {
+    if (params.sd_precision != "auto" && params.sd_precision != "fp32" && params.sd_precision != "fp16") {
+        fprintf(stderr, "error: --precision must be one of: auto | fp32 | fp16\n");
+        exit(1);
+    }
+    if (params.sd_precision == "fp32") return;
+
+    std::vector<std::string *> components_ = {
+        &params.onnx_clip_path, &params.onnx_clip_2_path, &params.onnx_clip_3_path,
+        &params.onnx_unet_path, &params.onnx_vae_encoder_path, &params.onnx_vae_decoder_path,
+        &params.onnx_image_encoder_path
+    };
+    uint64_t encoders_ = component_bytes(params.onnx_clip_path)
+                       + component_bytes(params.onnx_clip_2_path)
+                       + component_bytes(params.onnx_clip_3_path)
+                       + component_bytes(params.onnx_image_encoder_path);
+    uint64_t backbone_ = component_bytes(params.onnx_unet_path)
+                       + component_bytes(params.onnx_vae_encoder_path)
+                       + component_bytes(params.onnx_vae_decoder_path);
+    // encoders run in prepare() and are released before the backbone loop, so
+    // the peak is the larger stack, not their sum
+    uint64_t peak_est_ = uint64_t(double(std::max(encoders_, backbone_)) * 1.3);
+
+    bool want_fp16_ = (params.sd_precision == "fp16");
+    if (params.sd_precision == "auto") {
+        uint64_t avail_ = probe_available_memory_bytes();
+        want_fp16_ = (avail_ > 0) && (peak_est_ > uint64_t(double(avail_) * 0.75));
+        printf("[precision] auto: available RAM %.1f GB, fp32 peak est %.1f GB -> %s\n",
+               double(avail_) / 1073741824.0, double(peak_est_) / 1073741824.0,
+               want_fp16_ ? "fp16" : "fp32");
+    }
+    if (!want_fp16_) return;
+
+    const char *python_ = getenv("ADI_FP16_PYTHON");
+    const char *tool_ = getenv("ADI_FP16_TOOL");
+    std::string python_cmd_ = python_ ? python_ : "python3";
+    std::string tool_path_ = tool_ ? tool_ : "sd/tools/onnx_fp16_convert.py";
+
+    for (auto *path_ptr_ : components_) {
+        if (path_ptr_->empty()) continue;
+        std::string comp_dir_ = parent_dir(*path_ptr_);            // .../onnx-<set>/<component>
+        std::string set_dir_ = parent_dir(comp_dir_);              // .../onnx-<set>
+        std::string comp_name_ = comp_dir_.substr(set_dir_.size() + 1);
+        std::string fp16_onnx_ = set_dir_ + "-fp16/" + comp_name_ + "/model.onnx";
+        if (file_bytes(fp16_onnx_) == 0) {
+            printf("[precision] converting %s -> fp16 (one-time, cached)\n", comp_dir_.c_str());
+            std::string cmd_ = "\"" + python_cmd_ + "\" \"" + tool_path_ + "\" \"" +
+                               comp_dir_ + "\" \"" + (set_dir_ + "-fp16/" + comp_name_) + "\"";
+            int rc_ = system(cmd_.c_str());
+            if (rc_ != 0 || file_bytes(fp16_onnx_) == 0) {
+                fprintf(stderr, "[precision] WARN: fp16 conversion failed for %s, keeping fp32\n",
+                        comp_dir_.c_str());
+                continue;
+            }
+        }
+        *path_ptr_ = fp16_onnx_;
+        printf("[precision] %s -> %s\n", comp_name_.c_str(), fp16_onnx_.c_str());
+    }
+}
+
 
 std::string wrap_text(const std::string &text, size_t line_width = 0, size_t line_wraps = 0) {
     line_width = (line_width <= 0) ? DEFAULT_LINE_WIDTH : line_width;
@@ -253,7 +400,7 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --help                             show this help message and exit\n");
     printf("  --version                          show local ADI version and exit\n");
     printf("  -t, --type [TYPE]                  execution type (default cpu) [cpu / gpu (core_ml/tensor_rt/cuda/nnapi)]\n");
-    printf("  -m, --mode [MODE]                  run mode [txt2img / img2img]\n");
+    printf("  -m, --mode [MODE]                  run mode [txt2img / img2img / img2vid]\n");
     printf("  -i, --input [IMAGE]                path to the input image (default input.png) [img2img]\n");
     printf("  -o, --output [IMAGE]               path to the input image (default output.png)\n");
     printf("  -p, --positive [PROMPT]            positive prompt, request necessary \n");
@@ -270,6 +417,9 @@ void print_usage(int argc, const char* argv[]) {
 
     printf("  --clip [CLIP_PATH]                 path to clip\n");
     printf("  --clip2 [CLIP_2_PATH]              path to 2nd clip (SDXL text_encoder_2, enables SDXL conditioning) \n");
+    printf("  --clip3 [CLIP_3_PATH]              path to 3rd clip (SD3/FLUX text_encoder_3 = T5-XXL, enables triple-encoder) \n");
+    printf("  --image-encoder [IMAGE_ENC_PATH]   path to SVD CLIP vision tower (required for -m img2vid) \n");
+    printf("  --sp-model [SPIECE_MODEL_PATH]     path to sentencepiece model (spiece.model, for --tokenizer sp / T5-XXL) \n");
     printf("  --unet [UNET_PATH]                 path to unet\n");
     printf("  --vae-encoder [VAE_ENCODER_PATH]   path to vae encoder\n");
     printf("  --vae-decoder [VAE_DECODER_PATH]   path to vae decoder\n");
@@ -282,16 +432,25 @@ void print_usage(int argc, const char* argv[]) {
     printf("  --beta-end <float>                 Beta end (default 0.012f) \n");
     printf("  --guidance <float>                 Scale for classifier-free guidance, immersion rate for [value * (Positive - Negative)] residual (default 7.5f) \n");
     printf("  --decoding <float>                 for VAE Decoding result merged (default 0.18215f) \n");
+    printf("  --decode-shift <float>             VAE shift factor (default 0.0; SD3.5 = 0.0609) \n");
+    printf("  --precision <auto|fp32|fp16>       weight precision policy (default auto: probe RAM, convert fp16 on demand via sd/tools/onnx_fp16_convert.py) \n");
     printf("  --strength <float>                 set random intensity to control noise adding each step in [0.0, 1.0] (default 1.0f) \n");
     printf("  --steps <uint>                     inference step to generate output (default 3) \n");
 
     printf("arguments (optional, unrecommended):\n");
-    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m] (default euler_a) \n");
+    printf("  --scheduler [TYPE]                 Scheduler Type [euler / euler_a / lms / lcm / heun / ddpm / ddim / unipc / dpm_m / dpm_sde / dpm_s / pndm / ipndm / deis_m / flow_euler / euler_svd] (default euler_a) \n");
     printf("  --sigma [TYPE]                     Sigma Schedule Style [default / karras] (default default) \n");
+    printf("  --shift <float>                    Sigma Shift for rectified-flow schedulers (default 3.0) \n");
+    printf("  --sigma-min <float>                Karras explicit sigma lower bound (0 = derive; SVD = 0.002) \n");
+    printf("  --sigma-max <float>                Karras explicit sigma upper bound (0 = derive; SVD = 700.0) \n");
+    printf("  --frames <uint>                    SVD video frame count, must match the ONNX export (default 14) \n");
+    printf("  --fps <uint>                       SVD fps micro-conditioning (default 7; fps-1 is fed to the UNet) \n");
+    printf("  --motion-bucket <uint>             SVD motion bucket id (default 127) \n");
+    printf("  --noise-aug <float>                SVD conditioning noise augmentation strength (default 0.02) \n");
     printf("  --beta [TYPE]                      Beta Style [linear / scale_linear / squared_cos_cap_v2) (default linear) \n");
     printf("  --alpha [TYPE]                     Alpha(Beta) Method [cos / exp] (default cos) \n");
     printf("  --predictor [TYPE]                 Prediction Style [epsilon / v_prediction, sample) (default epsilon) \n");
-    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe / word_piece] (default bpe) \n");
+    printf("  --tokenizer [TYPE]                 Tokenizer Type [bpe / word_piece / sp] (default bpe) \n");
 
     printf("  --cache <uint>                     scheduler maintain history count, only avail when used by method (default 4) \n");
     printf("  --train-steps <uint>               scheduler steps when at model training stage (default 1000) \n");
@@ -434,6 +593,24 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.onnx_clip_2_path = argv[i];
+        } else if (arg == "--clip3") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_clip_3_path = argv[i];
+        } else if (arg == "--image-encoder") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.onnx_image_encoder_path = argv[i];
+        } else if (arg == "--sp-model") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.tokenizer_sp_model_at = argv[i];
         } else if (arg == "--unet") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -500,6 +677,18 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.sd_decode_scale_strength = std::stof(argv[i]);
+        }  else if (arg == "--decode-shift") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_decode_shift_strength = std::stof(argv[i]);
+        }  else if (arg == "--precision") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_precision = argv[i];
         }  else if (arg == "--strength") {
             if (++i >= argc) {
                 invalid_arg = true;
@@ -526,6 +715,48 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
                 break;
             }
             params.scheduler_sigma_type = (AvailableSigmaType)sigma_found;
+        } else if (arg == "--shift") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_shift = std::stof(argv[i]);
+        } else if (arg == "--sigma-min") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_min = std::stof(argv[i]);
+        } else if (arg == "--sigma-max") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.scheduler_sigma_max = std::stof(argv[i]);
+        } else if (arg == "--frames") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_frames = std::stoi(argv[i]);
+        } else if (arg == "--fps") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_fps = std::stoi(argv[i]);
+        } else if (arg == "--motion-bucket") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_motion_bucket = std::stoi(argv[i]);
+        } else if (arg == "--noise-aug") {
+            if (++i >= argc) {
+                invalid_arg = true;
+                break;
+            }
+            params.sd_video_noise_aug = std::stof(argv[i]);
         } else if (arg == "--beta") {
             int betae_found = GET_TYPE_FROM_STR(scheduler_beta_type_str, BETA_COUNT);
             if (betae_found == -1) {
@@ -623,6 +854,12 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         exit(1);
     }
 
+    if (params.mode == IMG2VID && params.onnx_image_encoder_path.length() == 0) {
+        fprintf(stderr, "error: when using the img2vid mode, the following arguments are required: --image-encoder\n");
+        print_usage(argc, argv);
+        exit(1);
+    }
+
     if (params.output_path.length() == 0) {
         fprintf(stderr, "error: the following arguments are required: output_path\n");
         print_usage(argc, argv);
@@ -644,10 +881,14 @@ void parse_args(int argc, const char** argv, CommandLineInput& params) {
         exit(1);
     }
 
-    if (params.sd_decode_scale_strength < 0.f || params.sd_decode_scale_strength > 1.f) {
-        fprintf(stderr, "error: can only work with VAE Decoding scale in [0.0, 1.0]\n");
+    if (params.sd_decode_scale_strength <= 0.f) {
+        fprintf(stderr, "error: VAE Decoding scale must be positive (decode: latents/scale + shift; SD1.x=0.18215, SD3.5=1.5305)\n");
         exit(1);
     }
+
+    // runtime precision policy: auto-switch model paths to fp16 (converting on
+    // demand) when the fp32 stack does not fit in available memory
+    resolve_precision(params);
 
     // seed random check
     if (params.scheduler_seed < 0) {
@@ -752,6 +993,29 @@ static void save_image(const CommandLineInput &params, uint8_t* image_data){
 
     size_t last = params.output_path.find_last_of('.');
     std::string file_name = (last != std::string::npos) ? params.output_path.substr(0, last) : params.output_path;
+
+    // img2vid: the inference buffer stacks all frames (frame-major RGB bytes)
+    if (params.mode == IMG2VID) {
+        uint64_t frame_bytes_ = params.sd_input_width * params.sd_input_height * params.sd_input_channel;
+        for (uint64_t f = 0; f < params.sd_video_frames; ++f) {
+            char frame_path_[4096];
+            snprintf(frame_path_, sizeof(frame_path_), "%s_%04llu.png", file_name.c_str(), (unsigned long long)f);
+            stbi_write_png(
+                frame_path_,
+                (int) params.sd_input_width, (int) params.sd_input_height, (int) params.sd_input_channel,
+                image_data + f * frame_bytes_, 0
+            );
+        }
+        printf("\n");
+        printf("save result video frames to '%s_0000.png' .. '%s_%04llu.png' (%llu frames)\n",
+               file_name.c_str(), file_name.c_str(), (unsigned long long)(params.sd_video_frames - 1),
+               (unsigned long long)params.sd_video_frames);
+        printf("\n");
+        printf("all done with option '%s'\n", get_image_params(params).c_str());
+        printf("\n");
+        return;
+    }
+
     std::string final_image_path = file_name + ".png";
     stbi_write_png(
         final_image_path.c_str(),
@@ -787,7 +1051,9 @@ int main(int argc, const char *argv[]) {
                 params.onnx_vae_decoder_path.c_str(),
                 params.onnx_control_net_path.c_str(),
                 params.onnx_safty_path.c_str(),
-                params.onnx_clip_2_path.c_str()
+                params.onnx_clip_2_path.c_str(),
+                params.onnx_clip_3_path.c_str(),
+                params.onnx_image_encoder_path.c_str()
             },
             {
                 params.sd_scheduler_type,
@@ -799,7 +1065,10 @@ int main(int argc, const char *argv[]) {
                 params.scheduler_beta_type,
                 params.scheduler_alpha_type,
                 params.scheduler_predict_type,
-                params.scheduler_sigma_type
+                params.scheduler_sigma_type,
+                params.scheduler_shift,
+                params.scheduler_sigma_min,
+                params.scheduler_sigma_max
             },
             {
                 params.sd_tokenizer_type,
@@ -810,7 +1079,8 @@ int main(int argc, const char *argv[]) {
                 params.major_hidden_dim,
                 params.major_boundary_factor,
                 params.txt_attn_increase_factor,
-                params.txt_attn_decrease_factor
+                params.txt_attn_decrease_factor,
+                params.tokenizer_sp_model_at.c_str()
             },
             params.sd_inference_steps,
             params.sd_input_width,
@@ -818,7 +1088,12 @@ int main(int argc, const char *argv[]) {
             params.sd_input_channel,
             params.sd_scale_guidance,
             params.sd_random_intensity,
-            params.sd_decode_scale_strength
+            params.sd_decode_scale_strength,
+            params.sd_decode_shift_strength,
+            params.sd_video_frames,
+            params.sd_video_fps,
+            params.sd_video_motion_bucket,
+            params.sd_video_noise_aug
         }
     );
     if (!ort_sd_context_) {

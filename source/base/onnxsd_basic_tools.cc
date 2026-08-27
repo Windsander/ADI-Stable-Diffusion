@@ -525,6 +525,146 @@ public:
         return result_tensor_;
     }
 
+    // zero-pad the last dim from its size to pad_to_, e.g. SD3's CLIP seq
+    // embeddings 2048 -> 4096 (joint_attention_dim) before concat with T5
+    template<class T>
+    static Tensor pad_last_dim(const Tensor &input_, long pad_to_, T pad_value_ = T(0)) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.empty()) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pad_last_dim empty rank"));
+        }
+        long inner_ = long(input_shape_.back());
+        if (inner_ > pad_to_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pad_last_dim shrink"));
+        }
+        long outer_ = long(input_size_) / inner_;
+
+        long result_size_ = outer_ * pad_to_;
+        T* result_data_ = new T[result_size_];
+        for (long o_ = 0; o_ < outer_; ++o_) {
+            for (long i_ = 0; i_ < inner_; ++i_) {
+                result_data_[o_ * pad_to_ + i_] = input_data_[o_ * inner_ + i_];
+            }
+            for (long i_ = inner_; i_ < pad_to_; ++i_) {
+                result_data_[o_ * pad_to_ + i_] = pad_value_;
+            }
+        }
+
+        TensorShape result_shape_ = input_shape_;
+        result_shape_.back() = pad_to_;
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            result_shape_.data(), result_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
+    // concatenate two same-rank tensors along dim 1 (sequence axis), e.g.
+    // [1, 77, 4096] + [1, 256, 4096] -> [1, 333, 4096]  (SD3 CLIP seq ++ T5 seq).
+    // NOTE: merge() interleaves equal-shaped chunks — that is NOT sequence concat.
+    template<class T>
+    static Tensor concat_sequence(const Tensor &input_l_, const Tensor &input_r_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+
+        if (input_shape_l_.size() != input_shape_r_.size() || input_shape_l_.size() < 2) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_sequence rank mismatch"));
+        }
+        const size_t rank_ = input_shape_l_.size();
+        long seq_l_ = long(input_shape_l_[1]);
+        long seq_r_ = long(input_shape_r_[1]);
+        long outer_ = long(input_shape_l_[0]);
+        long inner_l_ = long(input_size_l_) / (outer_ * seq_l_);
+        long inner_r_ = long(input_size_r_) / (outer_ * seq_r_);
+        if (inner_l_ != inner_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_sequence inner mismatch"));
+        }
+
+        long result_size_ = long(input_size_l_) + long(input_size_r_);
+        T* result_data_ = new T[result_size_];
+        for (long b_ = 0; b_ < outer_; ++b_) {
+            T* dst_ = result_data_ + b_ * (seq_l_ + seq_r_) * inner_l_;
+            const T* src_l_ = input_data_l_ + b_ * seq_l_ * inner_l_;
+            const T* src_r_ = input_data_r_ + b_ * seq_r_ * inner_l_;
+            memcpy(dst_, src_l_, sizeof(T) * seq_l_ * inner_l_);
+            memcpy(dst_ + seq_l_ * inner_l_, src_r_, sizeof(T) * seq_r_ * inner_l_);
+        }
+
+        TensorShape result_shape_ = input_shape_l_;
+        result_shape_[1] = seq_l_ + seq_r_;
+        Tensor result_tensor_ = Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            result_shape_.data(), result_shape_.size()
+        );
+
+        return result_tensor_;
+    }
+
+    // FLUX 2x2 patch packing: [1, C, H, W] -> [1, (H/2)*(W/2), C*4].
+    // Matches diffusers FluxPipeline._pack_latents (view + permute 0,2,4,1,3,5):
+    // packed[b, ph*(W/2)+pw, c*4 + i*2 + j] = latent[b, c, ph*2+i, pw*2+j]
+    template<class T>
+    static Tensor pack_2x2(const Tensor &input_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 4) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: pack_2x2 expects rank-4 [B,C,H,W]"));
+        }
+        long b_ = long(input_shape_[0]), c_ = long(input_shape_[1]);
+        long h_ = long(input_shape_[2]), w_ = long(input_shape_[3]);
+        long ph_ = h_ / 2, pw_ = w_ / 2;
+        long seq_ = ph_ * pw_;
+        long inner_ = c_ * 4;
+        long result_size_ = b_ * seq_ * inner_;
+        T* result_data_ = new T[result_size_];
+        for (long b = 0; b < b_; ++b)
+            for (long p_h = 0; p_h < ph_; ++p_h)
+                for (long p_w = 0; p_w < pw_; ++p_w)
+                    for (long c = 0; c < c_; ++c)
+                        for (long i = 0; i < 2; ++i)
+                            for (long j = 0; j < 2; ++j) {
+                                long src_ = ((b * c_ + c) * h_ + (p_h * 2 + i)) * w_ + (p_w * 2 + j);
+                                long dst_ = ((b * seq_ + p_h * pw_ + p_w) * c_ + c) * 4 + i * 2 + j;
+                                result_data_[dst_] = input_data_[src_];
+                            }
+        TensorShape shape_{b_, seq_, inner_};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // inverse of pack_2x2: [1, (H/2)*(W/2), C*4] -> [1, C, H, W]
+    template<class T>
+    static Tensor unpack_2x2(const Tensor &input_, long height_, long width_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 3) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: unpack_2x2 expects rank-3 [B,seq,C*4]"));
+        }
+        long b_ = long(input_shape_[0]);
+        long inner_ = long(input_shape_[2]);
+        long c_ = inner_ / 4;
+        long h_ = height_, w_ = width_;
+        long ph_ = h_ / 2, pw_ = w_ / 2;
+        long result_size_ = b_ * c_ * h_ * w_;
+        T* result_data_ = new T[result_size_];
+        for (long b = 0; b < b_; ++b)
+            for (long p_h = 0; p_h < ph_; ++p_h)
+                for (long p_w = 0; p_w < pw_; ++p_w)
+                    for (long c = 0; c < c_; ++c)
+                        for (long i = 0; i < 2; ++i)
+                            for (long j = 0; j < 2; ++j) {
+                                long dst_ = ((b * c_ + c) * h_ + (p_h * 2 + i)) * w_ + (p_w * 2 + j);
+                                long src_ = ((b * ph_ * pw_ + p_h * pw_ + p_w) * c_ + c) * 4 + i * 2 + j;
+                                result_data_[dst_] = input_data_[src_];
+                            }
+        TensorShape shape_{b_, c_, h_, w_};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
     template<class T>
     static Tensor guide(const Tensor &input_l_, const Tensor &input_r_, float guidance_scale_) {
         GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
@@ -548,6 +688,87 @@ public:
         );
 
         return result_tensor_;
+    }
+
+    // SVD: broadcast a single conditioning frame [1, C, H, W] to [1, F, C, H, W]
+    // (diffusers image_latents.unsqueeze(1).repeat(1, num_frames, 1, 1, 1))
+    template<class T>
+    static Tensor repeat_frames(const Tensor &input_, long frames_) {
+        GET_TENSOR_DATA_INFO(input_, input_data_, input_shape_, input_size_, T);
+        if (input_shape_.size() != 4) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: repeat_frames expects rank-4 [1,C,H,W]"));
+        }
+        long frame_size_ = long(input_size_);
+        long result_size_ = frame_size_ * frames_;
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < frames_; ++f) {
+            std::copy_n(input_data_, frame_size_, result_data_ + f * frame_size_);
+        }
+        TensorShape shape_{1, frames_, input_shape_[1], input_shape_[2], input_shape_[3]};
+        return Tensor::CreateTensor<T>(
+            input_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // SVD: concat two [1, F, C, H, W] along the channel dim -> [1, F, 2C, H, W].
+    // Frame-major layout makes each frame's channel-concat a plain block copy
+    // (diffusers torch.cat([latent_model_input, image_latents], dim=2))
+    template<class T>
+    static Tensor concat_frame_channels(const Tensor &input_l_, const Tensor &input_r_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+        if (input_shape_l_.size() != 5 || input_shape_r_.size() != 5) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_frame_channels expects rank-5 [1,F,C,H,W]"));
+        }
+        if (input_size_l_ != input_size_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: concat_frame_channels size mismatch"));
+        }
+        long f_ = long(input_shape_l_[1]);
+        long c_ = long(input_shape_l_[2]);
+        long frame_size_ = long(input_size_l_) / f_;
+        long result_size_ = long(input_size_l_) * 2;
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < f_; ++f) {
+            std::copy_n(input_data_l_ + f * frame_size_, frame_size_, result_data_ + f * 2 * frame_size_);
+            std::copy_n(input_data_r_ + f * frame_size_, frame_size_, result_data_ + f * 2 * frame_size_ + frame_size_);
+        }
+        TensorShape shape_{1, f_, c_ * 2, input_shape_l_[3], input_shape_l_[4]};
+        return Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
+    }
+
+    // SVD classifier-free guidance with a per-frame linear ramp
+    // (diffusers torch.linspace(min_guidance_scale, max_guidance_scale, num_frames)):
+    // guided[f] = uncond[f] + g_f * (cond[f] - uncond[f])
+    template<class T>
+    static Tensor guide_frames(const Tensor &input_l_, const Tensor &input_r_,
+                               float guidance_min_, float guidance_max_) {
+        GET_TENSOR_DATA_INFO(input_l_, input_data_l_, input_shape_l_, input_size_l_, T);
+        GET_TENSOR_DATA_INFO(input_r_, input_data_r_, input_shape_r_, input_size_r_, T);
+        if (input_shape_l_.size() != 5 || input_size_l_ != input_size_r_) {
+            amon_exception(basic_exception(EXC_LOG_ERR, "ERROR:: guide_frames expects rank-5 [1,F,C,H,W] pair"));
+        }
+        long f_ = long(input_shape_l_[1]);
+        long frame_size_ = long(input_size_l_) / f_;
+        long result_size_ = long(input_size_l_);
+        T* result_data_ = new T[result_size_];
+        for (long f = 0; f < f_; ++f) {
+            float g_ = (f_ > 1) ?
+                       guidance_min_ + (guidance_max_ - guidance_min_) * float(f) / float(f_ - 1) :
+                       guidance_max_;
+            for (long i = 0; i < frame_size_; ++i) {
+                long at_ = f * frame_size_ + i;
+                result_data_[at_] = input_data_l_[at_] + g_ * (input_data_r_[at_] - input_data_l_[at_]);
+            }
+        }
+        TensorShape shape_ = input_shape_l_;
+        return Tensor::CreateTensor<T>(
+            input_l_.GetTensorMemoryInfo(), result_data_, result_size_,
+            shape_.data(), shape_.size()
+        );
     }
 
     template<class T>

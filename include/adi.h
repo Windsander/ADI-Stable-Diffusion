@@ -16,7 +16,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#define CURRENT_ADI_VERSION "v1.2.0"
+#define CURRENT_ADI_VERSION "v2.0.0"
 
 /* Inference Execution Settings ===========================================*/
 
@@ -79,6 +79,8 @@ enum AvailableSchedulerType {
     AVAILABLE_SCHEDULER_PNDM        = 0x0b,
     AVAILABLE_SCHEDULER_IPNDM       = 0x0c,
     AVAILABLE_SCHEDULER_DEIS_M      = 0x0d,
+    AVAILABLE_SCHEDULER_FLOW_EULER  = 0x0e,
+    AVAILABLE_SCHEDULER_EULER_SVD   = 0x0f,
     AVAILABLE_SCHEDULER_COUNT,
 };
 
@@ -86,6 +88,7 @@ enum AvailableSchedulerType {
 enum AvailableTokenizerType {
     AVAILABLE_TOKENIZER_BPE         = 0x00,
     /*AVAILABLE_TOKENIZER_WORD_PIECE  = 0x02,*/
+    AVAILABLE_TOKENIZER_SP          = 0x02,
     AVAILABLE_TOKENIZER_COUNT,
 };
 
@@ -111,6 +114,8 @@ typedef struct IOrtSDConfig {
         const char* onnx_control_net_path;          // Model: ControlNet Path (currently not available)
         const char* onnx_safty_path;                // Model: Safety Security Model Path (currently not available)
         const char* onnx_clip_2_path;               // Model: 2nd CLIP Path (SDXL text_encoder_2, empty when unused)
+        const char* onnx_clip_3_path;               // Model: 3rd CLIP Path (SD3/FLUX text_encoder_3 = T5-XXL, empty when unused)
+        const char* onnx_image_encoder_path;        // Model: SVD CLIP vision tower (non-empty selects img2vid mode)
     } sd_modelpath_config;
 
     struct {
@@ -124,6 +129,9 @@ typedef struct IOrtSDConfig {
         enum AvailableAlphaType scheduler_alpha_type;   // Scheduler: Alpha(Beta) Method (Cos, Exp)
         enum AvailablePredictionType scheduler_predict_type;   // Scheduler: Prediction Style (Epsilon, V_Pred, Sample)
         enum AvailableSigmaType scheduler_sigma_type;          // Scheduler: Sigma Schedule Style (Default, Karras)
+        float scheduler_shift;                              // Scheduler: Sigma Shift (rectified-flow family only, default 3.0f)
+        float scheduler_sigma_min;                          // Scheduler: Karras explicit sigma bounds (0 = derive from betas;
+        float scheduler_sigma_max;                          //   SVD = 0.002 / 700.0)
     } sd_scheduler_config;
 
     struct {
@@ -136,6 +144,7 @@ typedef struct IOrtSDConfig {
         float major_boundary_factor;                // Tokenizer: weights for <start> & <end> mark-token
         float txt_attn_increase_factor;             // Tokenizer: weights for (prompt) to gain attention by this factor
         float txt_attn_decrease_factor;             // Tokenizer: weights for [prompt] to loss attention by this factor
+        const char* tokenizer_sp_model_at;          // Tokenizer: SentencePiece model file (spiece.model, for T5-XXL / tokenizer sp)
     } sd_tokenizer_config;
 
     uint64_t sd_inference_steps;            // Infer_Major: inference step
@@ -145,6 +154,11 @@ typedef struct IOrtSDConfig {
     float sd_scale_guidance;                // Infer_Major: immersion rate for [value * (Positive - Negative)] residual
     float sd_random_intensity;              // Infer_Major: random intensity for in stepping noise Add (only avail when method supported)
     float sd_decode_scale_strength;         // Infer_Major: for VAE Decoding result merged (Recommend 0.18215f)
+    float sd_decode_shift_strength;         // Infer_Major: VAE shift factor (Recommend 0.0f; SD3.5 = 0.0609f)
+    uint64_t sd_video_frames;               // Infer_Video: SVD frame count (baked into the ONNX export, default 14)
+    uint64_t sd_video_fps;                  // Infer_Video: SVD fps micro-conditioning (default 7; fps-1 is fed)
+    uint64_t sd_video_motion_bucket;        // Infer_Video: SVD motion bucket id (default 127)
+    float sd_video_noise_aug;               // Infer_Video: SVD conditioning noise augmentation (default 0.02f)
 } IOrtSDConfig;
 
 namespace ortsd{

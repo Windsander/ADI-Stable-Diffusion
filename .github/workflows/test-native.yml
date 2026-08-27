@@ -1,10 +1,14 @@
 name: <Test> Native Compiling
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -19,11 +23,11 @@ jobs:
         arch: [ x86_64, aarch64, arm64, x86, arm64-v8a, armeabi-v7a ]
         include:
           - os: windows-latest
-            platform: windows       # Platform: Windows (keep: x86_64, x86, arm64)
+            platform: windows       # Platform: Windows (keep: x86_64, arm64; x86 dropped @ORT1.28)
             c_compiler: cl
             cpp_compiler: cl
           - os: macos-latest
-            platform: macos         # Platform: MacOS (keep: x86_64, arm64)
+            platform: macos         # Platform: MacOS (keep: arm64; x86_64 dropped @ORT1.28)
             c_compiler: clang
             cpp_compiler: clang++
           - os: ubuntu-latest
@@ -44,7 +48,9 @@ jobs:
             arch: x86
           - platform: linux
             arch: arm64
-          # macOS (keep: x86_64, arm64)
+          # macOS (keep: arm64; x86_64 dropped - ORT 1.28 prebuilt discontinued)
+          - platform: macos
+            arch: x86_64
           - platform: macos
             arch: arm64-v8a
           - platform: macos
@@ -53,7 +59,9 @@ jobs:
             arch: x86
           - platform: macos
             arch: aarch64
-          # Windows (keep: x86_64, x86, arm64)
+          # Windows (keep: x86_64, arm64; x86 dropped - ORT 1.28 prebuilt discontinued)
+          - platform: windows
+            arch: x86
           - platform: windows
             arch: arm64-v8a
           - platform: windows
@@ -92,7 +100,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y ninja-build gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu patchelf
 
       - name: Install dependencies on macOS
         if: runner.os == 'macOS'
@@ -158,3 +166,24 @@ jobs:
 #      - name: Test
 #        working-directory: ${{ steps.strings.outputs.build-output-dir }}
 #        run: ctest --build-config ${{ matrix.build_type }}
+
+  # NOTE: the inference smoke gate moved to smoke.yml (manual-only workflow) so
+  # its skipped job no longer shows up in PR check lists.
+
+  # Aggregate gate: one stable check name for branch protection. Require ONLY
+  # this in the main-branch rule — matrix leg names change as platforms come
+  # and go (arch dimension, discontinued prebuilts), and stale leg names become
+  # permanent "Expected" ghosts otherwise.
+  gate:
+    name: native-gate
+    needs: [test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify native matrix result
+        run: |
+          echo "test matrix result: ${{ needs.test.result }}"
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "native matrix not green: ${{ needs.test.result }}"
+            exit 1
+          fi

@@ -36,7 +36,7 @@ include(${CMAKE_PROJECT_DIR}/apex-toolchain/generic-toolchain.cmake)
 PROJECT("adi-sd")
 SET(ONNX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 SET(ONNX_INFERENCE_TARGET undefined)
-SET(ONNX_INFERENCE_VERSION "1.18.0" CACHE STRING "ONNXRuntime version" FORCE)
+SET(ONNX_INFERENCE_VERSION "1.28.0" CACHE STRING "ONNXRuntime version" FORCE)
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -102,16 +102,19 @@ endif()
 # Warning: Cuda & TensorRT can only available in local-build mode
 #          Caused by online-official doesn't provide target provider.h
 if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)      # for Windows x32
+    # ORT 1.28 discontinued the win-x86 prebuilt package — fall back to the
+    # local source-build path (engine submodule); CI no longer ships this target
     SET(ONNX_INFERENCE_TARGET win-x86)
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
     set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM win-x86)
-    set(SD_ORT_ONLINE_AVAIL ON)
+    set(SD_ORT_ONLINE_AVAIL OFF)
     set(ENGINE_NAME "ORT-CUDA-TensorRT")
+    message(WARNING "[onnx.runtime.sd][W] ORT 1.28 has NO win-x86 prebuilt package; online prebuilt disabled, local source build required")
 elseif (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)  # for Windows x64
-    SET(ONNX_INFERENCE_TARGET win-x64-gpu-cuda12)
+    SET(ONNX_INFERENCE_TARGET win-x64-gpu_cuda12)   # renamed gpu-cuda12 -> gpu_cuda12 since ORT 1.19+
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)      # can be ON when local-build
     set(DEFAULT_COREML_STATE OFF)
@@ -129,14 +132,17 @@ elseif (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")  # for Windows ARM64
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CPU")
 elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")  # for macOS x86_64
+    # ORT 1.28 discontinued osx-x86_64 / osx-universal2 prebuilt packages —
+    # fall back to the local source-build path; CI no longer ships this target
     SET(ONNX_INFERENCE_TARGET osx-x86_64)
     set(DEFAULT_CUDA_STATE OFF)
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE ON)
     set(DEFAULT_NNAPI_STATE OFF)
     set(CURRENT_PLATFORM osx-x86_64)
-    set(SD_ORT_ONLINE_AVAIL ON)
+    set(SD_ORT_ONLINE_AVAIL OFF)
     set(ENGINE_NAME "ORT-CoreML")
+    message(WARNING "[onnx.runtime.sd][W] ORT 1.28 has NO osx-x86_64 prebuilt package; online prebuilt disabled, local source build required")
 elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")  # for macOS arm64
     SET(ONNX_INFERENCE_TARGET osx-arm64)
     set(DEFAULT_CUDA_STATE OFF)
@@ -147,7 +153,7 @@ elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")  # for macOS arm64
     set(SD_ORT_ONLINE_AVAIL ON)
     set(ENGINE_NAME "ORT-CoreML")
 elseif (LINUX AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")  # for Linux x86_64
-    SET(ONNX_INFERENCE_TARGET linux-x64-gpu-cuda12)
+    SET(ONNX_INFERENCE_TARGET linux-x64-gpu_cuda12)   # renamed gpu-cuda12 -> gpu_cuda12 since ORT 1.19+
     set(DEFAULT_CUDA_STATE OFF)     # can be ON when local-build
     set(DEFAULT_TRT_STATE OFF)
     set(DEFAULT_COREML_STATE OFF)
@@ -352,6 +358,50 @@ message("${Cyan}<############################# ${PROJECT_NAME}-Make ############
 
 set(library_name adi)
 
+# sentencepiece (T5-XXL tokenizer, stage-C): vendored static build, official
+# library per project policy (no hand-rolled reimplementation of OSS libs)
+include(FetchContent)
+set(SPM_ENABLE_SHARED OFF CACHE BOOL "sentencepiece: build static only" FORCE)
+set(SPM_ENABLE_TCMALLOC OFF CACHE BOOL "sentencepiece: no tcmalloc" FORCE)
+FetchContent_Declare(sentencepiece
+        GIT_REPOSITORY https://github.com/google/sentencepiece.git
+        GIT_TAG v0.2.1
+        GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(sentencepiece)
+get_target_property(SPM_INCLUDE_DIRS sentencepiece-static INCLUDE_DIRECTORIES)
+
+# ADI links only the static sentencepiece library — the spm_* command-line
+# tools are never used anywhere in this project. Exclude them from the
+# default build: each tool is a standalone exe link that adds per-platform
+# failure modes (NDK liblog on android, bogus -lpthreads from FindThreads on
+# windows-host NDK toolchains) plus CI time, for zero benefit.
+foreach (spm_tool spm_encode spm_export_vocab spm_train spm_decode
+        spm_normalize compile_charsmap spm_test)
+    if (TARGET ${spm_tool})
+        set_target_properties(${spm_tool} PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    endif ()
+endforeach ()
+
+# sentencepiece's bundled protobuf logs via __android_log_write on Android.
+# Every sentencepiece target (static libs AND the spm_* tools, which link the
+# static lib into standalone exes) needs NDK liblog or the final link fails
+# with "undefined symbol: __android_log_write".
+# NOTE: sentencepiece v0.2.1 declares the static libs with the KEYWORD
+# signature (src/CMakeLists.txt:240-241) but the spm_* tools with the PLAIN
+# signature — CMake forbids mixing, so match each group's own form.
+if (ANDROID)
+    foreach (spm_lib sentencepiece-static sentencepiece_train-static)
+        if (TARGET ${spm_lib})
+            target_link_libraries(${spm_lib} PRIVATE log)
+        endif ()
+    endforeach ()
+    foreach (spm_tool spm_encode spm_export_vocab spm_train spm_decode spm_normalize)
+        if (TARGET ${spm_tool})
+            target_link_libraries(${spm_tool} log)
+        endif ()
+    endforeach ()
+endif ()
+
 set(library_data_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/outlet/adi.cc
 )
@@ -383,6 +433,16 @@ auto_target_include(${library_name} ${CMAKE_CURRENT_SOURCE_DIR} include PUBLIC)
 auto_copy_reference_dynamic(${library_name} onnxruntime ${ONNXRUNTIME_LIB_PATH} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 auto_link_reference_library(${library_name} onnxruntime ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
+# sentencepiece: headers for the sp tokenizer TU + static link
+target_include_directories(${library_name} PRIVATE ${sentencepiece_SOURCE_DIR}/src)
+target_link_libraries(${library_name} PRIVATE sentencepiece-static)
+
+# sentencepiece's bundled protobuf logs via __android_log_write on Android —
+# final links (shared adi and/or cli exe) need NDK liblog
+if (ANDROID)
+    target_link_libraries(${library_name} PRIVATE log)
+endif ()
+
 target_compile_definitions(${library_name} PUBLIC ${CMAKE_BUILD_TYPE})
 
 message("${Cyan}<############################# ${PROJECT_NAME}-Done #############################>${ColourReset}")
@@ -406,6 +466,8 @@ if (ORT_BUILD_COMMAND_LINE)
             "-DORT_BUILD_SHARED_ORT=${ORT_BUILD_SHARED_ORT}"
             "-DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION}"
             "-DANDROID_NDK=${ANDROID_NDK}"
+            "-DSPM_INCLUDE_DIR=${sentencepiece_SOURCE_DIR}/src"
+            "-DSPM_STATIC_LIB=$<TARGET_FILE:sentencepiece-static>"
     )
 
     # pass all CMake parameters received by the main project to the sub-project

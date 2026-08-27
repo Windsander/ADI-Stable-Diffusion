@@ -76,6 +76,8 @@ typedef enum SchedulerType {
     SCHEDULER_PNDM              = 11,
     SCHEDULER_IPNDM             = 12,
     SCHEDULER_DEIS_M            = 13,
+    SCHEDULER_FLOW_EULER        = 14,
+    SCHEDULER_EULER_SVD         = 15,
 } SchedulerType;
 
 typedef enum BetaScheduleType {
@@ -125,6 +127,9 @@ typedef struct SchedulerConfig {
     AlphaType scheduler_alpha_type;
     PredictionType scheduler_predict_type;
     SigmaType scheduler_sigma_type;
+    float scheduler_shift;              // Flow: sigma shift (rectified-flow family, default 3.0)
+    float scheduler_sigma_min;          // Karras-explicit sigma bounds (0 = derive from beta schedule;
+    float scheduler_sigma_max;          //   SVD = 0.002 / 700.0 per its scheduler_config.json)
 } SchedulerConfig;
 
 /* Diffusion Tokenizer Settings ===========================================*/
@@ -132,6 +137,7 @@ typedef struct SchedulerConfig {
 typedef enum TokenizerType {
     TOKENIZER_BPE               = 0,
     TOKENIZER_WORD_PIECE        = 1,
+    TOKENIZER_SP                = 2,
 } TokenizerType;
 
 #define DEFAULT_TOKENIZER_CONFIG                            \
@@ -157,6 +163,7 @@ typedef struct TokenizerConfig {
     float major_boundary_factor;
     float txt_attn_increase_factor;
     float txt_attn_decrease_factor;
+    std::string tokenizer_sp_model_at;          // SentencePiece model file (spiece.model, for T5-XXL / tokenizer sp)
 } TokenizerConfig;
 
 /* Key State & Assistant Const ===========================================*/

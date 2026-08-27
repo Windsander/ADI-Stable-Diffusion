@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   cross:
     runs-on: ${{ matrix.os }}
@@ -28,7 +31,9 @@ jobs:
             arch: x86
           - platform: linux
             arch: arm64
-          # macOS (keep: x86_64, arm64)
+          # macOS (keep: arm64; x86_64 dropped - ORT 1.28 prebuilt discontinued)
+          - platform: macos
+            arch: x86_64
           - platform: macos
             arch: arm64-v8a
           - platform: macos
@@ -37,7 +42,9 @@ jobs:
             arch: x86
           - platform: macos
             arch: aarch64
-          # Windows (keep: x86_64, x86, arm64)
+          # Windows (keep: x86_64, arm64; x86 dropped - ORT 1.28 prebuilt discontinued)
+          - platform: windows
+            arch: x86
           - platform: windows
             arch: arm64-v8a
           - platform: windows
@@ -87,7 +94,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build gcc g++
+          sudo apt-get install -y ninja-build gcc g++ patchelf
           
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
             echo "Target platform is macOS."
@@ -201,3 +208,20 @@ jobs:
 #      - name: Test
 #        working-directory: ${{ steps.strings.outputs.build-output-dir }}
 #        run: ctest --build-config ${{ matrix.build_type }}
+  # Aggregate gate: one stable check name for branch protection. Require ONLY
+  # this in the main-branch rule — matrix leg names change as platforms come
+  # and go (arch dimension, discontinued prebuilts), and stale leg names become
+  # permanent "Expected" ghosts otherwise.
+  gate:
+    name: cross-gate
+    needs: [cross]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify cross matrix result
+        run: |
+          echo "cross matrix result: ${{ needs.cross.result }}"
+          if [ "${{ needs.cross.result }}" != "success" ]; then
+            echo "cross matrix not green: ${{ needs.cross.result }}"
+            exit 1
+          fi

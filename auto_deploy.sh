@@ -262,7 +262,7 @@ override_dh_auto_install:
 	# 安装库文件并创建符号链接
 	install -D -m 644 \$(CURDIR)/lib/libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so
 	ln -sf libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1
-	ln -sf libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1.18.0
+	ln -sf libonnxruntime.so \$(CURDIR)/debian/${package_name}/usr/lib/libonnxruntime.so.1.28.0
 EOF
 
   chmod +x ${package_name}-${version}/debian/rules

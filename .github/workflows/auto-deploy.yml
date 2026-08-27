@@ -38,8 +38,14 @@ jobs:
       target_branch: ${{ env.TARGET_BRANCH }}
       version: ${{ env.VERSION }}
 
-  # NOTE(v1.2 decision 0.4): Linux .deb/.rpm packaging stays DISABLED in this
-  # window; the job is kept here, fully commented, for the v2.0.0 repair window.
+  # NOTE(v2.0.0 decision G3, supersedes v1.2 decision 0.4): Linux .deb/.rpm
+  # packaging is formally REMOVED from the deploy chain (not repaired).
+  # Rationale: ORT 1.19+ renamed the linux prebuilt package (gpu-cuda12 ->
+  # gpu_cuda12) and changed the soname to libonnxruntime.so.1, so the deb
+  # rules need a redesign nobody maintains; there is no Linux distribution
+  # demand. Linux build+run support itself stays fully covered by
+  # test-native.yml (ubuntu x86_64/aarch64 legs) and the manual smoke job.
+  # The commented job below is kept as historical reference only.
   # deploy_linux:
   #   needs: setup_environment
   #   runs-on: ubuntu-latest
@@ -132,7 +138,7 @@ jobs:
             *.nupkg
 
   finalize_deploy:
-    needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux disabled (v1.2 decision 0.4)
+    needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux removed (v2.0.0 decision G3)
     runs-on: ubuntu-latest
 
     steps:

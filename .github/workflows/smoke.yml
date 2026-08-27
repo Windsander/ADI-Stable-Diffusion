@@ -1,0 +1,57 @@
+name: <Test> Inference Smoke
+
+# Manual / on-demand inference smoke gate. Downloads the sd-turbo ONNX set
+# from HF (~4.8GB, fast on runners) and runs the turbo slice of the smoke
+# matrix with hard gates (ORT exception count, output size, flat-pixel check).
+#
+# Deliberately manual-only: too heavy for per-PR runs. Kept in its own
+# workflow file so the skipped job never appears in PR check lists.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build gcc g++ cmake patchelf
+
+      - name: Set up Python & fetch model
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Download onnx-sd-turbo (~4.8GB from HF CDN)
+        run: |
+          pip install -q huggingface_hub pillow numpy
+          python - <<'EOF'
+          from huggingface_hub import snapshot_download
+          p = snapshot_download(repo_id="Windsander/onnx-sd-turbo")
+          print("model at:", p)
+          EOF
+          mkdir -p sd/sd-base-model
+          ln -sfn "$(python -c 'from huggingface_hub import snapshot_download; print(snapshot_download(repo_id="Windsander/onnx-sd-turbo"))')" sd/sd-base-model/onnx-sd-turbo
+
+      - name: Build adi (linux x86_64)
+        run: |
+          bash ./auto_build.sh --platform linux \
+                               --cmake "cmake" \
+                               --ninja "ninja" \
+                               --generator "Ninja" \
+                               --build-type minsizerel \
+                               --arch-abi x86_64 \
+                               --jobs 4 \
+                               -c
+
+      - name: Run turbo smoke matrix
+        run: |
+          bash sd/io-test/run_smoke_matrix.sh \
+              cmake-build-minsizerel-linux-x86_64/bin/adi turbo

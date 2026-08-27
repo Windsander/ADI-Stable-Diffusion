@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2018-2050 SD_Tokenizer(No-model) - Arikan.Li
  *
  * Ref: https://huggingface.co/docs/transformers/tokenizer_summary
@@ -449,7 +449,7 @@ public:
 
     void create();
     virtual void init() = 0;
-    PreparedToken_vec tokenize(const std::string &prompts_);
+    virtual PreparedToken_vec tokenize(const std::string &prompts_);
     Tensor embedding(const Tensor &token_p_,const Tensor &token_n_);
     std::string untokenize(const std::pair<Tensor, Tensor> &tpair_);
     virtual void uninit() = 0;
