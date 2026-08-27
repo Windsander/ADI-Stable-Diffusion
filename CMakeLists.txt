@@ -370,6 +370,18 @@ FetchContent_Declare(sentencepiece
 FetchContent_MakeAvailable(sentencepiece)
 get_target_property(SPM_INCLUDE_DIRS sentencepiece-static INCLUDE_DIRECTORIES)
 
+# ADI links only the static sentencepiece library — the spm_* command-line
+# tools are never used anywhere in this project. Exclude them from the
+# default build: each tool is a standalone exe link that adds per-platform
+# failure modes (NDK liblog on android, bogus -lpthreads from FindThreads on
+# windows-host NDK toolchains) plus CI time, for zero benefit.
+foreach (spm_tool spm_encode spm_export_vocab spm_train spm_decode
+        spm_normalize compile_charsmap spm_test)
+    if (TARGET ${spm_tool})
+        set_target_properties(${spm_tool} PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    endif ()
+endforeach ()
+
 # sentencepiece's bundled protobuf logs via __android_log_write on Android.
 # Every sentencepiece target (static libs AND the spm_* tools, which link the
 # static lib into standalone exes) needs NDK liblog or the final link fails

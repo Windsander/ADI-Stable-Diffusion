@@ -123,11 +123,14 @@ message(STATUS "FOUND_ADI_LIB: ${ADI_LIB_PATH}")
 message(STATUS "FOUND_ORT_LIB: ${ORT_LIB_PATH}")
 
 add_executable(${TARGET} main.cc)
-target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
+# NOTE: no CMAKE_THREAD_LIBS_INIT on Android — pthread lives in bionic, and a
+# misdetected -lpthreads (seen with windows-host NDK toolchains) breaks the
+# final link. Android only needs NDK liblog instead (static libadi.a carries
+# sentencepiece/protobuf objects that call __android_log_write).
 if (ANDROID)
-    # static libadi.a carries sentencepiece/protobuf objects that call
-    # __android_log_write — link NDK liblog for the final exe
-    target_link_libraries(${TARGET} PRIVATE log)
+    target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} log)
+else ()
+    target_link_libraries(${TARGET} PRIVATE ${ADI_LIB_PATH} ${ORT_LIB_PATH} ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 target_include_directories(${TARGET} PUBLIC ${CMAKE_PROJECT_DIR}/include)
 
