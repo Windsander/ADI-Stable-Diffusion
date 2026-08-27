@@ -7,11 +7,18 @@
   <a href="https://github.com/Windsander/ADI-Stable-Diffusion/actions">
     <img src="https://img.shields.io/github/actions/workflow/status/Windsander/ADI-Stable-Diffusion/test-native.yml?label=All%20platforms" alt="CI Status"/>
   </a>
+  <a href="https://github.com/Windsander/ADI-Stable-Diffusion/releases">
+    <img src="https://img.shields.io/github/v/release/Windsander/ADI-Stable-Diffusion?display_name=tag" alt="Latest Release"/>
+  </a>
+  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows-FDA599" alt="Platforms"/>
 </p>
 
 <br>
 
 **Agile Diffusers Inference (ADI)** is a **C++ library** with **CLI tool**. Purpose to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion, with suitable package size & high performance. 
+
+> **Pure C++17 · zero Python at inference time · one CLI, nine platform targets.**
+> From SD v1.5 to SD3.5 / FLUX / SVD — pick a scheduler, point at the ONNX models, and generate.
 
 ## Showcase
 
@@ -37,6 +44,15 @@ Everything below was generated **locally by `adi` (C++ / ONNXRuntime, CPU)** —
 - 🎛️ Full sampler arsenal: **14 discrete schedulers + Karras sigmas + rectified-flow family** — all numpy-verified against diffusers
 
 Full history: [CHANGELOG.md](CHANGELOG.md) · Roadmap & progress: [ROADMAP.md](ROADMAP.md)
+
+## Performance at a glance
+
+Measured locally on an **Apple M4 Max (128 GB)**, ONNXRuntime 1.28.0, default provider, single cold run — no GPU, no Python, just the `adi` CLI and the ONNX model files:
+
+| Model | Resolution | Steps | Wall time |
+|---|---|---|---|
+| sd-turbo | 512×512 | 4 | **≈ 9.7 s** |
+| SD3.5-turbo (MMDiT, triple encoders) | 1024×1024 | 4 | **≈ 164 s** |
 
 ## Why choose ONNXRuntime as our Inference Engine?
 
@@ -280,13 +296,13 @@ adi ... --scheduler dpm_m --sigma karras ...
 | SVD (img2vid) | 768 | v_prediction | 0.18215 | `euler_svd`; `--frames/--fps/--motion-bucket/--noise-aug` |
 
 
-## Extra intelligence：
+## Documentation
 
-- **Project structure & design notes, see at: [ARCHITECTURE.md](ARCHITECTURE.md)**
-
-- **Manually Prepare Inference Engine, see at: [Engine's README.md](engine%2FREADME.md)**
-
-- **Manually Prepare ONNX-Format Converter & SD-Models, see at: [SD_ORT's README.md](sd%2FREADME.md)**
+- **Project structure & design notes** — [ARCHITECTURE.md](ARCHITECTURE.md)
+- **Progress checklist & next-phase plan** — [ROADMAP.md](ROADMAP.md)
+- **Release history** — [CHANGELOG.md](CHANGELOG.md)
+- **Manually prepare the inference engine** — [engine/README.md](engine%2FREADME.md)
+- **Manually prepare the ONNX converter & SD models** — [sd/README.md](sd%2FREADME.md)
 
 ## Development Progress & Roadmap
 
