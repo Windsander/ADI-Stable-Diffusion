@@ -13,6 +13,31 @@
 
 **Agile Diffusers Inference (ADI)** is a **C++ library** with **CLI tool**. Purpose to leverage the acceleration capabilities of [ONNXRuntime](https://onnxruntime.ai) and the high compatibility of the .onnx model format to provide a convenient solution for the engineering deployment of Stable Diffusion, with suitable package size & high performance. 
 
+## Showcase
+
+Everything below was generated **locally by `adi` (C++ / ONNXRuntime, CPU)** — no Python, no diffusers at inference time:
+
+| FLUX.1-schnell · 1024px · 4 steps | SD3.5-turbo · 1024px · 4 steps | SD v2.1 · 768px · 20 steps |
+|:---:|:---:|:---:|
+| ![FLUX.1-schnell](assets/showcase/flux-schnell-1024.jpg) | ![SD3.5-turbo](assets/showcase/sd35-turbo-1024.jpg) | ![SD v2.1](assets/showcase/sd21-768.jpg) |
+
+| SDXL-turbo · 512px · 4 steps | sd-turbo · 512px · 4 steps | **SVD img2vid** · 14 frames · 4 steps |
+|:---:|:---:|:---:|
+| ![SDXL-turbo](assets/showcase/sdxl-turbo-512.jpg) | ![sd-turbo](assets/showcase/sd-turbo-512.jpg) | ![SVD img2vid](assets/showcase/svd-img2vid-14f.gif) |
+
+> Prompt for the stills: *"A cat in the water at sunset"* · SVD animates a single input photo into a 14-frame clip.
+
+## What's new in v2.0.0
+
+- 🧠 **MMDiT era models**: **SD3.5-turbo** (triple text encoders incl. T5-XXL via SentencePiece) and **FLUX.1-schnell** (packed latents, rotary ids) at 1024px
+- 🎬 **SVD img2vid**: image-to-video mode with a dedicated `euler_svd` scheduler, spatio-temporal UNet and CLIP vision encoder
+- ⚙️ **Runtime precision policy**: `--precision auto|fp32|fp16` probes available RAM and derives fp16 model copies on demand for memory-constrained machines
+- 🚀 **ONNX Runtime 1.28.0** with bit-identical output vs the previous engine baseline (25/25 local regression cases)
+- 📦 **Release chain**: automated per-platform artifacts for Android ×4, Linux ×2, macOS arm64, Windows ×2 — see [Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)
+- 🎛️ Full sampler arsenal: **14 discrete schedulers + Karras sigmas + rectified-flow family** — all numpy-verified against diffusers
+
+Full history: [CHANGELOG.md](CHANGELOG.md) · Roadmap & progress: [ROADMAP.md](ROADMAP.md)
+
 ## Why choose ONNXRuntime as our Inference Engine?
 
 - **Open Source:** ONNXRuntime is an open-source project, allowing users to freely use and modify it to suit different application scenarios.
@@ -31,8 +56,10 @@
 
 ### Method 1: Install the Command Line Tool Using a Package Manager
 
-> **Note:** published packages are currently **v1.0.1**; v1.1.0/v1.2.0 packages will be
-> produced by the automated release chain (see `release/release-v*` branches).
+> **Note:** **v2.0.0** packages are published on the
+> **[Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)** page
+> (produced by the automated release chain from `release/release-v*` branches).
+> Package-manager taps below still serve **v1.0.1** and will be refreshed separately.
 
 ```bash
 ## macOS (Homebrew):
@@ -164,7 +191,49 @@ adi \
 
 And now, you can have a try~ (0w0 )
 
-### More verified examples (v1.2.0)
+### More verified examples
+
+**v2.0.0 (MMDiT era & video):**
+
+```bash
+# SD3.5-turbo @ 1024px: triple encoders (CLIP-L + OpenCLIP-G via --clip2, T5-XXL via --clip3 + --sp-model)
+adi -p "A cat in the water at sunset" -m txt2img -o output.png \
+ -w 1024 -h 1024 -c 3 --seed 15.0 --dims 768 \
+ --clip  <onnx-sd35-turbo>/text_encoder/model.onnx \
+ --clip2 <onnx-sd35-turbo>/text_encoder_2/model.onnx \
+ --clip3 <onnx-sd35-turbo>/text_encoder_3/model.onnx \
+ --unet  <onnx-sd35-turbo>/transformer/model.onnx \
+ --vae-encoder <onnx-sd35-turbo>/vae_encoder/model.onnx \
+ --vae-decoder <onnx-sd35-turbo>/vae_decoder/model.onnx \
+ --dict  <onnx-sd35-turbo>/tokenizer/vocab.json \
+ --merges <onnx-sd35-turbo>/tokenizer/merges.txt \
+ --sp-model <onnx-sd35-turbo>/tokenizer_3/spiece.model \
+ --beta scaled_linear --scheduler flow_euler --shift 3.0 --predictor epsilon --tokenizer bpe \
+ --decoding 1.5305 --decode-shift 0.0609 --guidance 1.0 --steps 4
+
+# FLUX.1-schnell @ 1024px (shift=1.0, guidance-distilled):
+adi ... --clip <onnx-flux-schnell>/text_encoder/model.onnx \
+        --clip3 <onnx-flux-schnell>/text_encoder_2/model.onnx \
+        --unet <onnx-flux-schnell>/transformer/model.onnx ... \
+ --scheduler flow_euler --shift 1.0 --decoding 0.3611 --decode-shift 0.1159 \
+ --guidance 1.0 --steps 4
+
+# SVD img2vid: one input photo -> 14-frame clip (output_0000.png ... output_0013.png)
+adi -m img2vid -i input.png -o output.png \
+ --image-encoder <onnx-svd-xt>/image_encoder/model.onnx \
+ --unet  <onnx-svd-xt>/unet/model.onnx \
+ --vae-encoder <onnx-svd-xt>/vae_encoder/model.onnx \
+ --vae-decoder <onnx-svd-xt>/vae_decoder/model.onnx \
+ -w 1024 -h 576 -c 3 --seed 15.0 \
+ --scheduler euler_svd --predictor v_prediction \
+ --frames 14 --fps 7 --motion-bucket 127 --noise-aug 0.02 \
+ --decoding 0.18215 --guidance 3.0 --steps 4
+
+# Low-memory machine? let ADI derive fp16 model copies on demand:
+adi ... --precision auto    # probes RAM, converts to <model-set>-fp16/ once, caches
+```
+
+**v1.2.0 (SD v2.x / SDXL):**
 
 ```bash
 # SD v2.1 @ 768px, v_prediction, 20 steps:
@@ -206,6 +275,9 @@ adi ... --scheduler dpm_m --sigma karras ...
 | sd v1.x / turbo | 768 (v1.x) / 1024 (turbo) | epsilon | 0.18215 | turbo: guidance 1.0, 1~4 steps |
 | sd v2.x | 1024 | v_prediction (v2.1-768) | 0.18215 | 768px for v2.1-768 |
 | SDXL / SDXL-turbo | 768 | epsilon | **0.13025** | requires `--clip2` |
+| SD3.5 / SD3.5-turbo | 768 | epsilon | **1.5305** (+ `--decode-shift 0.0609`) | requires `--clip2` + `--clip3` + `--sp-model`; `flow_euler`, `--shift 3.0` |
+| FLUX.1-schnell | 768 | epsilon | **0.3611** (+ `--decode-shift 0.1159`) | `flow_euler`, `--shift 1.0`, guidance 1.0 |
+| SVD (img2vid) | 768 | v_prediction | 0.18215 | `euler_svd`; `--frames/--fps/--motion-bucket/--noise-aug` |
 
 
 ## Extra intelligence：
@@ -216,72 +288,14 @@ adi ... --scheduler dpm_m --sigma karras ...
 
 - **Manually Prepare ONNX-Format Converter & SD-Models, see at: [SD_ORT's README.md](sd%2FREADME.md)**
 
-## Development Progress Checklist (latest):
+## Development Progress & Roadmap
 
-> Audited against the **v2.0.0** codebase (2026-08); roadmap targets aligned with [PLAN-supplement.md](PLAN-supplement.md).
+The full per-model / per-scheduler checklist (with verification dates) and the next-phase plan now live in **[ROADMAP.md](ROADMAP.md)**.
 
-**Basic Pipeline Functionalities (Major)**
-- [x] **[SD_v1] Stable-Diffusion (v1.0 ~ v1.5, turbo)** <span style="color:green;">_(after 2024/06/04 tested)_</span>
-    - **v1.0** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion): Initial version ✅
-    - **v1.1** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-1): Improved image quality and generation speed ✅
-    - **v1.2** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-2): Further optimized generation effects ✅
-    - **v1.3** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-3): Added more training data ✅
-    - **v1.4** [(HuggingFace)](https://huggingface.co/CompVis/stable-diffusion-v-1-4): Enhanced image generation diversity ✅
-    - **v1.5** [(HuggingFace)](https://huggingface.co/runwayml/stable-diffusion-v1-5): Final optimized version ✅
-    - **turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sd-turbo): Community-driven optimized version, faster and efficiency ✅
+Quick status as of **v2.0.0** (2026-08):
 
-- [x] **[SD_v2] Stable-Diffusion (v2.0, v2.1)** <span style="color:green;">_(v2.1 768px v-prediction after 2026/07/31 ✅tested)_</span>
-    - **v2.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2): Significant improvements in image quality and generation efficiency <span style="color:gray;">_(untested; identical architecture/pipeline to the verified v2.1)_</span>
-    - **v2.1** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-2-1): Further optimized model stability and generation effects ✅ <span style="color:gray;">_(official repo gated since 2025 — acquired via `sd2-community` mirror + optimum ONNX export chain, see `sd/auto_prepare_sd_models.sh`)_</span>
-
-- [x] **[SD_v3.x] Stable-Diffusion 3 / 3.5 (MMDiT era)** <span style="color:green;">_(v2.0.0 — SD3.5-turbo 1024px ✅tested 2026/08; MMDiT slot + triple-encoder orchestration + T5-XXL/sp + flow_euler all landed)_</span>
-    - **v3.0** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3-medium): First MMDiT release (2024/06) <span style="color:gray;">_(superseded by v3.5; no longer the primary target)_</span>
-    - **v3.5 (Large / Large-Turbo / Medium)** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-3.5-large): Stability flagship since 2024/10 and the open-weights mainstream of 2026. Requires: MMDiT transformer unit (structural `source/units/` extension, not a config-level one), triple text encoders (CLIP-L + OpenCLIP-G + **T5-XXL → SentencePiece becomes mandatory**), rectified-flow scheduling (new scheduler family below)
-
-- [x] **[SDXL] Stable-Diffusion-XL** <span style="color:green;">_(SDXL-turbo after 2026/07/31 ✅tested)_</span>
-    - **SDXL** [(HuggingFace)](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0): Experimental version for larger-scale models and higher-resolution image <span style="color:gray;">_(untested; same pipeline as SDXL-turbo — dual-encoder `--clip2`, pooled embedding, time-ids micro-conditioning all landed in v1.2.0)_</span>
-    - **SDXL-turbo** [(HuggingFace)](https://huggingface.co/stabilityai/sdxl-turbo): Community-driven optimized version, faster and efficiency ✅
-
-- [x] **[FLUX-class] Flow-Matching Models** <span style="color:green;">_(v2.0.0 — FLUX.1-schnell 1024px 4-step ✅tested 2026/08; 2x2 pack/unpack + img_ids/txt_ids/guidance name-binding; dev variant untested)_</span>
-    - **FLUX.1 [dev] / [schnell]** [(HuggingFace)](https://huggingface.co/black-forest-labs/FLUX.1-dev): The community-favorite open-weights family of 2026. Shares the MMDiT + rectified-flow + T5-XXL stack with SD3.5, so most prerequisites land together with the SD3.5 work; extras: single-file checkpoint conversion chain, guidance-distilled variants, non-commercial license review
-
-- [x] **[SVD] Stable-Video-Diffusion** <span style="color:green;">_(v2.0.0 — img2vid mode live 2026/08: euler_svd scheduler + UNetVideo + CLIP ViT-H ImageEncoder, 14-frame fp32 smoke ✅tested)_</span>
-    - **SVD** [(HuggingFace)](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid): Version specifically for video generation and editing <span style="color:gray;">_(F=14 fixed at export; F=25 XT tier needs a separate export; 25-step quality tier not yet run)_</span>
-
-**Scheduler Abilities**
-- [x] **Strategy**
-    - [x] Discrete/Method Default (discrete) _(after 2024/05/22)_
-    - [x] Karras (karras, ρ=7) <span style="color:green;">_(after 2026/07/30 ✅tested — sigma sequence value-identical to diffusers `use_karras_sigmas`)_</span>
-
-- [x] **Sampling Methods (14/14 complete since v1.1.0)**
-    - [x] Euler (euler) <span style="color:green;">_(after 2024/06/04 ✅tested)_</span> 
-    - [x] Euler Ancestral (euler_a) <span style="color:green;">_(after 2024/05/24 ✅tested)_</span>
-    - [x] Laplacian Pyramid Sampling (lms) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
-    - [x] Latent Consistency Models (lcm) <span style="color:green;">_(after 2024/07/04 ✅tested)_</span>
-    - [x] Heun's Predictor-Corrector (heun) <span style="color:green;">_(after 2024/07/08 ✅tested)_</span>
-    - [x] Unified Predictor-Corrector (unipc) <span style="color:green;">_(completed after 2026/07/29 ✅tested — was an empty-stub segfault before v1.1.0)_</span>
-    - [x] Pseudo Numerical Diffusion Model Scheduler (pndm) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
-    - [x] Improved Pseudo Numerical Diffusion Model Scheduler (ipndm) <span style="color:green;">_(after 2026/07/30 ✅tested — paper-form AB4 + DDIM update; diffusers' ADM-grid variant verified unsuitable for SD)_</span>
-    - [x] Diffusion Exponential Integrator Sampler Multistep (deis_m) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
-    - [x] Denoising Diffusion Implicit Models (ddim) <span style="color:green;">_(after 2024/07/12 ✅tested)_</span>
-    - [x] Denoising Diffusion Probabilistic Models (ddpm) <span style="color:green;">_(after 2024/07/09 ✅tested)_</span>
-    - [x] Diffusion Probabilistic Models Solver in Stochastic Differential Equations (dpm_sde) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
-    - [x] Diffusion Probabilistic Models Solver in Multistep (dpm_m) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
-    - [x] Diffusion Probabilistic Models Solver in Singlestep (dpm_s) <span style="color:green;">_(after 2026/07/30 ✅tested)_</span>
-
-- [x] **Flow-Matching / Rectified-Flow Family** <span style="color:green;">_(v2.0.0 — new `FlowSchedulerBase` family, separate from `scheduler_discrete_*`)_</span>
-    - [x] Flow Euler discrete <span style="color:green;">_(v2.0.0 ✅tested — default sampler of SD3.5 / FLUX-class; numpy-verified against diffusers)_</span>
-    - [ ] Flow Heun / higher-order flow solvers <span style="color:blue;">_[if necessary]_</span>
-
-**Tokenizer Type**
-- [x] Byte-Pair Encoding (bpe) <span style="color:green;">_(after 2024/07/03 ✅tested — covers CLIP-L / OpenCLIP-G/H, i.e. every model supported so far)_</span> 
-- [x] Word Piece Encoding (word_piece) <span style="color:green;">_(after 2024/05/27 ✅tested)_</span> <span style="color:orange;">_(note: available via internal registry & CLI, but not yet exposed in the public `AvailableTokenizerType` C enum)_</span>
-- [x] Sentence Piece Encoding (sp) <span style="color:green;">_(v2.0.0 ✅tested — vendored libsentencepiece static build, official library; T5-XXL for SD3.5 / FLUX)_</span>
-
-**Engineering & Distribution** _(audited 2026-08)_
-- [x] Smoke-matrix runner scripted (`sd/io-test/run_smoke_matrix.sh`, 19 quick / 24 full cases; hard gates: ORT-exception count, output size, flat-pixel check) <span style="color:green;">_(after 2026/07/31 — local quick 19/19 green)_</span>
-- [x] Release chain hardened (CHANGELOG-driven auto-publish; retired node12 actions replaced; artifact actions v2→v4; `deploy_linux` formally removed per v2.0.0 decision G3) <span style="color:green;">_(after 2026/07/31)_</span>
-- [ ] Golden-image regression in CI (`test-native` is compile-only today; the smoke matrix is not yet wired into workflows)
-- [x] ONNXRuntime engine upgrade <span style="color:green;">_(1.18.0 → 1.28.0 prebuilt packages; gpu-cuda12 → gpu_cuda12 renames handled; osx-x86_64 / win-x86 prebuilts discontinued upstream → local-build fallback; local regression turbo 13/13 + sd35 1024px bit-match with the 1.18 baseline, 2026/08/26)_</span>
-- [x] Linux .deb/.rpm packaging — **decision: removed, not repaired** <span style="color:green;">_(v2.0.0 decision G3, 2026/08/26: deb rules predate the ORT 1.19+ package rename/soname change and have no maintainer; Linux build+run support stays covered by test-native ubuntu legs and the manual smoke job)_</span>
-- [ ] ControlNet / safety-checker integration <span style="color:gray;">_(fields reserved in `IOrtSDConfig` as `onnx_control_net_path` / `onnx_safty_path`, currently not available)_</span>
+- **Model families:** SD v1.x & turbo ✅ · SD v2.1 ✅ · SDXL-turbo ✅ · SD3.5-turbo ✅ · FLUX.1-schnell ✅ · SVD img2vid ✅
+- **Schedulers:** all 14 discrete samplers + karras sigmas ✅ · `flow_euler` for the MMDiT era ✅
+- **Tokenizers:** bpe ✅ · word_piece ✅ · sentencepiece (T5-XXL) ✅
+- **Engineering:** smoke-matrix runner ✅ · hardened release chain ✅ · ONNXRuntime 1.28 ✅
+- **Next up:** golden-image CI, fp16 quality validation, CUDA / TensorRT device regression, FLUX.1-dev, ControlNet — details in [ROADMAP.md](ROADMAP.md).
