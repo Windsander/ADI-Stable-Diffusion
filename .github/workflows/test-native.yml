@@ -213,3 +213,26 @@ jobs:
         run: |
           bash sd/io-test/run_smoke_matrix.sh \
               cmake-build-minsizerel-linux-x86_64/bin/adi turbo
+  # Aggregate gate: one stable check name for branch protection. Require ONLY
+  # this in the main-branch rule — matrix leg names change as platforms come
+  # and go (arch dimension, discontinued prebuilts), and stale leg names become
+  # permanent "Expected" ghosts otherwise.
+  gate:
+    name: native-gate
+    needs: [test, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify native matrix result
+        run: |
+          echo "test matrix result: ${{ needs.test.result }}"
+          echo "smoke result: ${{ needs.smoke.result }}"
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "native matrix not green: ${{ needs.test.result }}"
+            exit 1
+          fi
+          # smoke runs on workflow_dispatch only; 'skipped' on PRs is by design
+          if [ "${{ needs.smoke.result }}" == "failure" ] || [ "${{ needs.smoke.result }}" == "cancelled" ]; then
+            echo "smoke job did not pass: ${{ needs.smoke.result }}"
+            exit 1
+          fi

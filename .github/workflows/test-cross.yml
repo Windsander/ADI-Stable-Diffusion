@@ -205,3 +205,20 @@ jobs:
 #      - name: Test
 #        working-directory: ${{ steps.strings.outputs.build-output-dir }}
 #        run: ctest --build-config ${{ matrix.build_type }}
+  # Aggregate gate: one stable check name for branch protection. Require ONLY
+  # this in the main-branch rule — matrix leg names change as platforms come
+  # and go (arch dimension, discontinued prebuilts), and stale leg names become
+  # permanent "Expected" ghosts otherwise.
+  gate:
+    name: cross-gate
+    needs: [cross]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify cross matrix result
+        run: |
+          echo "cross matrix result: ${{ needs.cross.result }}"
+          if [ "${{ needs.cross.result }}" != "success" ]; then
+            echo "cross matrix not green: ${{ needs.cross.result }}"
+            exit 1
+          fi
