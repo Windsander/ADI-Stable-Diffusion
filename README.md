@@ -1,6 +1,10 @@
 <h1 align="center">Agile Diffusers Inference (ADI) </h1>
 
 <p align="center">
+  <b>English</b> · <a href="README_CN.md">简体中文</a>
+</p>
+
+<p align="center">
   <a href="https://opensource.org"><img src="https://img.shields.io/badge/Open_Source-❤️-FDA599?"/></a>
   <a href="/LICENSE"><img src="https://img.shields.io/badge/License-GNU_GPLv3-F4E28D"/></a>
   <a href="https://onnxruntime.ai"><img src="https://img.shields.io/badge/Powered%20by-ONNXRuntime-blue"/></a>
@@ -36,12 +40,17 @@ Everything below was generated **locally by `adi` (C++ / ONNXRuntime, CPU)** —
 
 ## What's new in v2.0.0
 
-- 🧠 **MMDiT era models**: **SD3.5-turbo** (triple text encoders incl. T5-XXL via SentencePiece) and **FLUX.1-schnell** (packed latents, rotary ids) at 1024px
+**🆕 New model families**
+- 🧠 **MMDiT era**: **SD3.5-turbo** (triple text encoders incl. T5-XXL via SentencePiece) and **FLUX.1-schnell** (packed latents, rotary ids), both at 1024px
 - 🎬 **SVD img2vid**: image-to-video mode with a dedicated `euler_svd` scheduler, spatio-temporal UNet and CLIP vision encoder
-- ⚙️ **Runtime precision policy**: `--precision auto|fp32|fp16` probes available RAM and derives fp16 model copies on demand for memory-constrained machines
+
+**⚙️ Runtime & engine**
+- 🎚️ **Precision policy** — `--precision auto|fp32|fp16`: probes available RAM and derives fp16 model copies on demand for memory-constrained machines
 - 🚀 **ONNX Runtime 1.28.0** with bit-identical output vs the previous engine baseline (25/25 local regression cases)
-- 📦 **Release chain**: automated per-platform artifacts for Android ×4, Linux ×2, macOS arm64, Windows ×2 — see [Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)
-- 🎛️ Full sampler arsenal: **14 discrete schedulers + Karras sigmas + rectified-flow family** — all numpy-verified against diffusers
+- 🎛️ **Full sampler arsenal** — 14 discrete schedulers + Karras sigmas + rectified-flow family, all numpy-verified against diffusers
+
+**📦 Distribution**
+- 🤖 **Automated release chain**: per-platform artifacts for Android ×4, Linux ×2, macOS arm64, Windows ×2 — see [Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)
 
 Full history: [CHANGELOG.md](CHANGELOG.md) · Roadmap & progress: [ROADMAP.md](ROADMAP.md)
 
