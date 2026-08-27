@@ -164,11 +164,16 @@ elseif (APPLE)
 elseif (LINUX)
     # ORT >= 1.19 soname is libonnxruntime.so.1; <= 1.18 was libonnxruntime.so.<version>.
     # Normalize DT_NEEDED to the unversioned libonnxruntime.so we ship in lib/
-    # (keep the lib prefix). Tolerate either source name not being present.
+    # (keep the lib prefix). Done via a -P script: embedding sh -c ";"-chains
+    # here breaks on CMake's list-semicolon parsing of the quoted string.
     add_custom_command(
             TARGET ${TARGET} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Modifying ORT[${ONNX_INFERENCE_VERSION}] library path for Linux"
-            COMMAND sh -c "patchelf --replace-needed lib${ORT_LIB}.so.1 lib${ORT_LIB}.so '$<TARGET_FILE_DIR:${TARGET}>/${TARGET>' || true; patchelf --replace-needed lib${ORT_LIB}.so.${ONNX_INFERENCE_VERSION} lib${ORT_LIB}.so '$<TARGET_FILE_DIR:${TARGET}>/${TARGET>' || true"
+            COMMAND ${CMAKE_COMMAND}
+                    -DORT_LIB=${ORT_LIB}
+                    -DORT_VERSION=${ONNX_INFERENCE_VERSION}
+                    "-DEXE=$<TARGET_FILE:${TARGET}>"
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/patch_ort_soname.cmake
     )
 elseif (ANDROID)
     add_custom_command(

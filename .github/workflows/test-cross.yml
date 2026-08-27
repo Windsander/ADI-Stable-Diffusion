@@ -91,7 +91,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build gcc g++
+          sudo apt-get install -y ninja-build gcc g++ patchelf
           
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
             echo "Target platform is macOS."

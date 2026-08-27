@@ -22,6 +22,9 @@
 #elif defined(__linux__)
 #include <sys/sysinfo.h>
 #elif defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX  // keep windows.h's min/max macros from breaking std::max
+#endif
 #include <windows.h>
 #endif
 

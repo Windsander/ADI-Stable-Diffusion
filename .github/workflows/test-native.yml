@@ -100,7 +100,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y ninja-build gcc g++ gcc-aarch64-linux-gnu g++-aarch64-linux-gnu patchelf
 
       - name: Install dependencies on macOS
         if: runner.os == 'macOS'
@@ -180,7 +180,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build gcc g++ cmake
+          sudo apt-get install -y ninja-build gcc g++ cmake patchelf
 
       - name: Set up Python & fetch model
         uses: actions/setup-python@v5
