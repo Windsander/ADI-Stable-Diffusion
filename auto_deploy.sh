@@ -141,6 +141,49 @@ ensure_tools() {
 }
 
 
+# Probe whether a release asset actually exists (follows redirects; 200 = exists).
+# v2.0.0+: some arches may not ship at all (e.g. upstream ORT dropped the
+# osx-x86_64 / win-x86 prebuilts), so NEVER hash a URL without probing first —
+# otherwise we would publish a 404 entry carrying the empty-string sha256.
+probe_url() {
+  local code
+  code=$(curl -sIL --max-time 30 -o /dev/null -w '%{http_code}' "$1")
+  [ "$code" = "200" ]
+}
+
+# Resolve the sha256 of a release asset: prefer the SHA256SUMS.txt manifest
+# published by auto-publish.yml (no re-download needed); fall back to
+# streaming the asset through the local hasher when the manifest/entry is
+# absent (e.g. releases cut before the manifest existed).
+fetch_sha256() {
+  local version=$1 url=$2
+  local filename
+  filename=$(basename "${url}")
+  local sums_url="https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${version}/SHA256SUMS.txt"
+  local sum=""
+  if probe_url "${sums_url}"; then
+    sum=$(curl -sL "${sums_url}" | awk -v f="${filename}" '$2 == f { print $1 }')
+  fi
+  if [ -n "${sum}" ]; then
+    echo "${sum}"
+    return 0
+  fi
+  echo "WARNING: no SHA256SUMS entry for ${filename}, hashing downloaded asset" >&2
+  local tmp
+  tmp=$(mktemp)
+  if ! curl -fsSL --retry 3 --retry-connrefused --max-time 300 -o "${tmp}" "${url}" || [ ! -s "${tmp}" ]; then
+    echo "ERROR: failed to download ${url} (empty or unreachable), refusing to hash nothing" >&2
+    rm -f "${tmp}"
+    return 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${tmp}" | awk '{ print $1 }'
+  else
+    shasum -a 256 "${tmp}" | awk '{ print $1 }'
+  fi
+  rm -f "${tmp}"
+}
+
 # Create Homebrew Formula
 create_homebrew_formula() {
   echo "Creating Homebrew Formula..."
@@ -150,12 +193,49 @@ create_homebrew_formula() {
   local url_x86_64=$3
   local url_arm64=$4
 
-  # 计算 SHA-256 校验和
-  local sha256_x86_64
-  sha256_x86_64=$(curl -L ${url_x86_64} | shasum -a 256 | awk '{ print $1 }')
+  # 探测每个架构的产物是否真实存在，缺失则跳过对应条目
+  local have_x86_64=0 have_arm64=0
+  if probe_url "${url_x86_64}"; then have_x86_64=1; else echo "WARNING: ${url_x86_64} not found, skipping x86_64 formula entry"; fi
+  if probe_url "${url_arm64}";  then have_arm64=1;  else echo "WARNING: ${url_arm64} not found, skipping arm64 formula entry"; fi
+  if [ ${have_x86_64} -eq 0 ] && [ ${have_arm64} -eq 0 ]; then
+    echo "ERROR: no macOS release assets found for ${version}, aborting formula generation"
+    exit 1
+  fi
 
-  local sha256_arm64
-  sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
+  # 计算 SHA-256 校验和（仅对真实存在的产物；优先读 release 的 SHA256SUMS 清单）
+  local sha256_x86_64=""
+  if [ ${have_x86_64} -eq 1 ]; then
+    sha256_x86_64=$(fetch_sha256 "${version}" "${url_x86_64}")
+  fi
+
+  local sha256_arm64=""
+  if [ ${have_arm64} -eq 1 ]; then
+    sha256_arm64=$(fetch_sha256 "${version}" "${url_arm64}")
+  fi
+
+  # 仅为存在的架构生成条目；缺失架构落到 odie，给出可读提示
+  local arch_block=""
+  if [ ${have_x86_64} -eq 1 ]; then
+    arch_block="${arch_block}  if Hardware::CPU.intel?
+    url \"${url_x86_64}\"
+    sha256 \"${sha256_x86_64}\"
+"
+  fi
+  if [ ${have_arm64} -eq 1 ]; then
+    if [ -n "${arch_block}" ]; then
+      arch_block="${arch_block}  elsif Hardware::CPU.arm?
+"
+    else
+      arch_block="${arch_block}  if Hardware::CPU.arm?
+"
+    fi
+    arch_block="${arch_block}    url \"${url_arm64}\"
+    sha256 \"${sha256_arm64}\"
+"
+  fi
+  arch_block="${arch_block}  else
+    odie \"${version} ships no prebuilt package for this Mac architecture — please build from source (Method 3 in README)\"
+  end"
 
   local formula_class_
   formula_class_="$(echo "${formula_name:0:1}" | tr '[:lower:]' '[:upper:]')${formula_name:1}"
@@ -167,15 +247,7 @@ class ${formula_class_} < Formula
   version "${version}"
   license "${LICENSE}"
 
-  if Hardware::CPU.intel?
-    url "${url_x86_64}"
-    sha256 "${sha256_x86_64}"
-  elsif Hardware::CPU.arm?
-    url "${url_arm64}"
-    sha256 "${sha256_arm64}"
-  else
-    odie "Unsupported architecture"
-  end
+${arch_block}
 
 
   def install
@@ -484,15 +556,72 @@ create_choco_package() {
   # 创建临时目录
   mkdir -p ${package_name}-${version}/tools
 
-  # 计算 SHA-256 校验和
-  local sha256_x86_64
-  sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+  # 探测每个架构的产物是否真实存在，缺失则跳过对应分支
+  # （v2.0.0 起 windows-x86 已随上游 ORT 预编译包停发）
+  local have_x86_64=0 have_x86=0 have_arm64=0
+  if probe_url "${url_x86_64}"; then have_x86_64=1; else echo "WARNING: ${url_x86_64} not found, skipping x86_64 branch"; fi
+  if probe_url "${url_x86}";    then have_x86=1;    else echo "WARNING: ${url_x86} not found, skipping x86 branch"; fi
+  if probe_url "${url_arm64}";  then have_arm64=1;  else echo "WARNING: ${url_arm64} not found, skipping arm64 branch"; fi
+  if [ ${have_x86_64} -eq 0 ] && [ ${have_x86} -eq 0 ] && [ ${have_arm64} -eq 0 ]; then
+    echo "ERROR: no Windows release assets found for ${version}, aborting nupkg generation"
+    exit 1
+  fi
 
-  local sha256_x86
-  sha256_x86=$(curl -L ${url_x86} | sha256sum | awk '{ print $1 }')
+  # 计算 SHA-256 校验和（仅对真实存在的产物；优先读 release 的 SHA256SUMS 清单）
+  local sha256_x86_64=""
+  if [ ${have_x86_64} -eq 1 ]; then
+    sha256_x86_64=$(fetch_sha256 "${version}" "${url_x86_64}")
+  fi
 
-  local sha256_arm64
-  sha256_arm64=$(curl -L ${url_arm64} | sha256sum | awk '{ print $1 }')
+  local sha256_x86=""
+  if [ ${have_x86} -eq 1 ]; then
+    sha256_x86=$(fetch_sha256 "${version}" "${url_x86}")
+  fi
+
+  local sha256_arm64=""
+  if [ ${have_arm64} -eq 1 ]; then
+    sha256_arm64=$(fetch_sha256 "${version}" "${url_arm64}")
+  fi
+
+  # 仅为存在的架构生成 install 分支
+  local arch_branches=""
+  local first_branch=1
+  if [ ${have_x86_64} -eq 1 ]; then
+    arch_branches="if (\$env:PROCESSOR_ARCHITECTURE -eq 'AMD64') {
+  \$url = '${url_x86_64}'
+  \$checksum = '${sha256_x86_64}'
+"
+    first_branch=0
+  fi
+  if [ ${have_x86} -eq 1 ]; then
+    if [ ${first_branch} -eq 1 ]; then
+      arch_branches="${arch_branches}if (\$env:PROCESSOR_ARCHITECTURE -eq 'x86') {
+"
+      first_branch=0
+    else
+      arch_branches="${arch_branches}} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'x86') {
+"
+    fi
+    arch_branches="${arch_branches}  \$url = '${url_x86}'
+  \$checksum = '${sha256_x86}'
+"
+  fi
+  if [ ${have_arm64} -eq 1 ]; then
+    if [ ${first_branch} -eq 1 ]; then
+      arch_branches="${arch_branches}if (\$env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
+"
+      first_branch=0
+    else
+      arch_branches="${arch_branches}} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
+"
+    fi
+    arch_branches="${arch_branches}  \$url = '${url_arm64}'
+  \$checksum = '${sha256_arm64}'
+"
+  fi
+  arch_branches="${arch_branches}} else {
+  throw \"Unsupported architecture: \$env:PROCESSOR_ARCHITECTURE (no prebuilt package shipped for it in this release)\"
+}"
 
   # 创建 .nuspec 文件
   cat <<EOF > ${package_name}-${version}/${package_name}.nuspec
@@ -515,28 +644,19 @@ create_choco_package() {
 </package>
 EOF
 
-  # 创建 install.ps1 脚本
+  # 创建 install.ps1 脚本（zip 包应使用 Install-ChocolateyZipPackage 自动解压，
+  # 解压到 tools 目录后 bin/ 下的 adi.exe 会由 Chocolatey 自动生成 shim）
   cat <<EOF > ${package_name}-${version}/tools/chocolateyInstall.ps1
 # Download and install the software
 \$ErrorActionPreference = 'Stop'
 
 \$packageName = '${package_name}'
 \$checksumType = 'sha256'
+\$toolsDir = Split-Path -Parent \$MyInvocation.MyCommand.Definition
 
-if (\$env:PROCESSOR_ARCHITECTURE -eq 'AMD64') {
-  \$url = '${url_x86_64}'
-  \$checksum = '${sha256_x86_64}'
-} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'x86') {
-  \$url = '${url_x86}'
-  \$checksum = '${sha256_x86}'
-} elseif (\$env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
-  \$url = '${url_arm64}'
-  \$checksum = '${sha256_arm64}'
-} else {
-  throw "Unsupported architecture: \$env:PROCESSOR_ARCHITECTURE"
-}
+${arch_branches}
 
-Install-ChocolateyPackage "\$packageName" 'exe' "\$url" --checksum "\$checksum" --checksumType "\$checksumType"
+Install-ChocolateyZipPackage -PackageName \$packageName -Url \$url -UnzipLocation \$toolsDir -Checksum \$checksum -ChecksumType \$checksumType
 EOF
 
   # 创建 uninstall.ps1 脚本

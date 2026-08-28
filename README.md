@@ -80,19 +80,21 @@ Measured locally on an **Apple M4 Max (128 GB)**, ONNXRuntime 1.28.0, default pr
 
 ### Method 1: Install the Command Line Tool Using a Package Manager
 
-> **Note:** **v2.0.0** packages are published on the
-> **[Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)** page
-> (produced by the automated release chain from `release/release-v*` branches).
-> Package-manager taps below still serve **v1.0.1** and will be refreshed separately.
+> **Note:** packages are published on the
+> **[Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)** page,
+> and the package channels below are refreshed automatically by the deploy chain
+> on every release. Since **v2.0.0**, the Homebrew tap serves **Apple Silicon
+> (arm64)** only — upstream ONNXRuntime discontinued the osx-x86_64 prebuilt,
+> so Intel Macs please build from source (Method 3).
 
 ```bash
-## macOS (Homebrew):
+## macOS (Homebrew, Apple Silicon):
 brew tap windsander/adi-stable-diffusion
 brew install adi
 
 ## Windows (git-Bash + Chocolatey):
-curl -L -o adi.1.0.1.nupkg "https://raw.githubusercontent.com/Windsander/ADI-Stable-Diffusion/deploy/adi.1.0.1.nupkg"
-choco install adi.1.0.1.nupkg -y
+curl -L -o adi.2.0.0.nupkg "https://raw.githubusercontent.com/Windsander/ADI-Stable-Diffusion/deploy/adi.2.0.0.nupkg"
+choco install adi.2.0.0.nupkg -y
 ```
 
 ### Method 2: Download from the Released Version
