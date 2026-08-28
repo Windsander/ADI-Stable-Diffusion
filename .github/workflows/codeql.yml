@@ -16,6 +16,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
   schedule:
     # weekly, Thursday 03:26 UTC (off-peak minute)
     - cron: '26 3 * * 4'
@@ -24,6 +25,10 @@ permissions:
   actions: read
   contents: read
   security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:

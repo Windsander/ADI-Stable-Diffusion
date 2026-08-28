@@ -3,11 +3,31 @@ name: <Test> Cross Compiling
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      # docs-only changes don't need the cross-compile matrix
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - '.clang-format'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - '.clang-format'
 
 permissions:
   contents: read
+
+# cancel superseded runs on the same ref (PR pushes); main/release runs finish
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cross:

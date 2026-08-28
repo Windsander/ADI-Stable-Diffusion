@@ -4,13 +4,29 @@ name: <Test> Inference Smoke
 # from HF (~4.8GB, fast on runners) and runs the turbo slice of the smoke
 # matrix with hard gates (ORT exception count, output size, flat-pixel check).
 #
-# Deliberately manual-only: too heavy for per-PR runs. Kept in its own
-# workflow file so the skipped job never appears in PR check lists.
+# Auto-triggers on main pushes that touch inference-relevant code — a safety
+# net for merged PRs. Still too heavy for per-PR runs, so no pull_request
+# trigger (keeps it out of PR check lists).
 on:
   workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'source/**'
+      - 'include/**'
+      - 'clitools/**'
+      - 'outlet/**'
+      - 'sd/io-test/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/smoke.yml'
 
 permissions:
   contents: read
+
+# only the newest smoke run per ref matters
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   smoke:

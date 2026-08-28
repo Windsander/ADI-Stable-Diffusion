@@ -6,9 +6,29 @@ permissions:
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      # docs-only changes don't need a full native build matrix
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - '.clang-format'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - '.clang-format'
   workflow_dispatch:
+
+# cancel superseded runs on the same ref (PR pushes); main/release runs finish
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
