@@ -1,0 +1,13 @@
+# Only scan ADI's own sources. engine/ vendors the full ONNXRuntime tree —
+# upstream code we neither maintain nor want CodeQL findings for (and it is
+# far too large to scan on every run).
+name: "ADI CodeQL config"
+
+paths:
+  - source
+  - include
+  - clitools
+  - outlet
+paths-ignore:
+  - engine
+  - sd

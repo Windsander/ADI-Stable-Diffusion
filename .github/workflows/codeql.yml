@@ -1,0 +1,42 @@
+name: "CodeQL Advanced"
+
+# Replaces GitHub's default CodeQL setup: its C/C++ autobuild tries a full
+# cmake build of this project (downloads ONNXRuntime, platform toolchains…)
+# and always fails with "No supported build command succeeded".
+# build-mode: none analyzes the source tree without compiling — the right
+# fit for a cross-platform CMake project with a heavy build.
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # weekly, Thursday 03:26 UTC (off-peak minute)
+    - cron: '26 3 * * 4'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze C/C++
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          build-mode: none
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp"
