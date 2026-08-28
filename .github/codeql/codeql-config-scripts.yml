@@ -1,10 +1,9 @@
-# For Python & Actions analysis: only ADI's own scripts and workflows.
-# The C/C++ analysis uses codeql-config.yml (paths: source/include/clitools/outlet).
+# For Python & Actions analysis.
+# NOTE: CodeQL `paths` only accepts directories, and Python's extractor walks
+# each entry — so we don't whitelist paths here (the repo only tracks two .py
+# files anyway: ort_sd_py_imp.py and sd/tools/onnx_fp16_convert.py).
+# Actions analysis always scans .github/workflows regardless of these filters.
 name: "ADI CodeQL config (scripts & workflows)"
 
-paths:
-  - .github/workflows
-  - sd/tools
-  - ort_sd_py_imp.py
 paths-ignore:
   - engine
