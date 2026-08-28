@@ -1,0 +1,39 @@
+name: Feature Request
+description: Suggest a new model, scheduler, provider, or engineering improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What would you like?
+      description: A clear description of the feature and the problem it solves.
+      placeholder: "Support ... because ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New model family (e.g. ControlNet, FLUX.1-dev)
+        - Scheduler / sampler
+        - Inference provider (CUDA / TensorRT / CoreML / NNAPI)
+        - Tokenizer
+        - Build / CI / packaging
+        - API / CLI surface
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed design (optional)
+      description: CLI flags, C++ API shape, or a link to the upstream model/paper. Check ROADMAP.md first — it may already be planned.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I checked ROADMAP.md and existing issues for duplicates
+          required: true

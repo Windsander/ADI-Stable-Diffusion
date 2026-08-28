@@ -1,0 +1,25 @@
+# ADI C++ style baseline — derived from the existing tree
+# (4-space indent, attached braces, column-aligned macro continuations).
+#
+# NOTE: this is a BASELINE for files you touch. Do NOT mass-reformat the
+# repository; a tree-wide reformat is a separate, deliberate decision.
+---
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+PointerAlignment: Left
+ReferenceAlignment: Left
+NamespaceIndentation: None
+AccessModifierOffset: -4
+AlignConsecutiveMacros: AcrossComments
+AlignEscapedNewlines: Right
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+...

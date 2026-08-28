@@ -311,6 +311,8 @@ adi ... --scheduler dpm_m --sigma karras ...
 - **发布历史** —— [CHANGELOG.md](CHANGELOG.md)
 - **手动准备推理引擎** —— [engine/README.md](engine%2FREADME.md)
 - **手动准备 ONNX 转换器与 SD 模型** —— [sd/README.md](sd%2FREADME.md)
+- **参与贡献** —— [CONTRIBUTING.md](CONTRIBUTING.md)
+- **安全策略** —— [SECURITY.md](SECURITY.md)
 
 ## 开发进度与路线图
 

@@ -1,0 +1,62 @@
+name: Bug Report
+description: Report a reproducible problem with ADI (build, inference, packaging)
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report! Please fill in as much as you can —
+        diffusion issues are almost impossible to debug without the exact command and environment.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+      placeholder: "adi crashed with ... while I expected ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (x86_64)
+        - Linux (aarch64)
+        - Windows (x86_64)
+        - Windows (arm64)
+        - Android (arm64-v8a)
+        - Android (other ABI)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ADI version
+      description: Output of `adi --version`, or the commit you built from.
+      placeholder: "v2.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command / minimal reproduction
+      description: The exact `adi` command line or C++ call sequence, plus the model set used (e.g. onnx-sd-turbo).
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Run with `-v` if possible. Paste the tail of the output (ORT exceptions, scheduler logs).
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I can reproduce this with the latest release or `main`
+          required: true
