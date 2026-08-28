@@ -1,0 +1,42 @@
+name: Dependabot auto-merge
+
+# Enables auto-merge (squash) on Dependabot PRs for non-major updates.
+# Major bumps still require human review & manual merge.
+#
+# Prerequisite (one-time, repo Settings → General → Pull Requests):
+#   [x] Allow auto-merge
+# With no required status checks configured, --auto merges as soon as the
+# PR is mergeable and its checks (if any were triggered) pass.
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for minor/patch updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+      - name: Leave major updates to humans
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "major update ($UPDATE_TYPE) — skipping auto-merge, manual review required"
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
