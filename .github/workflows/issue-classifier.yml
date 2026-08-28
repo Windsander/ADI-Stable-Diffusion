@@ -1,0 +1,92 @@
+name: Issue 分类器
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 自动分类 Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const title = (issue.title || '').toLowerCase();
+            const body = ((issue.body || '') + ' ' + (issue.title || '')).toLowerCase();
+            const labels = [];
+            
+            // --- 类型分类 ---
+            
+            // Bug
+            const bugKeywords = ['bug', '错误', '崩溃', '失败', '报错', 'crash', 'error', 
+                                  'exception', '无法', '不能', '出错', '异常', '闪退'];
+            if (bugKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('type/bug');
+            }
+            
+            // 技术问题
+            const questionKeywords = ['question', '?’', '问题', '怎么', '如何', '求助', 
+                                      '疑问', '咨询', '请教', '不懂', '不明白', 'help', 'question'];
+            if (questionKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('type/question');
+            }
+            
+            // --- 领域分类 ---
+            
+            // 模型支持
+            const modelKeywords = ['模型', 'model', 'sd2', 'sd3', 'sdxl', 'flux', 'stable diffusion',
+                                   '支持', 'new model', 'lora', 'checkpoint', 'diffusion'];
+            if (modelKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/model-support');
+            }
+            
+            // Webbridge
+            const wbKeywords = ['webbridge', 'web 桥接', 'web 接口', 'web bridge', 'web api',
+                               '网页', '网页版', '界面', 'ui', '可视化'];
+            if (wbKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/webbridge');
+            }
+            
+            // 构建系统
+            const buildKeywords = ['build', 'cmake', '编译', '构建', '安装', '依赖', 'link', 
+                                  'make', 'cross-compile', 'android', 'ios', 'macos', 'windows'];
+            if (buildKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/build-system');
+            }
+            
+            // CLI 工具
+            const cliKeywords = ['cli', '命令行', '命令行工具', '命令行接口', 'terminal', 
+                                'cmd', '命令', '控制台', 'script'];
+            if (cliKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/cli-tools');
+            }
+            
+            // Python 绑定
+            const pyKeywords = ['python', 'py', '绑定', 'binding', 'ort_sd_py_imp', 'pip', 
+                               'virtualenv', 'import adi'];
+            if (pyKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/python-binding');
+            }
+            
+            // 引擎
+            const engineKeywords = ['engine', '推理', 'inference', 'onnx', 'runtime', 
+                                   'kernel', '运算', '性能', '速度', '内存', '显存'];
+            if (engineKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('area/engine');
+            }
+            
+            // 去重并添加
+            const uniqueLabels = [...new Set(labels)];
+            if (uniqueLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: uniqueLabels
+              });
+              console.log(`Added labels: ${uniqueLabels.join(', ')}`);
+            }
