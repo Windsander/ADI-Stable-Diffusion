@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload release asset (Linux)
         if: matrix.platform == 'linux'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -255,7 +255,7 @@ jobs:
 
       - name: Upload release asset (macOS)
         if: matrix.platform == 'macos'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -265,7 +265,7 @@ jobs:
 
       - name: Upload release asset (Windows)
         if: matrix.platform == 'windows'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -275,7 +275,7 @@ jobs:
 
       - name: Upload release asset (Android)
         if: matrix.platform == 'android'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
