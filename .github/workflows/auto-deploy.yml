@@ -183,7 +183,9 @@ jobs:
           git push origin deploy --force
 
   update_homebrew_formula:
-    needs: finalize_deploy
+    # needs setup_environment directly: job outputs do NOT transit through
+    # finalize_deploy, so without this the commit message lost the version
+    needs: [setup_environment, finalize_deploy]
     runs-on: ubuntu-latest
 
     steps:

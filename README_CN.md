@@ -80,19 +80,20 @@
 
 ### 方式一：通过包管理器安装命令行工具
 
-> **注意：** **v2.0.0** 的安装包发布在
-> **[Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)** 页面
-> （由 `release/release-v*` 分支的自动化发布链产出）。
-> 下方的包管理器渠道目前仍是 **v1.0.1**，将另行刷新。
+> **注意：** 安装包发布在
+> **[Releases](https://github.com/Windsander/ADI-Stable-Diffusion/releases)** 页面，
+> 下方包管理渠道由发布链在每次发版时自动刷新。
+> 自 **v2.0.0** 起，Homebrew tap 仅提供 **Apple Silicon（arm64）** 包 ——
+> 上游 ONNXRuntime 已停发 osx-x86_64 预编译包，Intel Mac 请从源码构建（方式三）。
 
 ```bash
-## macOS (Homebrew):
+## macOS (Homebrew, Apple Silicon):
 brew tap windsander/adi-stable-diffusion
 brew install adi
 
 ## Windows (git-Bash + Chocolatey):
-curl -L -o adi.1.0.1.nupkg "https://raw.githubusercontent.com/Windsander/ADI-Stable-Diffusion/deploy/adi.1.0.1.nupkg"
-choco install adi.1.0.1.nupkg -y
+curl -L -o adi.2.0.0.nupkg "https://raw.githubusercontent.com/Windsander/ADI-Stable-Diffusion/deploy/adi.2.0.0.nupkg"
+choco install adi.2.0.0.nupkg -y
 ```
 
 ### 方式二：从发布版本下载
