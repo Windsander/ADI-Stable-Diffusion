@@ -147,7 +147,7 @@ jobs:
 
       - name: Set up Android SDK and NDK
         if: matrix.platform == 'android'
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v4
         with:
           api-level: 27
           ndk-version: 26.1.10909125
