@@ -25,6 +25,21 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Extracted version: $VERSION"
 
+      - name: "Verify version consistency (SSOT: include/adi.h)"
+        shell: bash
+        run: |
+          HEADER_VERSION=$(grep -oE '#define CURRENT_ADI_VERSION "v[0-9]+\.[0-9]+\.[0-9]+"' include/adi.h | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$HEADER_VERSION" != "$VERSION" ]; then
+            echo "ERROR: release branch version ($VERSION) != CURRENT_ADI_VERSION ($HEADER_VERSION)"
+            echo "Fix: run scripts/bump_version.sh $VERSION on the release branch (or rename the branch)."
+            exit 1
+          fi
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "ERROR: CHANGELOG.md has no section for $VERSION (release notes come from it)"
+            exit 1
+          fi
+          echo "version consistency OK: $VERSION (header + CHANGELOG)"
+
       - name: Create GitHub Release (if missing)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
