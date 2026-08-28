@@ -210,3 +210,32 @@ jobs:
           git config --global user.email "github-actions[deploy-bot]@users.noreply.github.com"
           git commit -m "Update Homebrew formula for version ${{ needs.setup_environment.outputs.version }}" || echo "no changes"
           git push origin main
+
+  # Publish the nupkg produced by deploy_windows to the Chocolatey community
+  # gallery. Requires the CHOCO_API_KEY repo secret (maintainer-owned account);
+  # skips gracefully when the secret is not configured. First-time publishes
+  # go through Chocolatey moderation before `choco install adi` works.
+  publish_chocolatey:
+    needs: [setup_environment, deploy_windows]
+    runs-on: windows-latest
+
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: ./artifacts/windows
+
+      - name: Push to Chocolatey community gallery
+        shell: bash
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          if [ -z "$CHOCO_API_KEY" ]; then
+            echo "WARNING: CHOCO_API_KEY not configured, skipping chocolatey.org publish"
+            exit 0
+          fi
+          NUPKG=$(ls ./artifacts/windows/adi.*.nupkg | head -1)
+          echo "Pushing $NUPKG (release ${{ needs.setup_environment.outputs.version }})"
+          choco apikey --api-key "$CHOCO_API_KEY" --source https://push.chocolatey.org/
+          choco push "$NUPKG" --source https://push.chocolatey.org/
