@@ -14,7 +14,6 @@
   <a href="https://github.com/Windsander/ADI-Stable-Diffusion/releases">
     <img src="https://img.shields.io/github/v/release/Windsander/ADI-Stable-Diffusion?display_name=tag" alt="Latest Release"/>
   </a>
-  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows-FDA599" alt="Platforms"/>
 </p>
 
 <br>
@@ -32,7 +31,7 @@
 |:---:|:---:|:---:|
 | ![FLUX.1-schnell](assets/showcase/flux-schnell-1024.jpg) | ![SD3.5-turbo](assets/showcase/sd35-turbo-1024.jpg) | ![SD v2.1](assets/showcase/sd21-768.jpg) |
 
-| SDXL-turbo · 512px · 4 步 | sd-turbo · 512px · 4 步 | **SVD img2vid** · 14 帧 · 4 步 |
+| SDXL-turbo · 512px · 4 步 | sd-turbo · 512px · 4 步 | **SVD img2vid** · 14 帧 · 25 步 |
 |:---:|:---:|:---:|
 | ![SDXL-turbo](assets/showcase/sdxl-turbo-512.jpg) | ![sd-turbo](assets/showcase/sd-turbo-512.jpg) | ![SVD img2vid](assets/showcase/svd-img2vid-14f.gif) |
 
