@@ -15,6 +15,8 @@ jobs:
   setup_environment:
     if: ${{ github.event.workflow_run.conclusion == 'success'}}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout release
@@ -80,6 +82,8 @@ jobs:
   deploy_macos:
     needs: setup_environment
     runs-on: macos-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout release
@@ -112,6 +116,8 @@ jobs:
   deploy_windows:
     needs: setup_environment
     runs-on: windows-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout release
@@ -192,6 +198,9 @@ jobs:
     # finalize_deploy, so without this the commit message lost the version
     needs: [setup_environment, finalize_deploy]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read   # push to the tap repo goes through the ADI_DEPLOY_TOKEN PAT
+      actions: read    # download-artifact
 
     steps:
       - name: Checkout homebrew repository
@@ -225,6 +234,9 @@ jobs:
   publish_chocolatey:
     needs: [setup_environment, deploy_windows]
     runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read    # download-artifact
 
     steps:
       - name: Download Windows artifacts

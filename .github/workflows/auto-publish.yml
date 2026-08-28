@@ -6,11 +6,13 @@ on:
       - 'release/release-v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   create_release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
 
     steps:
       - name: Checkout code
@@ -37,6 +39,8 @@ jobs:
   upload_assets:
     needs: create_release
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write   # softprops/action-gh-release asset upload
 
     strategy:
       matrix:
@@ -289,6 +293,9 @@ jobs:
   publish_checksums:
     needs: upload_assets
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # attach SHA256SUMS.txt to the release
+      actions: read     # download-artifact
 
     steps:
       - name: Extract version from branch name
