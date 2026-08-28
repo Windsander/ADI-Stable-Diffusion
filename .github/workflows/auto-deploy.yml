@@ -67,7 +67,7 @@ jobs:
   #         chmod +x auto_deploy.sh
   #         ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
   #     - name: Upload Linux artifacts
-  #       uses: actions/upload-artifact@v4
+  #       uses: actions/upload-artifact@v7
   #       with:
   #         name: linux-artifacts
   #         path: |
@@ -100,7 +100,7 @@ jobs:
           ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-artifacts
           path: |
@@ -131,7 +131,7 @@ jobs:
           ./auto_deploy.sh --version ${{ needs.setup_environment.outputs.version }}
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-artifacts
           path: |
