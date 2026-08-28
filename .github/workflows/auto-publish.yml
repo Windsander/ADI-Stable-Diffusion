@@ -221,6 +221,25 @@ jobs:
         run: |
           zip -r release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
+      - name: Generate checksum entry
+        shell: bash
+        run: |
+          mkdir -p checksums
+          archive=$(ls release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz 2>/dev/null || ls release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip)
+          name=$(basename "$archive")
+          if command -v sha256sum >/dev/null 2>&1; then
+            sum=$(sha256sum "$archive" | awk '{print $1}')
+          else
+            sum=$(shasum -a 256 "$archive" | awk '{print $1}')
+          fi
+          echo "$sum  $name" | tee "checksums/${{ matrix.platform }}-${{ matrix.arch }}.txt"
+
+      - name: Upload checksum fragment
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-${{ matrix.platform }}-${{ matrix.arch }}
+          path: checksums/
+
       - name: Upload release asset (Linux)
         if: matrix.platform == 'linux'
         uses: softprops/action-gh-release@v2
@@ -259,4 +278,40 @@ jobs:
         with:
           tag_name: release-${{ env.VERSION }}
           files: release-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          fail_on_unmatched_files: true
+
+  # Merge every matrix leg's checksum fragment into a single SHA256SUMS.txt
+  # and attach it to the release, so users (and auto_deploy.sh) can verify
+  # artifact integrity without re-downloading to hash.
+  publish_checksums:
+    needs: upload_assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract version from branch name
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/heads/release/release-}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Download checksum fragments
+        uses: actions/download-artifact@v4
+        with:
+          pattern: checksums-*
+          path: checksums
+          merge-multiple: true
+
+      - name: Merge & sort into SHA256SUMS.txt
+        shell: bash
+        run: |
+          sort checksums/*.txt > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload SHA256SUMS.txt to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ env.VERSION }}
+          files: SHA256SUMS.txt
           fail_on_unmatched_files: true

@@ -151,6 +151,39 @@ probe_url() {
   [ "$code" = "200" ]
 }
 
+# Resolve the sha256 of a release asset: prefer the SHA256SUMS.txt manifest
+# published by auto-publish.yml (no re-download needed); fall back to
+# streaming the asset through the local hasher when the manifest/entry is
+# absent (e.g. releases cut before the manifest existed).
+fetch_sha256() {
+  local version=$1 url=$2
+  local filename
+  filename=$(basename "${url}")
+  local sums_url="https://github.com/Windsander/ADI-Stable-Diffusion/releases/download/release-${version}/SHA256SUMS.txt"
+  local sum=""
+  if probe_url "${sums_url}"; then
+    sum=$(curl -sL "${sums_url}" | awk -v f="${filename}" '$2 == f { print $1 }')
+  fi
+  if [ -n "${sum}" ]; then
+    echo "${sum}"
+    return 0
+  fi
+  echo "WARNING: no SHA256SUMS entry for ${filename}, hashing downloaded asset" >&2
+  local tmp
+  tmp=$(mktemp)
+  if ! curl -fsSL --retry 3 --retry-connrefused --max-time 300 -o "${tmp}" "${url}" || [ ! -s "${tmp}" ]; then
+    echo "ERROR: failed to download ${url} (empty or unreachable), refusing to hash nothing" >&2
+    rm -f "${tmp}"
+    return 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${tmp}" | awk '{ print $1 }'
+  else
+    shasum -a 256 "${tmp}" | awk '{ print $1 }'
+  fi
+  rm -f "${tmp}"
+}
+
 # Create Homebrew Formula
 create_homebrew_formula() {
   echo "Creating Homebrew Formula..."
@@ -169,15 +202,15 @@ create_homebrew_formula() {
     exit 1
   fi
 
-  # 计算 SHA-256 校验和（仅对真实存在的产物）
+  # 计算 SHA-256 校验和（仅对真实存在的产物；优先读 release 的 SHA256SUMS 清单）
   local sha256_x86_64=""
   if [ ${have_x86_64} -eq 1 ]; then
-    sha256_x86_64=$(curl -L ${url_x86_64} | shasum -a 256 | awk '{ print $1 }')
+    sha256_x86_64=$(fetch_sha256 "${version}" "${url_x86_64}")
   fi
 
   local sha256_arm64=""
   if [ ${have_arm64} -eq 1 ]; then
-    sha256_arm64=$(curl -L ${url_arm64} | shasum -a 256 | awk '{ print $1 }')
+    sha256_arm64=$(fetch_sha256 "${version}" "${url_arm64}")
   fi
 
   # 仅为存在的架构生成条目；缺失架构落到 odie，给出可读提示
@@ -534,20 +567,20 @@ create_choco_package() {
     exit 1
   fi
 
-  # 计算 SHA-256 校验和（仅对真实存在的产物）
+  # 计算 SHA-256 校验和（仅对真实存在的产物；优先读 release 的 SHA256SUMS 清单）
   local sha256_x86_64=""
   if [ ${have_x86_64} -eq 1 ]; then
-    sha256_x86_64=$(curl -L ${url_x86_64} | sha256sum | awk '{ print $1 }')
+    sha256_x86_64=$(fetch_sha256 "${version}" "${url_x86_64}")
   fi
 
   local sha256_x86=""
   if [ ${have_x86} -eq 1 ]; then
-    sha256_x86=$(curl -L ${url_x86} | sha256sum | awk '{ print $1 }')
+    sha256_x86=$(fetch_sha256 "${version}" "${url_x86}")
   fi
 
   local sha256_arm64=""
   if [ ${have_arm64} -eq 1 ]; then
-    sha256_arm64=$(curl -L ${url_arm64} | sha256sum | awk '{ print $1 }')
+    sha256_arm64=$(fetch_sha256 "${version}" "${url_arm64}")
   fi
 
   # 仅为存在的架构生成 install 分支
