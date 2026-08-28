@@ -8,6 +8,9 @@ on:
     branches:
       - 'release/release-v*'
 
+permissions:
+  contents: read
+
 jobs:
   setup_environment:
     if: ${{ github.event.workflow_run.conclusion == 'success'}}
@@ -140,6 +143,8 @@ jobs:
   finalize_deploy:
     needs: [setup_environment, deploy_macos, deploy_windows] # deploy_linux removed (v2.0.0 decision G3)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout release
