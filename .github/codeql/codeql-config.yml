@@ -1,6 +1,8 @@
 # Only scan ADI's own sources. engine/ vendors the full ONNXRuntime tree —
 # upstream code we neither maintain nor want CodeQL findings for (and it is
 # far too large to scan on every run).
+# clitools/stb vendors the stb single-header libraries (nothings/stb) —
+# likewise third-party code we do not patch; report those findings upstream.
 name: "ADI CodeQL config"
 
 paths:
@@ -11,3 +13,4 @@ paths:
 paths-ignore:
   - engine
   - sd
+  - clitools/stb

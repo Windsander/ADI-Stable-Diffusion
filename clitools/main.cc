@@ -28,6 +28,16 @@
 #include <windows.h>
 #endif
 
+// shell-free subprocess spawn (fp16 converter): avoids system()/shell injection
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <cerrno>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 #include "adi.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -234,6 +244,36 @@ static uint64_t component_bytes(const std::string &onnx_path_) {
     return file_bytes(onnx_path_) + file_bytes(parent_dir(onnx_path_) + "/model.onnx_data");
 }
 
+// Run a subprocess with an explicit argv (no shell involved), so paths and
+// env-provided values can never be reinterpreted as shell syntax.
+// Returns the child's exit code, or -1 on spawn/wait failure.
+static int run_subprocess_no_shell(const std::string &program_, const std::vector<std::string> &args_) {
+    std::vector<std::string> argv_storage_ = {program_};
+    argv_storage_.insert(argv_storage_.end(), args_.begin(), args_.end());
+#ifdef _WIN32
+    std::vector<const char *> argv_;
+    for (auto &s_ : argv_storage_) argv_.push_back(s_.c_str());
+    argv_.push_back(nullptr);
+    intptr_t rc_ = _spawnvp(_P_WAIT, program_.c_str(), argv_.data());
+    return (rc_ == -1) ? -1 : int(rc_);
+#else
+    pid_t pid_ = fork();
+    if (pid_ < 0) return -1;
+    if (pid_ == 0) {
+        std::vector<char *> argv_;
+        for (auto &s_ : argv_storage_) argv_.push_back(const_cast<char *>(s_.c_str()));
+        argv_.push_back(nullptr);
+        execvp(program_.c_str(), argv_.data());
+        _exit(127);  // exec failed
+    }
+    int status_ = 0;
+    while (waitpid(pid_, &status_, 0) < 0) {
+        if (errno != EINTR) return -1;
+    }
+    return WIFEXITED(status_) ? WEXITSTATUS(status_) : -1;
+#endif
+}
+
 static void resolve_precision(CommandLineInput &params) {
     if (params.sd_precision != "auto" && params.sd_precision != "fp32" && params.sd_precision != "fp16") {
         fprintf(stderr, "error: --precision must be one of: auto | fp32 | fp16\n");
@@ -280,9 +320,10 @@ static void resolve_precision(CommandLineInput &params) {
         std::string fp16_onnx_ = set_dir_ + "-fp16/" + comp_name_ + "/model.onnx";
         if (file_bytes(fp16_onnx_) == 0) {
             printf("[precision] converting %s -> fp16 (one-time, cached)\n", comp_dir_.c_str());
-            std::string cmd_ = "\"" + python_cmd_ + "\" \"" + tool_path_ + "\" \"" +
-                               comp_dir_ + "\" \"" + (set_dir_ + "-fp16/" + comp_name_) + "\"";
-            int rc_ = system(cmd_.c_str());
+            int rc_ = run_subprocess_no_shell(
+                python_cmd_,
+                {tool_path_, comp_dir_, set_dir_ + "-fp16/" + comp_name_}
+            );
             if (rc_ != 0 || file_bytes(fp16_onnx_) == 0) {
                 fprintf(stderr, "[precision] WARN: fp16 conversion failed for %s, keeping fp32\n",
                         comp_dir_.c_str());
@@ -968,7 +1009,7 @@ static void read_image(const CommandLineInput &params, uint8_t** image_data){
         int resized_height = int(params.sd_input_height);
         int resized_width = int(params.sd_input_width);
 
-        auto *resized_image_buffer = (uint8_t *) malloc(resized_height * resized_width * 3);
+        auto *resized_image_buffer = (uint8_t *) malloc(size_t(resized_height) * size_t(resized_width) * 3u);
         if (resized_image_buffer == nullptr) {
             fprintf(stderr, "error: allocate memory for resize input image\n");
             free((*image_data));

@@ -69,8 +69,8 @@ Clip::~Clip(){
 void Clip::generate_output(std::vector<Tensor> &output_tensors_) {
     {
         std::vector<float> output_hidden_(
-            sd_clip_config.sd_tokenizer_config.avail_token_size *
-            sd_clip_config.sd_tokenizer_config.major_hidden_dim
+            size_t(sd_clip_config.sd_tokenizer_config.avail_token_size) *
+            size_t(sd_clip_config.sd_tokenizer_config.major_hidden_dim)
         );
         TensorShape hidden_shape_ = {
             1,
