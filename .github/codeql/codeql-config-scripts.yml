@@ -1,0 +1,10 @@
+# For Python & Actions analysis: only ADI's own scripts and workflows.
+# The C/C++ analysis uses codeql-config.yml (paths: source/include/clitools/outlet).
+name: "ADI CodeQL config (scripts & workflows)"
+
+paths:
+  - .github/workflows
+  - sd/tools
+  - ort_sd_py_imp.py
+paths-ignore:
+  - engine

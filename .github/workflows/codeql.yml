@@ -5,6 +5,11 @@ name: "CodeQL Advanced"
 # and always fails with "No supported build command succeeded".
 # build-mode: none analyzes the source tree without compiling — the right
 # fit for a cross-platform CMake project with a heavy build.
+#
+# Languages covered (so the default setup can be safely switched off):
+#   cpp    — engine sources (codeql-config.yml)
+#   python — ort_sd_py_imp.py & sd/tools (codeql-config-scripts.yml)
+#   actions— .github/workflows (codeql-config-scripts.yml)
 
 on:
   push:
@@ -22,21 +27,34 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze C/C++
+    name: Analyze ${{ matrix.language }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: cpp
+            build-mode: none
+            config-file: ./.github/codeql/codeql-config.yml
+          - language: python
+            build-mode: none
+            config-file: ./.github/codeql/codeql-config-scripts.yml
+          - language: actions
+            build-mode: none
+            config-file: ./.github/codeql/codeql-config-scripts.yml
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
+      - name: Initialize CodeQL (${{ matrix.language }})
         uses: github/codeql-action/init@v3
         with:
-          languages: cpp
-          build-mode: none
-          config-file: ./.github/codeql/codeql-config.yml
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ${{ matrix.config-file }}
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:cpp"
+          category: "/language:${{ matrix.language }}"
