@@ -56,3 +56,19 @@ docs: sync README_CN with README
 `.clang-format` and `.editorconfig` at the repo root define the baseline
 (4-space indent, attached braces, 100-column limit). Format the files you
 touch; do **not** reformat the whole tree in a feature PR.
+
+## Releasing (maintainers)
+
+`include/adi.h` (`CURRENT_ADI_VERSION`) is the **single source of truth** for
+the ADI version. To cut a release:
+
+```bash
+scripts/bump_version.sh v2.1.0           # updates adi.h + scaffolds CHANGELOG
+# fill in the CHANGELOG section, commit, then:
+git checkout -b release/release-v2.1.0
+git push -u origin release/release-v2.1.0
+```
+
+`auto-publish` refuses to build a release whose branch name disagrees with
+`CURRENT_ADI_VERSION` or lacks a matching CHANGELOG section, so versions
+cannot drift apart.
