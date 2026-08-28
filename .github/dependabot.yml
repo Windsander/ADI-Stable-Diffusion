@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Keep GitHub Actions pinned versions current (artifact actions v2->v4 was
+  # done by hand in v2.0.0 — dependabot should carry this from now on)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"

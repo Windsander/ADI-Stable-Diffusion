@@ -311,6 +311,8 @@ adi ... --scheduler dpm_m --sigma karras ...
 - **Release history** — [CHANGELOG.md](CHANGELOG.md)
 - **Manually prepare the inference engine** — [engine/README.md](engine%2FREADME.md)
 - **Manually prepare the ONNX converter & SD models** — [sd/README.md](sd%2FREADME.md)
+- **Contributing** — [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security policy** — [SECURITY.md](SECURITY.md)
 
 ## Development Progress & Roadmap
 
