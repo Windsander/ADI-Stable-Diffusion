@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0a0a0a"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="10.5" fill="none" stroke="#c8aa82" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text x="32" y="45" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#c8aa82" text-anchor="middle">σ</text>
+</svg>

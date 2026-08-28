@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #0b0e13;
+    --panel: #10141b;
+    --panel-hover: #141a23;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --text: #e8ebf0;
+    --text-dim: #9aa3b2;
+    --text-faint: #5d6675;
+    --accent: #3ec6dd;
+    --accent-dim: rgba(62, 198, 221, 0.12);
+    --radius: 0.5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(62, 198, 221, 0.28);
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #232a35;
+    border-radius: 5px;
+    border: 2px solid var(--bg);
+  }
+}
+
+@layer components {
+  .font-mono-ad {
+    font-family: 'JetBrains Mono', 'Noto Sans SC', ui-monospace, monospace;
+  }
+}
