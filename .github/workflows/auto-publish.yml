@@ -1,4 +1,4 @@
-name: 01 Auto publish packages (Release)
+name: Release · 01 Publish Packages
 
 on:
   push:
@@ -7,6 +7,11 @@ on:
 
 permissions:
   contents: read
+
+# 同一 release 分支重复 push 不并行发布；旧的发布跑完为止
+concurrency:
+  group: release-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   create_release:
@@ -257,7 +262,7 @@ jobs:
           echo "$sum  $name" | tee "checksums/${{ matrix.platform }}-${{ matrix.arch }}.txt"
 
       - name: Upload checksum fragment
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: checksums-${{ matrix.platform }}-${{ matrix.arch }}
           path: checksums/
@@ -320,7 +325,7 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Download checksum fragments
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: checksums-*
           path: checksums
@@ -333,7 +338,7 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Upload SHA256SUMS.txt to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

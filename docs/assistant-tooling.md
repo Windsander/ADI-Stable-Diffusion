@@ -97,7 +97,7 @@ bash scripts/import-labels.sh
 ### 触发方式
 
 - **定时**: 每周六 UTC 1:00（北京时间 9:00）
-- **手动**: GitHub Actions 页面 → Run workflow
+- **手动**: GitHub Actions 页面 → 「Community · Weekly Report」→ Run workflow
 
 ### 逻辑
 
