@@ -29,10 +29,18 @@ jobs:
             }
             
             // 技术问题
-            const questionKeywords = ['question', '?’', '问题', '怎么', '如何', '求助', 
-                                      '疑问', '咨询', '请教', '不懂', '不明白', 'help', 'question'];
+            const questionKeywords = ['question', '？', '?', '问题', '怎么', '如何', '求助', 
+                                      '疑问', '咨询', '请教', '不懂', '不明白', 'help'];
             if (questionKeywords.some(k => title.includes(k) || body.includes(k))) {
               labels.push('type/question');
+            }
+            
+            // 增强/建议
+            const enhancementKeywords = ['增强', '改进', '优化', '增加', '支持', 'feature', 'request',
+                                          'enhancement', 'improvement', 'suggestion', 'feature request',
+                                          '新功能', '新增', '希望', '可以', '添加', '扩展'];
+            if (enhancementKeywords.some(k => title.includes(k) || body.includes(k))) {
+              labels.push('type/enhancement');
             }
             
             // --- 领域分类 ---
@@ -79,14 +87,25 @@ jobs:
               labels.push('area/engine');
             }
             
-            // 去重并添加
-            const uniqueLabels = [...new Set(labels)];
+            // 去重并添加（表单模板已带的标签除外）
+            const existing = new Set(
+              (context.payload.issue.labels || []).map(l => typeof l === 'string' ? l : l.name)
+            );
+            const uniqueLabels = [...new Set(labels)].filter(l => !existing.includes(l));
             if (uniqueLabels.length > 0) {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                labels: uniqueLabels
-              });
-              console.log(`Added labels: ${uniqueLabels.join(', ')}`);
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: uniqueLabels
+                });
+                console.log(`Added labels: ${uniqueLabels.join(', ')}`);
+              } catch (e) {
+                // 标签不存在时会返回 422 —— 不阻塞 Issue，仅提醒维护者导入标签
+                core.warning(
+                  `打标签失败 (${e.status}): ${uniqueLabels.join(', ')}。` +
+                  `请运行 scripts/import-labels.sh 导入标签后重试。`
+                );
+              }
             }

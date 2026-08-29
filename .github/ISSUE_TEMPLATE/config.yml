@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 技术问答（Discussions）
+    url: https://github.com/Windsander/ADI-Stable-Diffusion/discussions
+    about: 一般性使用 / 技术问题请优先在 Discussions 提问，可获得 Copilot 与社区的上下文应答
+  - name: 📖 项目文档（README）
+    url: https://github.com/Windsander/ADI-Stable-Diffusion/blob/main/README.md
+    about: 构建、部署与模型支持的权威说明
+  - name: 🗺️ 路线图（ROADMAP）
+    url: https://github.com/Windsander/ADI-Stable-Diffusion/blob/main/ROADMAP.md
+    about: 提需求前请先确认是否已在规划中

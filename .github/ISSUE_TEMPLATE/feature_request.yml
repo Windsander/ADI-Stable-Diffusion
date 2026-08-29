@@ -1,7 +1,7 @@
 name: Feature Request
 description: Suggest a new model, scheduler, provider, or engineering improvement
 title: "[Feature]: "
-labels: ["enhancement"]
+labels: ["type/enhancement"]
 body:
   - type: textarea
     id: summary

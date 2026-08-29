@@ -1,0 +1,39 @@
+name: Technical Question
+description: Ask a technical question about Adi Stable Diffusion
+title: "[Question]: "
+labels: ["type/question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feel free to ask anything about ADI — models, build, ONNX Runtime, webbridge, etc.
+  - type: textarea
+    id: question
+    attributes:
+      label: 问题描述
+      description: 尽可能具体地描述你的问题
+      placeholder: "我在 ... 上遇到了问题，期望是 ..."
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 已尝试方案
+      description: 你已经查了什么，试了什么
+  - type: input
+    id: platform
+    attributes:
+      label: 平台
+      description: macOS / Linux / Windows / Android
+  - type: input
+    id: version
+    attributes:
+      label: ADI 版本
+      description: 版本号或 commit hash
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: 我已搜索现有 Issues / Discussions 并确认尚未回答
+          required: true

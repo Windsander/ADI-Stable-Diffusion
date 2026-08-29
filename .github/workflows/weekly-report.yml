@@ -8,319 +8,263 @@ on:
 permissions:
   discussions: write
   issues: read
-  pulls: read
+  pull-requests: read
+
+concurrency:
+  group: weekly-report
+  cancel-in-progress: false
 
 jobs:
-  check-content:
+  collect:
     runs-on: ubuntu-latest
     outputs:
-      hasContent: ${{ steps.check.outputs.hasContent }}
-      year: ${{ steps.quarter.outputs.year }}
-      quarter: ${{ steps.quarter.outputs.quarter }}
-      week: ${{ steps.quarter.outputs.week }}
-      weekStart: ${{ steps.quarter.outputs.weekStart }}
-      weekEnd: ${{ steps.quarter.outputs.weekEnd }}
-      discussionTitle: ${{ steps.quarter.outputs.discussionTitle }}
-      newIssueCount: ${{ steps.check.outputs.newIssueCount }}
-      mergedPRCount: ${{ steps.check.outputs.mergedPRCount }}
-      discussionCount: ${{ steps.check.outputs.discussionCount }}
-      existingDiscussionId: ${{ steps.existing.outputs.id || '' }}
-      existingExists: ${{ steps.existing.outputs.exists || 'false' }}
+      hasContent: ${{ steps.report.outputs.hasContent }}
+      discussionTitle: ${{ steps.report.outputs.discussionTitle }}
+      reportBody: ${{ steps.report.outputs.reportBody }}
+      repoId: ${{ steps.report.outputs.repoId }}
+      categoryId: ${{ steps.report.outputs.categoryId }}
+      existingDiscussionId: ${{ steps.report.outputs.existingDiscussionId }}
     steps:
-      - name: 检查本周内容是否存在
-        id: check
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const now = new Date();
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - 7);
-            const weekEnd = new Date(now);
-
-            // 获取本周新 Issues
-            const newIssues = await github.rest.issues.listForRepo({
-              owner, repo,
-              since: weekStart.toISOString(),
-              state: 'all'
-            });
-
-            // 获取本周合并的 PRs
-            const closedPRs = await github.rest.pulls.list({
-              owner, repo,
-              state: 'closed',
-              since: weekStart.toISOString()
-            });
-            const mergedPRs = closedPRs.data.filter(p => p.merged_at);
-
-            // 获取本周 Discussions
-            let newDiscussions = [];
-            try {
-              newDiscussions = await github.rest.repos.listDiscussions({
-                owner, repo,
-                since: weekStart.toISOString()
-              });
-            } catch (e) {
-              // Discussions 可能未启用或无权限
-              console.log('Discussions not available:', e.status);
-            }
-
-            const hasContent =
-              newIssues.data.length > 0 ||
-              mergedPRs.length > 0 ||
-              newDiscussions.data.length > 0;
-
-            core.setOutput('hasContent', hasContent);
-            core.setOutput('newIssueCount', newIssues.data.length);
-            core.setOutput('mergedPRCount', mergedPRs.length);
-            core.setOutput('discussionCount', newDiscussions.data.length);
-
-      - name: 获取季度标识
-        id: quarter
-        if: steps.check.outputs.hasContent == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const now = new Date();
-            const month = now.getMonth() + 1;  // 1-12
-            const year = now.getFullYear();
-            let quarter = '';
-            let weekNumber = Math.ceil(now.getDate() / 7);
-
-            if (month <= 3) {
-              quarter = 'Q1';
-            } else if (month <= 6) {
-              quarter = 'Q2';
-            } else if (month <= 9) {
-              quarter = 'Q3';
-            } else {
-              quarter = 'Q4';
-            }
-
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - 7);
-            const weekEnd = new Date(now);
-            weekEnd.setHours(23, 59, 59, 999);
-
-            const weekStartStr = weekStart.toISOString().split('T')[0];
-            const weekEndStr = weekEnd.toISOString().split('T')[0];
-
-            core.setOutput('year', year);
-            core.setOutput('quarter', quarter);
-            core.setOutput('week', weekNumber);
-            core.setOutput('weekStart', weekStartStr);
-            core.setOutput('weekEnd', weekEndStr);
-            core.setOutput('discussionTitle', `[周报] ADI 项目 ${year}-${quarter} 周报汇总`);
-
-      - name: 查找已有季度周报 Discussion
-        id: existing
-        if: steps.check.outputs.hasContent == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const targetTitle = `${{ steps.quarter.outputs.discussionTitle }}`;
-
-            try {
-              const discussions = await github.rest.repos.listDiscussions({
-                owner, repo,
-                direction: 'desc',
-                per_page: 50
-              });
-
-              const existing = discussions.data.find(d => d.title === targetTitle);
-              if (existing) {
-                core.setOutput('id', existing.number);
-                core.setOutput('exists', 'true');
-                console.log(`找到已有周报 Discussion: #${existing.number}`);
-              } else {
-                core.setOutput('exists', 'false');
-                console.log('未找到已有周报 Discussion');
-              }
-            } catch (e) {
-              core.setOutput('exists', 'false');
-              console.log('无法获取 Discussions:', e.message);
-            }
-
-  generate-report:
-    needs: check-content
-    runs-on: ubuntu-latest
-    if: needs.check-content.outputs.hasContent == 'true'
-    permissions:
-      discussions: write
-    steps:
-      - name: 生成周报内容
+      - name: 收集本周数据并生成周报正文
         id: report
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
-            const weekStart = '${{ needs.check-content.outputs.weekStart }}';
-            const weekEnd = '${{ needs.check-content.outputs.weekEnd }}';
-            const weekNum = '${{ needs.check-content.outputs.week }}';
-            const quarter = '${{ needs.check-content.outputs.quarter }}';
-            const year = '${{ needs.check-content.outputs.year }}';
 
-            // 获取本周 Issues 按类型分类
-            const issues = await github.rest.issues.listForRepo({
-              owner, repo,
-              since: weekStart,
-              state: 'all'
+            // ---------- 时间窗口（最近 7 天） ----------
+            const now = new Date();
+            const weekStart = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+            const fmt = d => d.toISOString().split('T')[0];
+            const weekStartStr = fmt(weekStart);
+            const weekEndStr = fmt(now);
+
+            // ---------- 季度 / ISO-8601 周数 ----------
+            const year = now.getFullYear();
+            const quarter = `Q${Math.ceil((now.getMonth() + 1) / 3)}`;
+            const isoDate = new Date(Date.UTC(year, now.getMonth(), now.getDate()));
+            const dayNum = (isoDate.getUTCDay() + 6) % 7;          // 周一 = 0
+            isoDate.setUTCDate(isoDate.getUTCDate() - dayNum + 3); // 本周周四
+            const firstThursday = new Date(Date.UTC(isoDate.getUTCFullYear(), 0, 4));
+            const week = 1 + Math.round((isoDate - firstThursday) / (7 * 24 * 3600 * 1000));
+
+            const discussionTitle = `[周报] ADI 项目 ${year}-${quarter} 周报汇总`;
+
+            // ---------- 本周新建 Issues ----------
+            // 注意：issues API 会把 PR 一并返回，需排除；
+            // since 参数按 updated_at 过滤，因此再按 created_at 精确过滤。
+            const candidates = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'all',
+              since: weekStart.toISOString(),
+              per_page: 100
             });
-
-            const newBugs = issues.data.filter(i =>
-              i.labels.some(l => l.name === 'type/bug')
-            );
-            const newSuggestions = issues.data.filter(i =>
-              i.labels.some(l =>
-                l.name === 'type/enhancement' || l.name === 'type/discussion'
-              )
-            );
-            const newQuestions = issues.data.filter(i =>
-              i.labels.some(l => l.name === 'type/question')
-            );
-            const modelSupport = issues.data.filter(i =>
-              i.labels.some(l => l.name === 'area/model-support')
-            );
-            const webbridge = issues.data.filter(i =>
-              i.labels.some(l => l.name === 'area/webbridge')
+            const newIssues = candidates.filter(i =>
+              !i.pull_request && new Date(i.created_at) >= weekStart
             );
 
-            // 获取合并的 PRs
-            const mergedPRs = await github.rest.pulls.list({
-              owner, repo,
-              state: 'closed',
-              since: weekStart
+            // ---------- 本周合并的 PR ----------
+            // 注意：pulls.list 不支持 since 参数，需按 merged_at 客户端过滤。
+            const closedPRs = await github.rest.pulls.list({
+              owner, repo, state: 'closed',
+              sort: 'updated', direction: 'desc', per_page: 100
             });
-            const merged = mergedPRs.data.filter(p => p.merged_at);
+            const mergedPRs = closedPRs.data.filter(p =>
+              p.merged_at && new Date(p.merged_at) >= weekStart
+            );
 
-            // 获取 Discussions
-            let discussions = [];
+            // ---------- Discussions（仅 GraphQL API 可用） ----------
+            let repoId = '';
+            let categoryId = '';
+            let existingDiscussionId = '';
+            let newDiscussionCount = 0;
             try {
-              discussions = await github.rest.repos.listDiscussions({
-                owner, repo,
-                since: weekStart
-              });
-            } catch (e) { }
-
-            // 生成报告正文
-            let reportBody = `## 第 ${quarter} 季 第 ${weekNum} 周 (${weekStart} ~ ${weekEnd})\n\n`;
-            reportBody += `### 本周概览\n`;
-            reportBody += `| 指标 | 数量 |\n`;
-            reportBody += `|------|------|\n`;
-            reportBody += `| 新增 Issues | ${issues.data.length} |\n`;
-            reportBody += `| 合并 PRs | ${merged.length} |\n`;
-            reportBody += `| 新增 Discussions | ${discussions.data.length} |\n\n`;
-
-            reportBody += `### Bug 报告\n`;
-            if (newBugs.length > 0) {
-              newBugs.forEach(i => {
-                const priority = getPriority(i.labels);
-                reportBody += `- [#${i.number}] ${i.title} (优先级: ${priority})\n`;
-              });
-            } else {
-              reportBody += `（本周无新增 Bug 报告）\n`;
+              const gql = await github.graphql(
+                `query($owner: String!, $name: String!) {
+                  repository(owner: $owner, name: $name) {
+                    id
+                    discussionCategories(first: 25) { nodes { id name slug } }
+                    discussions(first: 50, orderBy: {field: CREATED_AT, direction: DESC}) {
+                      nodes { id number title createdAt }
+                    }
+                  }
+                }`,
+                { owner, name: repo }
+              );
+              repoId = gql.repository.id;
+              const categories = gql.repository.discussionCategories.nodes;
+              // 优先使用 general 分类，否则退到第一个可用分类
+              const general = categories.find(c => c.slug === 'general') || categories[0];
+              categoryId = general ? general.id : '';
+              const discussions = gql.repository.discussions.nodes;
+              newDiscussionCount = discussions.filter(d =>
+                new Date(d.createdAt) >= weekStart
+              ).length;
+              const existing = discussions.find(d => d.title === discussionTitle);
+              if (existing) {
+                existingDiscussionId = existing.id;
+                console.log(`找到已有周报 Discussion: #${existing.number}`);
+              }
+            } catch (e) {
+              core.warning(
+                `无法访问 Discussions (${e.message})。` +
+                `请在仓库 Settings → General 中启用 Discussions，否则周报无法发布。`
+              );
             }
-            reportBody += `\n`;
 
-            reportBody += `### 建议 & 增强\n`;
-            if (newSuggestions.length > 0) {
-              newSuggestions.forEach(i => {
-                reportBody += `- [#${i.number}] ${i.title}\n`;
-              });
-            } else {
-              reportBody += `（本周无新增建议）\n`;
+            const hasContent =
+              newIssues.length > 0 || mergedPRs.length > 0 || newDiscussionCount > 0;
+
+            if (!hasContent) {
+              console.log('本周无新增内容，跳过周报生成。');
+              core.setOutput('hasContent', 'false');
+              core.setOutput('reportBody', '');
+              core.setOutput('discussionTitle', discussionTitle);
+              core.setOutput('repoId', repoId);
+              core.setOutput('categoryId', categoryId);
+              core.setOutput('existingDiscussionId', existingDiscussionId);
+              return;
             }
-            reportBody += `\n`;
 
-            reportBody += `### 技术问题\n`;
-            if (newQuestions.length > 0) {
-              newQuestions.forEach(i => {
-                const status = getQuestionStatus(i);
-                reportBody += `- [#${i.number}] ${i.title} - 状态: ${status}\n`;
-              });
-            } else {
-              reportBody += `（本周无新增技术问题）\n`;
-            }
-            reportBody += `\n`;
+            // ---------- 生成报告正文 ----------
+            const labelName = l => (typeof l === 'string' ? l : l.name);
+            const hasLabel = (i, name) => i.labels.some(l => labelName(l) === name);
 
-            const areaItems = [...modelSupport, ...webbridge];
-            reportBody += `### 模型支持 / Webbridge 进展\n`;
-            if (areaItems.length > 0) {
-              areaItems.forEach(i => {
-                const area = getAreaLabel(i.labels);
-                reportBody += `- [#${i.number}] ${i.title} (${area})\n`;
-              });
-            } else {
-              reportBody += `（本周无模型支持或 Webbridge 相关更新）\n`;
-            }
-            reportBody += `\n`;
-
-            reportBody += `### PR 合并\n`;
-            if (merged.length > 0) {
-              merged.forEach(p => {
-                reportBody += `- #${p.number} ${p.title} (作者: ${p.user.login})\n`;
-              });
-            } else {
-              reportBody += `（本周无合并 PR）\n`;
-            }
-            reportBody += `\n`;
-
-            reportBody += `### 待跟进事项\n`;
-            reportBody += `（如有需要手动跟进的事项，请在此列出）\n\n`;
-            reportBody += `*周报自动生成，详情请查看对应 Issue/PR*\n`;
-
-            core.setOutput('reportBody', reportBody);
+            const newBugs = newIssues.filter(i => hasLabel(i, 'type/bug'));
+            const newSuggestions = newIssues.filter(i =>
+              hasLabel(i, 'type/enhancement') || hasLabel(i, 'type/discussion')
+            );
+            const newQuestions = newIssues.filter(i => hasLabel(i, 'type/question'));
+            const areaItems = newIssues.filter(i =>
+              hasLabel(i, 'area/model-support') || hasLabel(i, 'area/webbridge')
+            );
 
             function getPriority(labels) {
-              const priorityLabel = labels.find(l => l.name.startsWith('priority/'));
-              return priorityLabel ? priorityLabel.name.split('/')[1] : '未指定';
+              const p = labels.map(labelName).find(n => n.startsWith('priority/'));
+              return p ? p.split('/')[1] : '未指定';
             }
-
             function getQuestionStatus(issue) {
               if (issue.comments > 0) return '已回复';
-              if (issue.state === 'open') return '待解答';
-              return '已关闭';
+              return issue.state === 'open' ? '待解答' : '已关闭';
             }
-
             function getAreaLabel(labels) {
-              const area = labels.find(l => l.name.startsWith('area/'));
-              return area ? area.name.replace('area/', '') : '未分类';
+              const a = labels.map(labelName).find(n => n.startsWith('area/'));
+              return a ? a.replace('area/', '') : '未分类';
             }
 
-      - name: 创建季度周报 Discussion
-        if: needs.check-content.outputs.existingExists == 'false'
+            const lines = [];
+            lines.push(`## ${year} 第 ${quarter} 季 第 ${week} 周（${weekStartStr} ~ ${weekEndStr}）`, '');
+            lines.push('### 本周概览', '', '| 指标 | 数量 |', '|------|------|');
+            lines.push(`| 新增 Issues | ${newIssues.length} |`);
+            lines.push(`| 合并 PRs | ${mergedPRs.length} |`);
+            lines.push(`| 新增 Discussions | ${newDiscussionCount} |`, '');
+
+            lines.push('### Bug 报告');
+            if (newBugs.length) {
+              newBugs.forEach(i =>
+                lines.push(`- #${i.number} ${i.title}（优先级: ${getPriority(i.labels)}）`));
+            } else {
+              lines.push('（本周无新增 Bug 报告）');
+            }
+            lines.push('');
+
+            lines.push('### 建议 & 增强');
+            if (newSuggestions.length) {
+              newSuggestions.forEach(i => lines.push(`- #${i.number} ${i.title}`));
+            } else {
+              lines.push('（本周无新增建议）');
+            }
+            lines.push('');
+
+            lines.push('### 技术问题');
+            if (newQuestions.length) {
+              newQuestions.forEach(i =>
+                lines.push(`- #${i.number} ${i.title} — 状态: ${getQuestionStatus(i)}`));
+            } else {
+              lines.push('（本周无新增技术问题）');
+            }
+            lines.push('');
+
+            lines.push('### 模型支持 / Webbridge 进展');
+            if (areaItems.length) {
+              areaItems.forEach(i =>
+                lines.push(`- #${i.number} ${i.title}（${getAreaLabel(i.labels)}）`));
+            } else {
+              lines.push('（本周无模型支持或 Webbridge 相关更新）');
+            }
+            lines.push('');
+
+            lines.push('### PR 合并');
+            if (mergedPRs.length) {
+              mergedPRs.forEach(p =>
+                lines.push(`- #${p.number} ${p.title}（作者: ${p.user.login}）`));
+            } else {
+              lines.push('（本周无合并 PR）');
+            }
+            lines.push('');
+
+            lines.push('### 待跟进事项', '（如有需要手动跟进的事项，请在此列出）', '');
+            lines.push('*周报由 GitHub Actions 自动生成，详情请查看对应 Issue / PR*');
+
+            core.setOutput('hasContent', 'true');
+            core.setOutput('reportBody', lines.join('\n'));
+            core.setOutput('discussionTitle', discussionTitle);
+            core.setOutput('repoId', repoId);
+            core.setOutput('categoryId', categoryId);
+            core.setOutput('existingDiscussionId', existingDiscussionId);
+
+  publish:
+    needs: collect
+    runs-on: ubuntu-latest
+    if: needs.collect.outputs.hasContent == 'true'
+    steps:
+      - name: 创建或追加周报 Discussion
         uses: actions/github-script@v7
+        env:
+          REPORT_BODY: ${{ needs.collect.outputs.reportBody }}
+          DISCUSSION_TITLE: ${{ needs.collect.outputs.discussionTitle }}
+          REPO_ID: ${{ needs.collect.outputs.repoId }}
+          CATEGORY_ID: ${{ needs.collect.outputs.categoryId }}
+          EXISTING_DISCUSSION_ID: ${{ needs.collect.outputs.existingDiscussionId }}
         with:
           script: |
-            const { owner, repo } = context.repo;
-            const title = `${{ needs.check-content.outputs.discussionTitle }}`;
-            const reportBody = `${{ steps.report.outputs.reportBody }}`;
+            const body = process.env.REPORT_BODY;
+            const title = process.env.DISCUSSION_TITLE;
+            const existingId = process.env.EXISTING_DISCUSSION_ID;
 
-            // 创建新的季度周报 Discussion
-            await github.rest.repos.createDiscussion({
-              owner, repo,
-              category_id: 1,  // 默认分类，可能需要根据实际情况调整
-              title: title,
-              body: reportBody
-            });
-
-            console.log(`已创建新周报 Discussion: "${title}"`);
-
-      - name: 追加周报内容到已有 Discussion
-        if: needs.check-content.outputs.existingExists == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const discussionId = '${{ needs.check-content.outputs.existingDiscussionId }}';
-            const reportBody = `${{ steps.report.outputs.reportBody }}`;
-
-            // 追加到已有的季度周报 Discussion
-            await github.rest.repos.createDiscussionComment({
-              owner, repo,
-              discussion_number: discussionId,
-              body: reportBody
-            });
-
-            console.log(`已追加周报内容到 Discussion #${discussionId}`);
+            if (existingId) {
+              // 追加到已有的季度周报 Discussion
+              const res = await github.graphql(
+                `mutation($id: ID!, $body: String!) {
+                  addDiscussionComment(input: {discussionId: $id, body: $body}) {
+                    comment { url }
+                  }
+                }`,
+                { id: existingId, body }
+              );
+              console.log(`已追加周报内容: ${res.addDiscussionComment.comment.url}`);
+            } else {
+              // 创建新的季度周报 Discussion
+              const repoId = process.env.REPO_ID;
+              const categoryId = process.env.CATEGORY_ID;
+              if (!repoId || !categoryId) {
+                core.setFailed(
+                  '缺少 repositoryId 或 categoryId —— 请确认 Discussions 已启用且存在分类。'
+                );
+                return;
+              }
+              const res = await github.graphql(
+                `mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                  createDiscussion(input: {
+                    repositoryId: $repoId, categoryId: $categoryId,
+                    title: $title, body: $body
+                  }) {
+                    discussion { number url }
+                  }
+                }`,
+                { repoId, categoryId, title, body }
+              );
+              console.log(
+                `已创建周报 Discussion #${res.createDiscussion.discussion.number}: ` +
+                res.createDiscussion.discussion.url
+              );
+            }

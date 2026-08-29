@@ -1,0 +1,43 @@
+name: Model Support Request
+description: Request support for a new Stable Diffusion model family or checkpoint
+title: "[Model]: "
+labels: ["area/model-support", "type/enhancement", "status/needs-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the request! Please include enough detail to judge feasibility.
+  - type: textarea
+    id: model-info
+    attributes:
+      label: 模型信息
+      description: 模型名称、来源、下载方式
+      placeholder: |
+        模型名称: ...
+        来源/许可: ...
+        类型: txt2img / img2img / img2vid / ...
+        预期输入输出分辨率: ...
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 期望用途
+      description: 你打算用这个模型做什么，典型输入/输出是什么
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: 已知兼容性问题
+      description: 该模型有没有已知的架构差异、tokenizer 差异、onnx 不兼容等
+  - type: textarea
+    id: priority
+    attributes:
+      label: 优先级理由
+      description: 为什么该模型值得优先支持（用户量、项目方向、重要性）
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: 我已查阅 ROADMAP.md 并确认尚未规划
+          required: true
