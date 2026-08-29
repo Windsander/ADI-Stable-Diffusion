@@ -1,4 +1,4 @@
-name: "CodeQL Advanced"
+name: "Security · CodeQL"
 
 # Replaces GitHub's default CodeQL setup: its C/C++ autobuild tries a full
 # cmake build of this project (downloads ONNXRuntime, platform toolchains…)

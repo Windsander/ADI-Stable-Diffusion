@@ -1,4 +1,4 @@
-name: <Test> Inference Smoke
+name: CI · Inference Smoke
 
 # Manual / on-demand inference smoke gate. Downloads the sd-turbo ONNX set
 # from HF (~4.8GB, fast on runners) and runs the turbo slice of the smoke

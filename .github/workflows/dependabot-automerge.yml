@@ -1,4 +1,4 @@
-name: Dependabot auto-merge
+name: Deps · Dependabot Auto-merge
 
 # Enables auto-merge (squash) on Dependabot PRs for non-major updates.
 # Major bumps still require human review & manual merge.

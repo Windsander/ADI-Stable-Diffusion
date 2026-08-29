@@ -1,4 +1,4 @@
-name: 周报生成
+name: Community · Weekly Report
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:     # 支持手动触发
 
 permissions:
-  discussions: write
+  discussions: read
   issues: read
   pull-requests: read
 
@@ -216,6 +216,8 @@ jobs:
     needs: collect
     runs-on: ubuntu-latest
     if: needs.collect.outputs.hasContent == 'true'
+    permissions:
+      discussions: write   # 仅发布 job 需要写权限
     steps:
       - name: 创建或追加周报 Discussion
         uses: actions/github-script@v7

@@ -1,4 +1,4 @@
-name: Issue 分类器
+name: Community · Issue Classifier
 on:
   issues:
     types: [opened, reopened]

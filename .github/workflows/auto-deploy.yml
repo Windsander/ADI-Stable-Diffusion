@@ -1,8 +1,8 @@
-name: 02 Auto deploy clitools (Release)
+name: Release · 02 Deploy Clitools
 
 on:
   workflow_run:
-    workflows: ["01 Auto publish packages (Release)"]
+    workflows: ["Release · 01 Publish Packages"]
     types:
       - completed
     branches:
@@ -10,6 +10,11 @@ on:
 
 permissions:
   contents: read
+
+# 同一 release 分支的部署串行执行；01 重跑完成后 02 自然跟上
+concurrency:
+  group: release-deploy-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   setup_environment:
@@ -240,7 +245,7 @@ jobs:
 
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-artifacts
           path: ./artifacts/windows
