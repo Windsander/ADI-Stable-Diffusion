@@ -1,0 +1,43 @@
+name: Webbridge Enhancement
+description: Propose a new feature or improvement for the Webbridge (Web UI/API) layer
+title: "[Webbridge]: "
+labels: ["area/webbridge", "type/enhancement", "status/needs-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion! Please describe the current pain point and the desired behaviour.
+  - type: textarea
+    id: pain-point
+    attributes:
+      label: 当前痛点
+      description: 现有 Webbridge 功能中哪方面不够用，或Blocking了什么场景
+  - type: textarea
+    id: desired
+    attributes:
+      label: 期望功能
+      description: 具体想要的新功能、改进点、接口变化
+      placeholder: |
+        例如：
+        - 增加 REST 接口 ...
+        - 支持流式输出
+        - 提供指定分辨率的参数
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 谁会用这个功能，在什么情况下用
+  - type: textarea
+    id: technical
+    attributes:
+      label: 技术考量
+      description: 相关的技术备注，例如依赖、性能影响、与 engine/CMake 的关系
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: 我已查阅 ROADMAP.md 并确认尚未规划
+          required: true

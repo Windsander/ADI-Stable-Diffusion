@@ -1,0 +1,16 @@
+[
+  {"name": "type/bug", "color": "d73a4a", "description": "Bug 报告"},
+  {"name": "type/enhancement", "color": "a8d692", "description": "新功能/增强"},
+  {"name": "type/question", "color": "0066cc", "description": "技术问题"},
+  {"name": "area/model-support", "color": "9b59b6", "description": "新模型支持相关"},
+  {"name": "area/webbridge", "color": "f39c12", "description": "Webbridge 增强相关"},
+  {"name": "area/build-system", "color": "7f8c8d", "description": "CMake/跨平台构建相关"},
+  {"name": "area/cli-tools", "color": "1abc9c", "description": "CLI 工具改进相关"},
+  {"name": "area/python-binding", "color": "e91e63", "description": "Python 绑定 (ort_sd_py_imp) 相关"},
+  {"name": "area/engine", "color": "f1c40f", "description": "推理引擎核心相关"},
+  {"name": "status/needs-investigation", "color": "f39c12", "description": "待调查"},
+  {"name": "status/needs-design", "color": "e67e22", "description": "待设计决策"},
+  {"name": "status/ready-for-dev", "color": "27ae60", "description": "可开发"},
+  {"name": "status/in-progress", "color": "3498db", "description": "开发中"},
+  {"name": "status/blocked", "color": "c0392b", "description": "阻塞"}
+]
