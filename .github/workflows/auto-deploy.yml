@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
 
@@ -61,7 +61,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Checkout release
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v7
   #       with:
   #         ref: ${{ needs.setup_environment.outputs.target_branch }}
   #     - name: Set up environment
@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
@@ -159,7 +159,7 @@ jobs:
 
     steps:
       - name: Checkout release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup_environment.outputs.target_branch }}
 
@@ -209,7 +209,7 @@ jobs:
 
     steps:
       - name: Checkout homebrew repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Windsander/homebrew-ADI-Stable-Diffusion
           token: ${{ secrets.ADI_DEPLOY_TOKEN }}
