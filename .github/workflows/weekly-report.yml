@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: 收集本周数据并生成周报正文
         id: report
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -220,7 +220,7 @@ jobs:
       discussions: write   # 仅发布 job 需要写权限
     steps:
       - name: 创建或追加周报 Discussion
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           REPORT_BODY: ${{ needs.collect.outputs.reportBody }}
           DISCUSSION_TITLE: ${{ needs.collect.outputs.discussionTitle }}
